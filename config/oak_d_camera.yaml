@@ -1,0 +1,39 @@
+# OAK-D-S2 Camera Configuration
+# Adjust these parameters based on your bandwidth and performance needs
+
+/**:
+  ros__parameters:
+    # Camera identification (leave empty to use first available)
+    i_mx_id: ''
+    i_usb_speed: 'SUPER'  # USB3 mode
+
+    # Disable neural network (saves bandwidth)
+    camera:
+      i_nn_type: 'none'
+      i_enable_imu: false
+      i_enable_ir: false
+
+    # RGB Camera Settings
+    rgb:
+      i_publish_topic: true
+      i_resolution: '1080P'  # Options: 1080P, 4K, 720P, 480P
+      i_fps: 15
+      i_interleaved: false
+      i_keep_preview_aspect_ratio: true
+
+    # Stereo Depth Settings
+    stereo:
+      i_publish_topic: true
+      i_resolution: '720P'
+      i_fps: 15
+      i_lr_check: true
+      i_extended_disparity: false
+      i_subpixel: true
+      i_depth_filter_size: 5
+      i_enable_spatial_filter: true
+      i_enable_temporal_filter: true
+      i_enable_speckle_filter: true
+
+    # Point Cloud Settings
+    pointcloud:
+      i_enable: true

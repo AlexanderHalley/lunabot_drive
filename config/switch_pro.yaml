@@ -1,0 +1,38 @@
+teleop_node:
+  ros__parameters:
+    # Enable control with R button (button 5)
+    enable_button: 5
+    require_enable_button: true
+
+    # Axis mapping for Nintendo Switch Pro Controller
+    # Left stick Y-axis: forward/backward
+    # Right stick X-axis: left/right turning
+    axis_linear:
+      x: 1  # Left stick Y
+      y: 0
+      z: 0
+    axis_angular:
+      pitch: 0
+      roll: 0
+      yaw: 0  # Right stick X
+
+    # Speed scaling (adjust these for desired max speeds)
+    scale_linear:
+      x: 0.8    # Max linear speed (m/s or duty cycle)
+      y: 0.0
+      z: 0.0
+    scale_angular:
+      pitch: 0.0
+      roll: 0.0
+      yaw: 2.0  # Max angular speed (rad/s)
+
+    # Turbo mode (hold L button for faster speeds)
+    enable_turbo_button: 4  # L button
+    scale_linear_turbo:
+      x: 1.0
+      y: 0.0
+      z: 0.0
+    scale_angular_turbo:
+      pitch: 0.0
+      roll: 0.0
+      yaw: 3.0
