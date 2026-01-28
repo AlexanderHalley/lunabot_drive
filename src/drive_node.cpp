@@ -2,9 +2,13 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include "SparkFlex.hpp"
 #include <memory>
 #include <chrono>
+#include <cmath>
 
 using namespace std::chrono_literals;
 
@@ -22,10 +26,24 @@ public:
         declare_parameter("wheel_base", 0.5);  // meters
         declare_parameter("max_duty_cycle", 0.8);
 
+        // Odometry parameters
+        declare_parameter("wheel_radius", 0.075);  // meters
+        declare_parameter("encoder_cpr", 42);       // hall sensor counts per revolution (NEO Vortex)
+        declare_parameter("gear_ratio", 1.0);
+        declare_parameter("odom_rate", 30.0);       // Hz
+        declare_parameter("odom_frame_id", "odom");
+        declare_parameter("odom_child_frame_id", "base_link");
+
         // Get parameters
         can_interface_ = get_parameter("can_interface").as_string();
         wheel_base_ = get_parameter("wheel_base").as_double();
         max_duty_ = get_parameter("max_duty_cycle").as_double();
+        wheel_radius_ = get_parameter("wheel_radius").as_double();
+        encoder_cpr_ = get_parameter("encoder_cpr").as_int();
+        gear_ratio_ = get_parameter("gear_ratio").as_double();
+        double odom_rate = get_parameter("odom_rate").as_double();
+        odom_frame_id_ = get_parameter("odom_frame_id").as_string();
+        odom_child_frame_id_ = get_parameter("odom_child_frame_id").as_string();
 
         int lf_id = get_parameter("left_front_id").as_int();
         int rf_id = get_parameter("right_front_id").as_int();
@@ -51,6 +69,9 @@ public:
             "cmd_vel", 10,
             std::bind(&DriveNode::cmd_vel_callback, this, std::placeholders::_1));
 
+        // Odometry publisher
+        odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("wheel_odom", 10);
+
         // Heartbeat timer (motors need regular heartbeat)
         heartbeat_timer_ = create_wall_timer(
             50ms, std::bind(&DriveNode::heartbeat_callback, this));
@@ -59,7 +80,13 @@ public:
         watchdog_timer_ = create_wall_timer(
             100ms, std::bind(&DriveNode::watchdog_callback, this));
 
-        RCLCPP_INFO(get_logger(), "Drive node started");
+        // Odometry timer
+        auto odom_period = std::chrono::duration<double>(1.0 / odom_rate);
+        odom_timer_ = create_wall_timer(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(odom_period),
+            std::bind(&DriveNode::odom_callback, this));
+
+        RCLCPP_INFO(get_logger(), "Drive node started with wheel odometry at %.1f Hz", odom_rate);
     }
 
     ~DriveNode()
@@ -70,13 +97,21 @@ public:
 private:
     void configure_motors()
     {
+        // Compute conversion factors so GetPosition() returns meters
+        // and GetVelocity() returns m/s
+        double pos_factor = (1.0 / gear_ratio_) * 2.0 * M_PI * wheel_radius_;
+        double vel_factor = pos_factor / 60.0;  // RPM -> m/s
+
         for (auto* motor : {left_front_.get(), right_front_.get(),
                            left_rear_.get(), right_rear_.get()}) {
             motor->SetIdleMode(IdleMode::kBrake);
             motor->SetMotorType(MotorType::kBrushless);
             motor->SetSensorType(SensorType::kHallSensor);
             motor->SetRampRate(0.1);
-            // Don't burn flash every startup - do this once during setup
+            motor->SetPositionConversionFactor(pos_factor);
+            motor->SetVelocityConversionFactor(vel_factor);
+            motor->SetPeriodicStatus1Period(20);
+            motor->SetPeriodicStatus2Period(20);
         }
 
         // Invert right side motors for tank drive
@@ -130,6 +165,83 @@ private:
         }
     }
 
+    void odom_callback()
+    {
+        // Read encoder positions from front motors (meters, after conversion factor)
+        double left_pos = left_front_->GetPosition();
+        double right_pos = right_front_->GetPosition();
+
+        if (!odom_initialized_) {
+            prev_left_pos_ = left_pos;
+            prev_right_pos_ = right_pos;
+            odom_initialized_ = true;
+            return;
+        }
+
+        // Compute distance deltas
+        double dl = left_pos - prev_left_pos_;
+        double dr = right_pos - prev_right_pos_;
+        prev_left_pos_ = left_pos;
+        prev_right_pos_ = right_pos;
+
+        // Midpoint integration (2nd-order accurate)
+        double d_center = (dl + dr) / 2.0;
+        double d_theta = (dr - dl) / wheel_base_;
+
+        // Integrate using midpoint angle for better accuracy
+        double mid_theta = theta_ + d_theta / 2.0;
+        x_ += d_center * std::cos(mid_theta);
+        y_ += d_center * std::sin(mid_theta);
+        theta_ += d_theta;
+
+        // Normalize theta to [-pi, pi]
+        theta_ = std::atan2(std::sin(theta_), std::cos(theta_));
+
+        // Read velocities from front motors (m/s, after conversion factor)
+        double left_vel = left_front_->GetVelocity();
+        double right_vel = right_front_->GetVelocity();
+        double linear_vel = (left_vel + right_vel) / 2.0;
+        double angular_vel = (right_vel - left_vel) / wheel_base_;
+
+        // Build odometry message
+        auto odom_msg = nav_msgs::msg::Odometry();
+        odom_msg.header.stamp = now();
+        odom_msg.header.frame_id = odom_frame_id_;
+        odom_msg.child_frame_id = odom_child_frame_id_;
+
+        // Pose
+        odom_msg.pose.pose.position.x = x_;
+        odom_msg.pose.pose.position.y = y_;
+        odom_msg.pose.pose.position.z = 0.0;
+
+        tf2::Quaternion q;
+        q.setRPY(0.0, 0.0, theta_);
+        odom_msg.pose.pose.orientation = tf2::toMsg(q);
+
+        // Pose covariance [x, y, z, roll, pitch, yaw] - 6x6 row-major
+        // Low confidence for x/y, high for unmeasured DOFs, moderate for yaw
+        odom_msg.pose.covariance[0]  = 0.01;   // x
+        odom_msg.pose.covariance[7]  = 0.01;   // y
+        odom_msg.pose.covariance[14] = 1e6;    // z (unmeasured)
+        odom_msg.pose.covariance[21] = 1e6;    // roll (unmeasured)
+        odom_msg.pose.covariance[28] = 1e6;    // pitch (unmeasured)
+        odom_msg.pose.covariance[35] = 0.05;   // yaw
+
+        // Twist (in child frame = base_link)
+        odom_msg.twist.twist.linear.x = linear_vel;
+        odom_msg.twist.twist.angular.z = angular_vel;
+
+        // Twist covariance
+        odom_msg.twist.covariance[0]  = 0.01;   // vx
+        odom_msg.twist.covariance[7]  = 0.01;   // vy
+        odom_msg.twist.covariance[14] = 1e6;    // vz (unmeasured)
+        odom_msg.twist.covariance[21] = 1e6;    // roll rate (unmeasured)
+        odom_msg.twist.covariance[28] = 1e6;    // pitch rate (unmeasured)
+        odom_msg.twist.covariance[35] = 0.05;   // yaw rate
+
+        odom_pub_->publish(odom_msg);
+    }
+
     void stop_motors()
     {
         target_left_ = 0.0;
@@ -150,16 +262,31 @@ private:
     std::string can_interface_;
     double wheel_base_;
     double max_duty_;
+    double wheel_radius_;
+    int encoder_cpr_;
+    double gear_ratio_;
+    std::string odom_frame_id_;
+    std::string odom_child_frame_id_;
 
-    // State
+    // Drive state
     double target_left_ = 0.0;
     double target_right_ = 0.0;
     rclcpp::Time last_cmd_time_;
 
+    // Odometry state
+    double x_ = 0.0;
+    double y_ = 0.0;
+    double theta_ = 0.0;
+    double prev_left_pos_ = 0.0;
+    double prev_right_pos_ = 0.0;
+    bool odom_initialized_ = false;
+
     // ROS interfaces
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     rclcpp::TimerBase::SharedPtr watchdog_timer_;
+    rclcpp::TimerBase::SharedPtr odom_timer_;
 };
 
 int main(int argc, char** argv)

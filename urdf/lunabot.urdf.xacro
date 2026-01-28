@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="lunabot">
+
+  <!-- TODO: Define actual robot geometry here -->
+  <!-- Eric put the actual URDF here -->
+
+  <!-- Base link (center of rear axle, ground level) -->
+  <link name="base_link"/>
+
+  <!-- Chassis placeholder -->
+  <link name="chassis">
+    <visual>
+      <geometry>
+        <box size="0.5 0.4 0.15"/>
+      </geometry>
+      <material name="grey">
+        <color rgba="0.5 0.5 0.5 1.0"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis"/>
+    <origin xyz="0.0 0.0 0.075" rpy="0 0 0"/>
+  </joint>
+
+  <!-- OAK-D S2 camera (update xyz to match actual mount position) -->
+  <link name="oak_link"/>
+  <joint name="oak_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="oak_link"/>
+    <!-- TODO: Measure and set actual camera position on rover -->
+    <origin xyz="0.25 0.0 0.15" rpy="0 0 0"/>
+  </joint>
+
+  <!-- OAK-D IMU frame (coincident with oak_link per depthai convention) -->
+  <link name="oak_imu_frame"/>
+  <joint name="oak_imu_joint" type="fixed">
+    <parent link="oak_link"/>
+    <child link="oak_imu_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+</robot>

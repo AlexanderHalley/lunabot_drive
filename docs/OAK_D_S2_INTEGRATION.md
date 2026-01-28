@@ -261,10 +261,15 @@ If you need the camera in your robot model for TF transforms, add to your URDF:
 
 ---
 
+## IMU Integration
+
+The OAK-D S2 includes a BNO086 IMU. IMU is enabled in `config/oak_d_camera.yaml` (`i_enable_imu: true`) and publishes to `/oak/imu/data`. This data is fused with wheel odometry from `drive_node` via a `robot_localization` EKF configured in `config/ekf.yaml`.
+
 ## Files Added
 
 | File | Purpose |
 |------|---------|
 | `launch/oak_d_camera.launch.py` | Launch depthai_ros_driver on Pi |
-| `config/oak_d_camera.yaml` | Camera parameters (resolution, fps, etc.) |
+| `config/oak_d_camera.yaml` | Camera parameters (resolution, fps, IMU enable) |
+| `config/ekf.yaml` | EKF config fusing wheel odometry + IMU |
 | `docs/OAK_D_S2_INTEGRATION.md` | This roadmap document |

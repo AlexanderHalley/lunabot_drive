@@ -10,7 +10,7 @@
     # Disable neural network (saves bandwidth)
     camera:
       i_nn_type: 'none'
-      i_enable_imu: false
+      i_enable_imu: true
       i_enable_ir: false
 
     # RGB Camera Settings
