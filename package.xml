@@ -11,11 +11,16 @@
 
   <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>sparkcan</depend>
 
   <!-- OAK-D Camera dependencies (runtime only) -->
   <exec_depend>depthai_ros_driver</exec_depend>
   <exec_depend>depthai_descriptions</exec_depend>
+
+  <!-- Visualization dependencies -->
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

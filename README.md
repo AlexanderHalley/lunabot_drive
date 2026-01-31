@@ -7,12 +7,20 @@ Motor drive control for Lunabot rover using SparkFlex controllers via CAN bus.
 ```
 lunabot_drive/
 ├── src/
-│   └── drive_node.cpp          # Main motor control node
+│   ├── drive_node.cpp          # Main motor control node
+│   └── minimal_drive.cpp        # Minimal test node
 ├── launch/
+│   ├── oak_d_camera.launch.py  # Oak-D S2 camera launch
+│   ├── oak_d_rviz.launch.py    # Camera + RViz visualization
 │   ├── pc_teleop.launch.py     # Launch file for offboard PC (joy + teleop)
 │   └── pi_drive.launch.py      # Launch file for Raspberry Pi5 (motor control)
 ├── config/
+│   ├── oak_d_camera.yaml       # Oak-D S2 camera configuration
+│   ├── rviz/
+│   │   └── oak_d_camera.rviz   # RViz visualization config
 │   └── switch_pro.yaml         # Nintendo Switch Pro Controller configuration
+├── docs/
+│   └── OAK_D_S2_INTEGRATION.md # Camera integration guide
 ├── CMakeLists.txt
 ├── package.xml
 └── README.md
@@ -54,6 +62,67 @@ sudo slcand -o -s8 /dev/ttyACM0
    ```bash
    ros2 launch lunabot_drive pi_drive.launch.py
    ```
+
+## Camera Visualization
+
+The package includes Oak-D S2 camera support with RViz2 visualization.
+
+### Quick Start
+
+Launch camera with RViz visualization:
+```bash
+ros2 launch lunabot_drive oak_d_rviz.launch.py
+```
+
+This launches:
+- Oak-D S2 camera node (RGB + Depth + Point Cloud)
+- Static TF frames for camera coordinate system
+- RViz2 with pre-configured displays
+
+### Network Setup (Pi + PC)
+
+For distributed operation with camera on Raspberry Pi and visualization on PC:
+
+**On Raspberry Pi 5:**
+```bash
+export ROS_DOMAIN_ID=42
+ros2 launch lunabot_drive oak_d_camera.launch.py
+```
+
+**On PC:**
+```bash
+export ROS_DOMAIN_ID=42
+ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
+```
+
+Or use X11 forwarding to run everything on Pi with display on PC:
+```bash
+ssh -X lunapi@<pi_ip_address>
+ros2 launch lunabot_drive oak_d_rviz.launch.py
+```
+
+### Camera Topics
+
+The camera publishes to these topics:
+- `/camera/image_raw` - RGB camera feed (1080p @ 15 FPS)
+- `/camera/image_raw/compressed` - Compressed RGB (for network efficiency)
+- `/camera/depth/image_raw` - Depth image (720p @ 15 FPS)
+- `/camera/depth/points` - Point cloud with RGB coloring
+- `/camera/camera_info` - RGB camera calibration
+- `/camera/depth/camera_info` - Depth camera calibration
+
+### Launch Arguments
+
+**oak_d_rviz.launch.py:**
+- `rviz:=false` - Disable RViz (headless operation)
+- `launch_camera:=false` - Don't launch camera (use existing camera node)
+- `rviz_config:=<path>` - Use custom RViz config file
+
+**oak_d_camera.launch.py:**
+- `enable_depth:=true/false` - Enable/disable depth stream
+- `enable_pointcloud:=true/false` - Enable/disable point cloud generation
+
+See `docs/OAK_D_S2_INTEGRATION.md` for detailed camera setup and configuration.
 
 ## Controller Mapping
 

@@ -24,7 +24,7 @@ def generate_launch_description():
 
         Node(
             package='depthai_ros_driver',
-            executable='camera',
+            executable='camera_node',
             name='oak_d',
             output='screen',
             parameters=[config_file],

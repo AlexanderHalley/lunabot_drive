@@ -17,7 +17,7 @@
     rgb:
       i_publish_topic: true
       i_resolution: '1080P'  # Options: 1080P, 4K, 720P, 480P
-      i_fps: 15
+      i_fps: 15.0
       i_interleaved: false
       i_keep_preview_aspect_ratio: true
 
@@ -25,7 +25,7 @@
     stereo:
       i_publish_topic: true
       i_resolution: '720P'
-      i_fps: 15
+      i_fps: 15.0
       i_lr_check: true
       i_extended_disparity: false
       i_subpixel: true
