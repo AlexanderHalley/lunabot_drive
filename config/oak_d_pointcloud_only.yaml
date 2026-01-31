@@ -1,0 +1,29 @@
+# OAK-D-S2 Camera Configuration - Point Cloud Only
+# Use this for 3D point cloud without image streams
+
+/**:
+  ros__parameters:
+    i_mx_id: ''
+    i_usb_speed: 'SUPER'
+
+    camera:
+      i_nn_type: 'none'
+      i_enable_imu: false
+      i_enable_ir: false
+
+    # Disable RGB
+    rgb:
+      i_publish_topic: false
+
+    # Stereo Depth Settings (needed for point cloud)
+    stereo:
+      i_publish_topic: false  # Don't publish depth image
+      i_resolution: '400P'  # Lower res for point cloud
+      i_fps: 15.0
+      i_lr_check: true
+      i_subpixel: false
+      i_depth_filter_size: 3
+
+    # Point Cloud Settings
+    pointcloud:
+      i_enable: true

@@ -8,28 +8,18 @@ import os
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('lunabot_drive')
-    config_file = os.path.join(pkg_share, 'config', 'oak_d_camera.yaml')
 
-    # Launch configurations
-    enable_rgb = LaunchConfiguration('enable_rgb')
-    enable_depth = LaunchConfiguration('enable_depth')
-    enable_pointcloud = LaunchConfiguration('enable_pointcloud')
+    # Launch argument
+    config_file = LaunchConfiguration('config')
+
+    # Default config path
+    default_config = os.path.join(pkg_share, 'config', 'oak_d_camera.yaml')
 
     return LaunchDescription([
         DeclareLaunchArgument(
-            'enable_rgb',
-            default_value='true',
-            description='Enable RGB camera stream'
-        ),
-        DeclareLaunchArgument(
-            'enable_depth',
-            default_value='true',
-            description='Enable depth stream'
-        ),
-        DeclareLaunchArgument(
-            'enable_pointcloud',
-            default_value='true',
-            description='Enable point cloud generation'
+            'config',
+            default_value=default_config,
+            description='Path to camera config file'
         ),
 
         Node(
@@ -37,13 +27,6 @@ def generate_launch_description():
             executable='camera_node',
             name='oak_d',
             output='screen',
-            parameters=[
-                config_file,
-                {
-                    'rgb.i_publish_topic': enable_rgb,
-                    'stereo.i_publish_topic': enable_depth,
-                    'pointcloud.i_enable': enable_pointcloud,
-                }
-            ]
+            parameters=[config_file]
         ),
     ])

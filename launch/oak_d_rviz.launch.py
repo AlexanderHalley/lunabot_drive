@@ -18,13 +18,14 @@ def generate_launch_description():
     use_rviz = LaunchConfiguration('rviz')
     rviz_config = LaunchConfiguration('rviz_config')
     launch_camera = LaunchConfiguration('launch_camera')
-    enable_rgb = LaunchConfiguration('enable_rgb')
-    enable_depth = LaunchConfiguration('enable_depth')
-    enable_pointcloud = LaunchConfiguration('enable_pointcloud')
+    camera_config = LaunchConfiguration('camera_config')
 
-    # Default RViz config path
+    # Default paths
     default_rviz_config = PathJoinSubstitution([
         pkg_share, 'config', 'rviz', 'oak_d_camera.rviz'
+    ])
+    default_camera_config = PathJoinSubstitution([
+        pkg_share, 'config', 'oak_d_camera.yaml'
     ])
 
     return LaunchDescription([
@@ -45,19 +46,9 @@ def generate_launch_description():
             description='Launch Oak-D camera node'
         ),
         DeclareLaunchArgument(
-            'enable_rgb',
-            default_value='true',
-            description='Enable RGB camera stream (reduces latency when disabled)'
-        ),
-        DeclareLaunchArgument(
-            'enable_depth',
-            default_value='true',
-            description='Enable depth stream (reduces latency when disabled)'
-        ),
-        DeclareLaunchArgument(
-            'enable_pointcloud',
-            default_value='true',
-            description='Enable point cloud generation (reduces latency when disabled)'
+            'camera_config',
+            default_value=default_camera_config,
+            description='Camera config file (oak_d_camera.yaml, oak_d_rgb_only.yaml, or oak_d_pointcloud_only.yaml)'
         ),
 
         # Include existing camera launch
@@ -66,9 +57,7 @@ def generate_launch_description():
                 PathJoinSubstitution([pkg_share, 'launch', 'oak_d_camera.launch.py'])
             ]),
             launch_arguments={
-                'enable_rgb': enable_rgb,
-                'enable_depth': enable_depth,
-                'enable_pointcloud': enable_pointcloud,
+                'config': camera_config,
             }.items(),
             condition=IfCondition(launch_camera)
         ),

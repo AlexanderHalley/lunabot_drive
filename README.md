@@ -111,31 +111,62 @@ The camera publishes to these topics:
 - `/camera/camera_info` - RGB camera calibration
 - `/camera/depth/camera_info` - Depth camera calibration
 
+### Configuration Modes
+
+Three config files are provided for different use cases:
+
+1. **oak_d_camera.yaml** (default) - All streams enabled
+   - RGB @ 1080p, Depth @ 720p, Point Cloud
+   - Best for full functionality, higher bandwidth
+
+2. **oak_d_rgb_only.yaml** - RGB camera only (lowest latency)
+   - RGB @ 720p, 30 FPS
+   - Best for low-latency video streaming
+
+3. **oak_d_pointcloud_only.yaml** - 3D point cloud only
+   - Point cloud without image streams
+   - Best for 3D mapping/navigation
+
 ### Launch Arguments
 
 **oak_d_rviz.launch.py:**
 - `rviz:=false` - Disable RViz (headless operation)
 - `launch_camera:=false` - Don't launch camera (use existing camera node)
+- `camera_config:=<path>` - Specify camera config file
 - `rviz_config:=<path>` - Use custom RViz config file
-- `enable_rgb:=false` - Disable RGB stream (reduces latency)
-- `enable_depth:=false` - Disable depth stream (reduces latency)
-- `enable_pointcloud:=false` - Disable point cloud (reduces latency)
 
 **oak_d_camera.launch.py:**
-- `enable_rgb:=false` - Disable RGB stream
-- `enable_depth:=false` - Disable depth stream
-- `enable_pointcloud:=false` - Disable point cloud generation
+- `config:=<path>` - Path to camera configuration file
 
-**Examples:**
+### Usage Examples
+
+**RGB only (lowest latency):**
 ```bash
-# RGB only (lowest latency)
-ros2 launch lunabot_drive oak_d_rviz.launch.py enable_depth:=false enable_pointcloud:=false
+# Pi:
+ros2 launch lunabot_drive oak_d_camera.launch.py \
+  config:=$(ros2 pkg prefix lunabot_drive)/share/lunabot_drive/config/oak_d_rgb_only.yaml
 
-# Depth + point cloud only (no RGB)
-ros2 launch lunabot_drive oak_d_rviz.launch.py enable_rgb:=false
+# PC:
+ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
+```
 
-# Point cloud only
-ros2 launch lunabot_drive oak_d_rviz.launch.py enable_rgb:=false enable_depth:=false
+**Point cloud only:**
+```bash
+# Pi:
+ros2 launch lunabot_drive oak_d_camera.launch.py \
+  config:=$(ros2 pkg prefix lunabot_drive)/share/lunabot_drive/config/oak_d_pointcloud_only.yaml
+
+# PC:
+ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
+```
+
+**All streams (default):**
+```bash
+# Pi:
+ros2 launch lunabot_drive oak_d_camera.launch.py
+
+# PC:
+ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
 ```
 
 See `docs/OAK_D_S2_INTEGRATION.md` for detailed camera setup and configuration.
