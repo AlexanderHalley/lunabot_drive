@@ -17,12 +17,15 @@
 
     # Stereo Depth Settings (needed for point cloud)
     stereo:
-      i_publish_topic: false  # Don't publish depth image
-      i_resolution: '400P'  # Lower res for point cloud
+      i_publish_topic: true  # Must be enabled for pointcloud to work
+      i_resolution: '400P'  # Lower res for efficiency
       i_fps: 15.0
       i_lr_check: true
       i_subpixel: false
       i_depth_filter_size: 3
+      i_enable_spatial_filter: false
+      i_enable_temporal_filter: false
+      i_enable_speckle_filter: false
 
     # Point Cloud Settings
     pointcloud:
