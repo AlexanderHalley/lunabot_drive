@@ -18,6 +18,9 @@ def generate_launch_description():
     use_rviz = LaunchConfiguration('rviz')
     rviz_config = LaunchConfiguration('rviz_config')
     launch_camera = LaunchConfiguration('launch_camera')
+    enable_rgb = LaunchConfiguration('enable_rgb')
+    enable_depth = LaunchConfiguration('enable_depth')
+    enable_pointcloud = LaunchConfiguration('enable_pointcloud')
 
     # Default RViz config path
     default_rviz_config = PathJoinSubstitution([
@@ -41,12 +44,32 @@ def generate_launch_description():
             default_value='true',
             description='Launch Oak-D camera node'
         ),
+        DeclareLaunchArgument(
+            'enable_rgb',
+            default_value='true',
+            description='Enable RGB camera stream (reduces latency when disabled)'
+        ),
+        DeclareLaunchArgument(
+            'enable_depth',
+            default_value='true',
+            description='Enable depth stream (reduces latency when disabled)'
+        ),
+        DeclareLaunchArgument(
+            'enable_pointcloud',
+            default_value='true',
+            description='Enable point cloud generation (reduces latency when disabled)'
+        ),
 
         # Include existing camera launch
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
                 PathJoinSubstitution([pkg_share, 'launch', 'oak_d_camera.launch.py'])
             ]),
+            launch_arguments={
+                'enable_rgb': enable_rgb,
+                'enable_depth': enable_depth,
+                'enable_pointcloud': enable_pointcloud,
+            }.items(),
             condition=IfCondition(launch_camera)
         ),
 

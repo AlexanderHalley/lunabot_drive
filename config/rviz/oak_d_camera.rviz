@@ -71,24 +71,25 @@ Visualization Manager:
       Name: RGB Image
       Normalize Range: true
       Topic:
-        Depth: 5
+        Depth: 1
         Durability Policy: Volatile
         History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /oak_d/rgb/image_raw
+        Reliability Policy: Best Effort
+        Value: /oak_d/rgb/image_raw/compressed
+      Transport Hint: compressed
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
-      Max Value: 1
+      Max Value: 10
       Median window: 5
       Min Value: 0
       Name: Depth Image
       Normalize Range: true
       Topic:
-        Depth: 5
+        Depth: 1
         Durability Policy: Volatile
         History Policy: Keep Last
-        Reliability Policy: Reliable
+        Reliability Policy: Best Effort
         Value: /oak_d/stereo/image_raw
       Value: true
     - Alpha: 1
@@ -112,15 +113,15 @@ Visualization Manager:
       Name: PointCloud2
       Position Transformer: XYZ
       Selectable: true
-      Size (Pixels): 2
+      Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Points
       Topic:
-        Depth: 5
+        Depth: 1
         Durability Policy: Volatile
         History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /camera/depth/points
+        Reliability Policy: Best Effort
+        Value: /oak_d/points
       Use Fixed Frame: true
       Use rainbow: true
       Value: true

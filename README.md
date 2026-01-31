@@ -117,10 +117,26 @@ The camera publishes to these topics:
 - `rviz:=false` - Disable RViz (headless operation)
 - `launch_camera:=false` - Don't launch camera (use existing camera node)
 - `rviz_config:=<path>` - Use custom RViz config file
+- `enable_rgb:=false` - Disable RGB stream (reduces latency)
+- `enable_depth:=false` - Disable depth stream (reduces latency)
+- `enable_pointcloud:=false` - Disable point cloud (reduces latency)
 
 **oak_d_camera.launch.py:**
-- `enable_depth:=true/false` - Enable/disable depth stream
-- `enable_pointcloud:=true/false` - Enable/disable point cloud generation
+- `enable_rgb:=false` - Disable RGB stream
+- `enable_depth:=false` - Disable depth stream
+- `enable_pointcloud:=false` - Disable point cloud generation
+
+**Examples:**
+```bash
+# RGB only (lowest latency)
+ros2 launch lunabot_drive oak_d_rviz.launch.py enable_depth:=false enable_pointcloud:=false
+
+# Depth + point cloud only (no RGB)
+ros2 launch lunabot_drive oak_d_rviz.launch.py enable_rgb:=false
+
+# Point cloud only
+ros2 launch lunabot_drive oak_d_rviz.launch.py enable_rgb:=false enable_depth:=false
+```
 
 See `docs/OAK_D_S2_INTEGRATION.md` for detailed camera setup and configuration.
 
