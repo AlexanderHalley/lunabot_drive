@@ -79,17 +79,18 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='oak_rgb_optical_broadcaster',
             arguments=['0', '0', '0', '-1.5707963', '0', '-1.5707963',
-                      'oak_link', 'oak_rgb_camera_optical_frame'],
+                      'oak_link', 'oak_d_rgb_camera_optical_frame'],
             output='log'
         ),
 
         # Stereo/depth optical frame (same rotation as RGB)
+        # Note: In RGBD mode, stereo uses RGB frame, so we make them identical
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='oak_stereo_optical_broadcaster',
-            arguments=['0', '0', '0', '-1.5707963', '0', '-1.5707963',
-                      'oak_link', 'oak_stereo_camera_optical_frame'],
+            arguments=['0', '0', '0', '0', '0', '0',
+                      'oak_d_rgb_camera_optical_frame', 'oak_stereo_camera_optical_frame'],
             output='log'
         ),
 

@@ -30,18 +30,20 @@
 
     # Stereo Depth Settings
     stereo:
-      i_publish_topic: true
-      i_resolution: '720P'
-      i_fps: 15.0
+      i_publish_topic: true  # Must be enabled for pointcloud generation
+      i_enable_lazy_publisher: true  # Only publish when subscribed (saves bandwidth)
+      i_resolution: '400P'  # Lower resolution for better performance
+      i_fps: 10.0  # Reduced FPS for less bandwidth
       i_lr_check: true
       i_extended_disparity: false
-      i_subpixel: true
-      i_depth_filter_size: 5
-      i_enable_decimation_filter: true  # Recommended when using post-processing filters
-      i_decimation_filter_decimation_factor: 1
-      i_enable_spatial_filter: true
-      i_spatial_filter_iterations: 2
-      i_enable_temporal_filter: true
+      i_subpixel: false  # Disabled for performance
+      i_depth_filter_size: 3
+      i_max_range: 2000  # Limit depth to 2 meters (in mm)
+      i_enable_decimation_filter: false  # Disabled - causes memory warnings on Pi
+      i_enable_spatial_filter: true  # Helps smooth pointcloud noise
+      i_spatial_filter_iterations: 1
+      i_spatial_filter_hole_filling_radius: 2
+      i_enable_temporal_filter: false  # Disabled for less lag
       i_enable_speckle_filter: false  # Disabled due to memory constraints on OAK-D S2
 
     # Point Cloud Settings
