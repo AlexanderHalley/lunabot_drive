@@ -8,8 +8,15 @@
 
     camera:
       i_nn_type: 'none'
-      i_enable_imu: false
+      i_enable_imu: true
       i_enable_ir: false
+
+    # IMU Settings
+    imu:
+      i_acc_freq: 400
+      i_gyro_freq: 400
+      i_batch_report_threshold: 1
+      i_max_batch_reports: 10
 
     # RGB Camera Settings
     rgb:
@@ -21,7 +28,7 @@
 
     # Disable Stereo Depth
     stereo:
-      i_publish_topic: false
+      i_publish_topic: true
 
     # Disable Point Cloud
     pointcloud:

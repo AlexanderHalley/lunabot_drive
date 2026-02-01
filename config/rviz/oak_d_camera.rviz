@@ -125,6 +125,26 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Acceleration properties:
+        Acc. vector alpha: 1
+        Acc. vector color: 255; 0; 0
+        Acc. vector scale: 0.05000000074505806
+        Derotate acceleration: true
+        Enable acceleration: true
+      Axes properties:
+        Axes alpha: 1
+        Axes scale: 0.5
+        Enable axes: true
+      Class: rviz_imu_plugin/Imu
+      Enabled: true
+      Name: IMU
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /oak_d/imu/data
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

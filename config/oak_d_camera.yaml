@@ -10,8 +10,15 @@
     # Disable neural network (saves bandwidth)
     camera:
       i_nn_type: 'none'
-      i_enable_imu: false
+      i_enable_imu: true
       i_enable_ir: false
+
+    # IMU Settings
+    imu:
+      i_acc_freq: 400
+      i_gyro_freq: 400
+      i_batch_report_threshold: 1
+      i_max_batch_reports: 10
 
     # RGB Camera Settings
     rgb:
@@ -30,9 +37,12 @@
       i_extended_disparity: false
       i_subpixel: true
       i_depth_filter_size: 5
+      i_enable_decimation_filter: true  # Recommended when using post-processing filters
+      i_decimation_filter_decimation_factor: 1
       i_enable_spatial_filter: true
+      i_spatial_filter_iterations: 2
       i_enable_temporal_filter: true
-      i_enable_speckle_filter: true
+      i_enable_speckle_filter: false  # Disabled due to memory constraints on OAK-D S2
 
     # Point Cloud Settings
     pointcloud:
