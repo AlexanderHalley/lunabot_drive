@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 
+import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import (
+    LaunchConfiguration,
+    PathJoinSubstitution,
+    Command,
+)
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
-import os
 
 
 def generate_launch_description():
-    # Get package directory
     pkg_share = get_package_share_directory('lunabot_drive')
 
     # Launch arguments
@@ -27,6 +30,10 @@ def generate_launch_description():
     default_camera_config = PathJoinSubstitution([
         pkg_share, 'config', 'oak_d_camera.yaml'
     ])
+
+    # Process the URDF xacro
+    urdf_file = os.path.join(pkg_share, 'description', 'robot.urdf.xacro')
+    robot_description = Command(['xacro ', urdf_file])
 
     return LaunchDescription([
         # Launch arguments
@@ -48,13 +55,15 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'camera_config',
             default_value=default_camera_config,
-            description='Camera config file (oak_d_camera.yaml, oak_d_rgb_only.yaml, or oak_d_pointcloud_only.yaml)'
+            description='Camera config file'
         ),
 
         # Include existing camera launch
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
-                PathJoinSubstitution([pkg_share, 'launch', 'oak_d_camera.launch.py'])
+                PathJoinSubstitution([
+                    pkg_share, 'launch', 'oak_d_camera.launch.py'
+                ])
             ]),
             launch_arguments={
                 'config': camera_config,
@@ -62,45 +71,15 @@ def generate_launch_description():
             condition=IfCondition(launch_camera)
         ),
 
-        # Static TF publishers for camera frames
-        # Base frame: world -> oak_link
+        # Robot state publisher (publishes TF from URDF)
         Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='oak_base_broadcaster',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'oak_link'],
-            output='log'
-        ),
-
-        # RGB optical frame (optical convention: X=right, Y=down, Z=forward)
-        # Rotation from standard frame: -90° pitch, -90° yaw
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='oak_rgb_optical_broadcaster',
-            arguments=['0', '0', '0', '-1.5707963', '0', '-1.5707963',
-                      'oak_link', 'oak_rgb_camera_optical_frame'],
-            output='log'
-        ),
-
-        # Stereo/depth optical frame (same rotation as RGB)
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='oak_stereo_optical_broadcaster',
-            arguments=['0', '0', '0', '-1.5707963', '0', '-1.5707963',
-                      'oak_link', 'oak_stereo_camera_optical_frame'],
-            output='log'
-        ),
-
-        # IMU frame (coincident with oak_link)
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='oak_imu_broadcaster',
-            arguments=['0', '0', '0', '0', '0', '0',
-                      'oak_link', 'oak_imu_frame'],
-            output='log'
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            name='robot_state_publisher',
+            parameters=[{
+                'robot_description': robot_description,
+            }],
+            output='screen'
         ),
 
         # RViz2 node (conditional)

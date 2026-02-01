@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- OAK-D S2 Camera mounted at front of chassis -->
+    <!-- Physical dimensions: ~91mm W x 28mm H x 17mm D -->
+
+    <xacro:property name="oak_d_width" value="0.091"/>
+    <xacro:property name="oak_d_height" value="0.028"/>
+    <xacro:property name="oak_d_depth" value="0.017"/>
+    <xacro:property name="oak_d_mass" value="0.061"/>
+
+    <material name="dark_grey">
+        <color rgba="0.15 0.15 0.15 1"/>
+    </material>
+
+    <!-- Mount the camera at the front of the chassis, on top -->
+    <joint name="oak_d_camera_joint" type="fixed">
+        <parent link="chassis"/>
+        <child link="oak_link"/>
+        <!-- Front of chassis (x=chassis_length), centered (y=0), on top (z=chassis_height + half camera height) -->
+        <origin xyz="${chassis_length} 0 ${chassis_height + oak_d_height/2}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="oak_link">
+        <visual>
+            <geometry>
+                <box size="${oak_d_depth} ${oak_d_width} ${oak_d_height}"/>
+            </geometry>
+            <material name="dark_grey"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="${oak_d_depth} ${oak_d_width} ${oak_d_height}"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="${oak_d_mass}"/>
+            <inertia ixx="${oak_d_mass*(oak_d_width*oak_d_width + oak_d_height*oak_d_height)/12}"
+                     ixy="0" ixz="0"
+                     iyy="${oak_d_mass*(oak_d_depth*oak_d_depth + oak_d_height*oak_d_height)/12}"
+                     iyz="0"
+                     izz="${oak_d_mass*(oak_d_depth*oak_d_depth + oak_d_width*oak_d_width)/12}"/>
+        </inertial>
+    </link>
+
+    <gazebo reference="oak_link">
+        <material>Gazebo/DarkGrey</material>
+    </gazebo>
+
+    <!-- RGB camera optical frame (X=right, Y=down, Z=forward) -->
+    <joint name="oak_d_rgb_optical_joint" type="fixed">
+        <parent link="oak_link"/>
+        <child link="oak_d_rgb_camera_optical_frame"/>
+        <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+
+    <link name="oak_d_rgb_camera_optical_frame"/>
+
+    <!-- Stereo/depth optical frame (same as RGB for the S2) -->
+    <joint name="oak_d_stereo_optical_joint" type="fixed">
+        <parent link="oak_link"/>
+        <child link="oak_stereo_camera_optical_frame"/>
+        <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+
+    <link name="oak_stereo_camera_optical_frame"/>
+
+    <!-- IMU frame (colocated with oak_link) -->
+    <joint name="oak_d_imu_joint" type="fixed">
+        <parent link="oak_link"/>
+        <child link="oak_imu_frame"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <link name="oak_imu_frame"/>
+
+</robot>

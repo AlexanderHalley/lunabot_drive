@@ -18,6 +18,6 @@ install(TARGETS
   minimal_drive
   drive_node
   DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORY launch config docs DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch config docs description DESTINATION share/${PROJECT_NAME})
 
 ament_package()

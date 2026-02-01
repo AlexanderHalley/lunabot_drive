@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="lunabot">
+
+    <!-- Include robot chassis and wheels from lunabot_one -->
+    <xacro:include filename="$(find lunabot_one)/description/robot_core.xacro"/>
+
+    <!-- Include OAK-D S2 camera (mounts to chassis) -->
+    <xacro:include filename="oak_d_s2.xacro"/>
+
+</robot>
