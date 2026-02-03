@@ -43,10 +43,6 @@
         </inertial>
     </link>
 
-    <gazebo reference="oak_link">
-        <material>Gazebo/DarkGrey</material>
-    </gazebo>
-
     <!-- RGB camera optical frame (X=right, Y=down, Z=forward) -->
     <joint name="oak_d_rgb_optical_joint" type="fixed">
         <parent link="oak_link"/>
