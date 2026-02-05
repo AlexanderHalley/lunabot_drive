@@ -1,0 +1,49 @@
+# Camera-Only Nav2 Configuration
+# For testing depth camera -> costmap pipeline without motors/LIDAR
+#
+# Usage: ros2 launch lunabot_drive camera_only_nav2.launch.py
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      global_frame: odom
+      robot_base_frame: base_link
+      rolling_window: true
+      width: 3.0
+      height: 3.0
+      resolution: 0.05
+      robot_radius: 0.35  # Approximate robot footprint radius
+
+      plugins: ["obstacle_layer", "inflation_layer"]
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: depth_camera
+        depth_camera:
+          # Topic from depthai_ros_driver (node name: oak_d)
+          topic: /oak_d/points
+          data_type: "PointCloud2"
+          # Frame published by depthai for the depth sensor
+          sensor_frame: oak_d_right_camera_optical_frame
+          marking: True
+          clearing: True
+          min_obstacle_height: 0.05
+          max_obstacle_height: 2.0
+          obstacle_max_range: 3.0
+          obstacle_min_range: 0.2
+          raytrace_max_range: 4.0
+          raytrace_min_range: 0.0
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.55
+
+# Lifecycle manager to bring up costmap
+lifecycle_manager:
+  ros__parameters:
+    autostart: true
+    node_names: ['local_costmap']

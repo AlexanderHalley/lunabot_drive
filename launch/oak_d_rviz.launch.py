@@ -10,6 +10,7 @@ from launch.substitutions import (
     Command,
 )
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
 
@@ -33,7 +34,7 @@ def generate_launch_description():
 
     # Process the URDF xacro
     urdf_file = os.path.join(pkg_share, 'description', 'robot.urdf.xacro')
-    robot_description = Command(['xacro ', urdf_file])
+    robot_description = ParameterValue(Command(['xacro ', urdf_file]), value_type=str)
 
     return LaunchDescription([
         # Launch arguments
@@ -81,6 +82,20 @@ def generate_launch_description():
             }],
             output='screen'
         ),
+
+        Node(
+            package='joint_state_publisher_gui',
+            executable='joint_state_publisher_gui',
+            name='joint_state_publisher_gui',
+        ),
+
+        # Joint states come from the Pi's drive_node over the network
+        # For testing without the robot, uncomment the joint_state_publisher below:
+        # Node(
+        #     package='joint_state_publisher_gui',
+        #     executable='joint_state_publisher_gui',
+        #     name='joint_state_publisher_gui',
+        # ),
 
         # RViz2 node (conditional)
         Node(
