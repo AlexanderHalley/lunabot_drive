@@ -23,7 +23,7 @@ ros2 launch lunabot_drive camera_only_nav2.launch.py
 
 ## RViz Displays
 
-- **TF**: Verify `map → odom → base_link → oak_d_link` chain
+- **TF**: Verify `map → odom → base_link → oak` chain
 - **PointCloud2**: Raw depth points from camera
 - **Local Costmap**: Obstacles should appear when objects are in front of camera
 
@@ -31,7 +31,7 @@ ros2 launch lunabot_drive camera_only_nav2.launch.py
 
 **No pointcloud visible:**
 ```bash
-ros2 topic hz /oak_d/points  # Should show ~15 Hz
+ros2 topic hz /oak/points  # Should show ~10 Hz
 ```
 
 **TF errors:**
@@ -54,14 +54,14 @@ ros2 topic echo /local_costmap/costmap --once  # Check if publishing
 
 ## Frame Names
 
-The depthai driver (node name: `oak_d`) publishes:
-- `oak_d_link` - camera body frame
-- `oak_d_rgb_camera_optical_frame` - RGB optical frame
-- `oak_d_right_camera_optical_frame` - depth/stereo optical frame
+The depthai driver (node name: `oak`) publishes:
+- `oak` - camera body frame
+- `oak_rgb_camera_optical_frame` - RGB optical frame
+- `oak_right_camera_optical_frame` - depth/stereo optical frame
 
 The launch file creates static transforms:
 ```
-map → odom → base_link → oak_d_link
+map → odom → base_link → oak
 ```
 
 ## Next Steps

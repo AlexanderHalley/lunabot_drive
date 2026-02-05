@@ -1,39 +1,72 @@
-# OAK-D-S2 Camera Configuration - Point Cloud Only
-# Use this for 3D point cloud without image streams
-
-/**:
+# OAK-D-S2 — Pointcloud-Only Configuration (Bandwidth Optimized)
+# IMPORTANT: The top-level namespace must match the node name.
+# Run `ros2 node list` after launching to confirm — use /oak: or adjust accordingly.
+/oak:
   ros__parameters:
-    i_mx_id: ''
-    i_usb_speed: 'SUPER'
+    # ── Driver-level ──
+    i_usb_speed: 'SUPER'          # Must be on a USB 3.0 (blue) port
+    i_enable_ir: false
 
-    camera:
+    # ── Pipeline ──
+    pipeline_gen:
+      i_pipeline_type: 'Depth'    # Depth-only pipeline — no RGB overhead
       i_nn_type: 'none'
       i_enable_imu: true
-      i_enable_ir: false
 
-    # IMU Settings
-    imu:
-      i_acc_freq: 400
-      i_gyro_freq: 400
-      i_batch_report_threshold: 1
-      i_max_batch_reports: 10
+    # ── Left & Right Sensors (control stereo input resolution) ──
+    left:
+      i_publish_topic: false       # Don't publish raw left image
+      i_width: 640
+      i_height: 400
+      i_fps: 10.0
 
-    # Disable RGB
-    rgb:
-      i_publish_topic: false
+    right:
+      i_publish_topic: false       # Don't publish raw right image
+      i_width: 640
+      i_height: 400
+      i_fps: 10.0
 
-    # Stereo Depth Settings (needed for point cloud)
+    # ── Stereo Depth Node ──
     stereo:
-      i_publish_topic: true  # Must be enabled for pointcloud to work
-      i_resolution: '400P'  # Lower res for efficiency
-      i_fps: 15.0
-      i_lr_check: true
-      i_subpixel: false
-      i_depth_filter_size: 3
-      i_enable_spatial_filter: false
-      i_enable_temporal_filter: false
-      i_enable_speckle_filter: false
+      i_publish_topic: true        # MUST be true — pointcloud reads from stereo depth output
+      i_fps: 10.0
+      i_depth_preset: 'FAST_ACCURACY'
+      i_subpixel: false            # Saves bandwidth and compute
+      i_extended_disp: false
+      i_lrc_threshold: 10
+      i_stereo_conf_threshold: 200 # Higher = fewer but more confident depth values
 
-    # Point Cloud Settings
+      # Decimation filter — KEY bandwidth saver, reduces resolution by factor in each axis
+      i_enable_decimation_filter: true
+      i_decimation_filter_decimation_factor: 2
+      i_decimation_filter_decimation_mode: 'PIXEL_SKIPPING'
+
+      # Spatial filter — smooths depth, removes noise
+      i_enable_spatial_filter: true
+      i_spatial_filter_alpha: 0.5
+      i_spatial_filter_delta: 20
+      i_spatial_filter_num_iterations: 1
+      i_spatial_filter_hole_filling_radius: 2
+
+      # Temporal filter — reduces flickering, slight latency tradeoff
+      i_enable_temporal_filter: true
+      i_temporal_filter_alpha: 0.4
+      i_temporal_filter_delta: 20
+      i_temporal_filter_persistency: 'VALID_2_IN_LAST_4'
+
+      # Speckle filter — removes isolated noise points
+      i_enable_speckle_filter: true
+      i_speckle_filter_speckle_range: 12
+
+      # Threshold filter — limits range (values in MILLIMETERS)
+      i_enable_threshold_filter: true
+      i_threshold_filter_min_range: 200    # 0.2m — ignore anything closer
+      i_threshold_filter_max_range: 5000   # 5.0m — arena diagonal is ~8.4m, 5m is plenty
+
+    # ── Point Cloud Settings ──
     pointcloud:
       i_enable: true
+
+    # ── IMU ──
+    imu:
+      i_imu_update_rate: 100       # Reduced from 400 to save bandwidth

@@ -16,12 +16,16 @@
     <!-- Mount the camera at the front of the chassis, on top -->
     <joint name="oak_d_camera_joint" type="fixed">
         <parent link="chassis"/>
-        <child link="oak_link"/>
+        <child link="oak"/>
         <!-- Front of chassis (x=chassis_length), centered (y=0), on top (z=chassis_height + half camera height) -->
         <origin xyz="${chassis_length} 0 ${chassis_height + oak_d_height/2}" rpy="0 0 0"/>
     </joint>
 
-    <link name="oak_link">
+    <!-- Frame name "oak" matches depthai_ros_driver node name.
+         The depthai driver publishes calibrated optical frames (oak_rgb_camera_optical_frame,
+         oak_right_camera_optical_frame, oak_imu_frame, etc.) from this root frame.
+         Do NOT define optical frames here — let depthai handle them from calibration data. -->
+    <link name="oak">
         <visual>
             <geometry>
                 <box size="${oak_d_depth} ${oak_d_width} ${oak_d_height}"/>
@@ -42,32 +46,5 @@
                      izz="${oak_d_mass*(oak_d_depth*oak_d_depth + oak_d_width*oak_d_width)/12}"/>
         </inertial>
     </link>
-
-    <!-- RGB camera optical frame (X=right, Y=down, Z=forward) -->
-    <joint name="oak_d_rgb_optical_joint" type="fixed">
-        <parent link="oak_link"/>
-        <child link="oak_d_rgb_camera_optical_frame"/>
-        <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
-    </joint>
-
-    <link name="oak_d_rgb_camera_optical_frame"/>
-
-    <!-- Stereo/depth optical frame (same as RGB for the S2) -->
-    <joint name="oak_d_stereo_optical_joint" type="fixed">
-        <parent link="oak_link"/>
-        <child link="oak_stereo_camera_optical_frame"/>
-        <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
-    </joint>
-
-    <link name="oak_stereo_camera_optical_frame"/>
-
-    <!-- IMU frame (colocated with oak_link) -->
-    <joint name="oak_d_imu_joint" type="fixed">
-        <parent link="oak_link"/>
-        <child link="oak_imu_frame"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-    </joint>
-
-    <link name="oak_imu_frame"/>
 
 </robot>

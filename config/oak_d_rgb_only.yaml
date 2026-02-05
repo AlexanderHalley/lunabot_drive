@@ -1,12 +1,12 @@
 # OAK-D-S2 Camera Configuration - RGB Only (Low Latency)
 # Use this for lowest latency with only RGB stream
 
-/**:
+/oak:
   ros__parameters:
     i_mx_id: ''
     i_usb_speed: 'SUPER'
 
-    camera:
+    pipeline_gen:
       i_nn_type: 'none'
       i_enable_imu: true
       i_enable_ir: false

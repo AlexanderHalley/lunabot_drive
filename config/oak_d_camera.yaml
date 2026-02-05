@@ -1,14 +1,14 @@
 # OAK-D-S2 Camera Configuration
 # Adjust these parameters based on your bandwidth and performance needs
 
-/**:
+/oak:
   ros__parameters:
     # Camera identification (leave empty to use first available)
     i_mx_id: ''
     i_usb_speed: 'SUPER'  # USB3 mode
 
     # Disable neural network (saves bandwidth)
-    camera:
+    pipeline_gen:
       i_nn_type: 'none'
       i_enable_imu: true
       i_enable_ir: false

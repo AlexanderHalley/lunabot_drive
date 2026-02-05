@@ -1,27 +1,47 @@
 # Lunabot Drive Package
 
-Motor drive control for Lunabot rover using SparkFlex controllers via CAN bus.
+Motor drive control and sensor integration for Lunabot rover using SparkFlex controllers via CAN bus and OAK-D S2 depth camera.
 
 ## Package Structure
 
 ```
 lunabot_drive/
 ├── src/
-│   ├── drive_node.cpp          # Main motor control node
-│   └── minimal_drive.cpp        # Minimal test node
+│   ├── drive_node.cpp              # Motor control + wheel odometry
+│   └── minimal_drive.cpp           # Minimal joystick test node
+├── nodes/
+│   └── bandwidth_monitor.py        # Competition bandwidth monitoring
 ├── launch/
-│   ├── motors_rviz.launch.py   # Motor control + URDF visualization in RViz
-│   ├── oak_d_camera.launch.py  # Oak-D S2 camera launch
-│   ├── oak_d_rviz.launch.py    # Camera + RViz visualization
-│   ├── pc_teleop.launch.py     # Launch file for offboard PC (joy + teleop)
-│   └── pi_drive.launch.py      # Launch file for Raspberry Pi5 (motor control)
+│   ├── hardware_bringup.launch.py  # Unified hardware launch (Pi)
+│   ├── motors_rviz.launch.py       # Motor control + URDF visualization in RViz
+│   ├── oak_d_camera.launch.py      # OAK-D S2 camera launch
+│   ├── oak_d_rviz.launch.py        # Camera + RViz visualization
+│   ├── pc_teleop.launch.py         # Offboard PC (joy + teleop)
+│   ├── pi_drive.launch.py          # Raspberry Pi (motor control)
+│   ├── camera_only_nav2.launch.py  # Nav2 costmap test (stationary)
+│   ├── camera_mapping_test.launch.py # Camera + pointcloud_to_laserscan
+│   ├── motor_test_rviz.launch.py   # Motor test with RViz feedback
+│   └── apriltag_detection.launch.py # AprilTag detection for localization
 ├── config/
-│   ├── oak_d_camera.yaml       # Oak-D S2 camera configuration
-│   ├── rviz/
-│   │   └── oak_d_camera.rviz   # RViz visualization config
-│   └── switch_pro.yaml         # Nintendo Switch Pro Controller configuration
+│   ├── oak_d_camera.yaml           # Full camera config (RGB + Depth + PC)
+│   ├── oak_d_pointcloud_only.yaml  # Bandwidth-optimized pointcloud
+│   ├── oak_d_rgb_only.yaml         # RGB only (low latency)
+│   ├── camera_only_nav2.yaml       # Nav2 costmap test params
+│   ├── switch_pro.yaml             # Controller mapping
+│   ├── params/
+│   │   ├── nav2_params.yaml        # Full Nav2 stack parameters
+│   │   └── ekf_params.yaml         # robot_localization EKF config
+│   └── rviz/
+│       ├── oak_d_camera.rviz       # Camera + robot model RViz config
+│       └── camera_only_nav2.rviz   # Nav2 costmap RViz config
+├── description/
+│   ├── robot.urdf.xacro            # Main URDF (includes below)
+│   ├── robot_core.xacro            # Chassis + 4 wheels
+│   ├── oak_d_s2.xacro             # Camera body (optical frames from depthai)
+│   └── inertial_macros.xacro       # Inertia calculation helpers
 ├── docs/
-│   └── OAK_D_S2_INTEGRATION.md # Camera integration guide
+│   ├── OAK_D_S2_INTEGRATION.md    # Camera integration guide
+│   └── CAMERA_ONLY_NAV2.md         # Nav2 costmap testing guide
 ├── CMakeLists.txt
 ├── package.xml
 └── README.md
@@ -35,142 +55,55 @@ colcon build --packages-select lunabot_drive
 source install/setup.bash
 ```
 
-## Usage
+## Quick Start: Hardware Bringup
 
-### On Offboard Computer (where controller is connected)
+Launch all hardware on the Raspberry Pi:
 
-1. Connect Nintendo Switch Pro Controller via Bluetooth
-2. Set ROS_DOMAIN_ID (must match Pi5):
-   ```bash
-   export ROS_DOMAIN_ID=42
-   ```
-3. Launch joy and teleop nodes:
-   ```bash
-   ros2 launch lunabot_drive pc_teleop.launch.py
-   ```
-
-### On Raspberry Pi5 (rover)
-sudo slcand -o -s8 /dev/ttyACM0
-1. Ensure CAN interface is up:
-   ```bash
-   sudo ip link set can0 up type can 
-   ```
-2. Set ROS_DOMAIN_ID (must match PC):
-   ```bash
-   export ROS_DOMAIN_ID=42
-   ```
-3. Launch drive node:
-   ```bash
-   ros2 launch lunabot_drive pi_drive.launch.py
-   ```
-
-## Camera Visualization
-
-The package includes Oak-D S2 camera support with RViz2 visualization.
-
-### Quick Start
-
-Launch camera with RViz visualization:
 ```bash
-ros2 launch lunabot_drive oak_d_rviz.launch.py
+# Full bringup (motors + camera + EKF + teleop)
+ros2 launch lunabot_drive hardware_bringup.launch.py
+
+# Without teleop (for autonomous operation)
+ros2 launch lunabot_drive hardware_bringup.launch.py enable_teleop:=false
+
+# Without EKF (drive_node handles odom TF directly)
+ros2 launch lunabot_drive hardware_bringup.launch.py use_ekf:=false
 ```
 
-This launches:
-- Oak-D S2 camera node (RGB + Depth + Point Cloud)
-- Static TF frames for camera coordinate system
-- RViz2 with pre-configured displays
+## Individual Component Testing
 
-### Network Setup (Pi + PC)
+### Motor Test (with RViz visualization)
 
-For distributed operation with camera on Raspberry Pi and visualization on PC:
-
-**On Raspberry Pi 5:**
 ```bash
-export ROS_DOMAIN_ID=42
-ros2 launch lunabot_drive oak_d_camera.launch.py
+# On Pi: launch motor control
+ros2 launch lunabot_drive pi_drive.launch.py
+
+# On PC: visualize + optionally teleop
+ros2 launch lunabot_drive motor_test_rviz.launch.py enable_teleop:=true
 ```
 
-**On PC:**
+### Camera Test (pointcloud + mapping prep)
+
 ```bash
-export ROS_DOMAIN_ID=42
-ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
-```
-
-Or use X11 forwarding to run everything on Pi with display on PC:
-```bash
-ssh -X lunapi@<pi_ip_address>
-ros2 launch lunabot_drive oak_d_rviz.launch.py
-```
-
-### Camera Topics
-
-The camera publishes to these topics:
-- `/camera/image_raw` - RGB camera feed (1080p @ 15 FPS)
-- `/camera/image_raw/compressed` - Compressed RGB (for network efficiency)
-- `/camera/depth/image_raw` - Depth image (720p @ 15 FPS)
-- `/camera/depth/points` - Point cloud with RGB coloring
-- `/camera/camera_info` - RGB camera calibration
-- `/camera/depth/camera_info` - Depth camera calibration
-
-### Configuration Modes
-
-Three config files are provided for different use cases:
-
-1. **oak_d_camera.yaml** (default) - All streams enabled
-   - RGB @ 1080p, Depth @ 720p, Point Cloud
-   - Best for full functionality, higher bandwidth
-
-2. **oak_d_rgb_only.yaml** - RGB camera only (lowest latency)
-   - RGB @ 720p, 30 FPS
-   - Best for low-latency video streaming
-
-3. **oak_d_pointcloud_only.yaml** - 3D point cloud only
-   - Point cloud without image streams
-   - Best for 3D mapping/navigation
-
-### Launch Arguments
-
-**oak_d_rviz.launch.py:**
-- `rviz:=false` - Disable RViz (headless operation)
-- `launch_camera:=false` - Don't launch camera (use existing camera node)
-- `camera_config:=<path>` - Specify camera config file
-- `rviz_config:=<path>` - Use custom RViz config file
-
-**oak_d_camera.launch.py:**
-- `config:=<path>` - Path to camera configuration file
-
-### Usage Examples
-
-**RGB only (lowest latency):**
-```bash
-# Pi:
-ros2 launch lunabot_drive oak_d_camera.launch.py \
-  config:=$(ros2 pkg prefix lunabot_drive)/share/lunabot_drive/config/oak_d_rgb_only.yaml
-
-# PC:
-ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
-```
-
-**Point cloud only:**
-```bash
-# Pi:
+# On Pi: launch camera with pointcloud config
 ros2 launch lunabot_drive oak_d_camera.launch.py \
   config:=$(ros2 pkg prefix lunabot_drive)/share/lunabot_drive/config/oak_d_pointcloud_only.yaml
 
-# PC:
-ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
+# On PC: visualize + pointcloud_to_laserscan
+ros2 launch lunabot_drive camera_mapping_test.launch.py
 ```
 
-**All streams (default):**
+### AprilTag Detection
+
 ```bash
-# Pi:
-ros2 launch lunabot_drive oak_d_camera.launch.py
-
-# PC:
-ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
+ros2 launch lunabot_drive apriltag_detection.launch.py
 ```
 
-See `docs/OAK_D_S2_INTEGRATION.md` for detailed camera setup and configuration.
+### Bandwidth Monitoring
+
+```bash
+ros2 run lunabot_drive bandwidth_monitor.py
+```
 
 ## Motor Visualization
 
@@ -231,12 +164,29 @@ ros2 launch lunabot_drive motors_rviz.launch.py
 - Motor IDs must match configuration (1-4 by default)
 - For network operation: ROS_DOMAIN_ID must match on all machines
 
-## Controller Mapping
+## Camera Topics
 
-- **Left Stick Y**: Forward/Backward
-- **Right Stick X**: Turn Left/Right
-- **R Button (hold)**: Enable motor control (safety feature)
-- **L Button (hold)**: Turbo mode (faster speeds)
+All camera topics use the `/oak/` prefix (node name: `oak`):
+- `/oak/rgb/image_raw` - RGB camera feed
+- `/oak/stereo/image_raw` - Depth image
+- `/oak/points` - PointCloud2
+- `/oak/imu/data` - IMU (BNO086, 100 Hz)
+
+## Drive Node Topics
+
+- **Subscribes:** `/cmd_vel` (geometry_msgs/Twist)
+- **Publishes:** `/joint_states` (sensor_msgs/JointState), `/odom` (nav_msgs/Odometry)
+- **TF:** `odom -> base_link` (when `publish_odom_tf:=true`)
+
+## TF Frame Tree
+
+```
+map -> odom -> base_link -> chassis -> oak -> {optical frames from depthai}
+                  |-> left_front_wheel
+                  |-> right_front_wheel
+                  |-> left_wheel (rear left)
+                  |-> right_wheel (rear right)
+```
 
 ## Parameters (drive_node)
 
@@ -247,8 +197,19 @@ ros2 launch lunabot_drive motors_rviz.launch.py
 | `right_front_id` | `2` | CAN ID for right front motor |
 | `left_rear_id` | `3` | CAN ID for left rear motor |
 | `right_rear_id` | `4` | CAN ID for right rear motor |
-| `wheel_base` | `0.5` | Distance between left/right wheels (meters) |
+| `wheel_base` | `0.762` | Distance between left/right wheels (m) |
+| `wheel_radius` | `0.1778` | Wheel radius (m) |
+| `gear_ratio` | `1.0` | Motor-to-wheel gear ratio |
 | `max_duty_cycle` | `0.8` | Maximum motor duty cycle (0.0-1.0) |
+| `joint_state_rate` | `50.0` | Joint state publish rate (Hz) |
+| `publish_odom_tf` | `true` | Publish odom->base_link TF (set false when EKF runs) |
+
+## Controller Mapping
+
+- **Left Stick Y**: Forward/Backward
+- **Right Stick X**: Turn Left/Right
+- **R Button (hold)**: Enable motor control (safety feature)
+- **L Button (hold)**: Turbo mode (faster speeds)
 
 ## Safety Features
 
@@ -258,9 +219,7 @@ ros2 launch lunabot_drive motors_rviz.launch.py
 
 ## Network Setup
 
-Both computers must be on the same network and use the same ROS_DOMAIN_ID.
-
-To set permanently, add to `~/.bashrc`:
+Both computers must be on the same network and use the same ROS_DOMAIN_ID:
 ```bash
 export ROS_DOMAIN_ID=42
 ```
@@ -270,14 +229,17 @@ export ROS_DOMAIN_ID=42
 **No /joy topic:**
 - Check controller is connected: `cat /proc/bus/input/devices | grep "Pro Controller"`
 - Verify ROS_DOMAIN_ID matches on both machines
-- Check joy_node is running: `ros2 node list`
 
 **Motors not responding:**
 - Check CAN interface: `ip link show can0`
 - Verify CAN IDs match motor configuration
-- Check drive_node logs: `ros2 node list` and look for errors
 - Ensure you're holding the R button (enable button)
 
-**Wrong controller axis:**
-- Test controller: `ros2 topic echo /joy`
-- Adjust axis mappings in `config/switch_pro.yaml`
+**No pointcloud:**
+- Check USB 3.0: `lsusb -t | grep 5000M`
+- Check topic: `ros2 topic hz /oak/points`
+- Verify camera node: `ros2 node list | grep oak`
+
+**TF errors:**
+- View frame tree: `ros2 run tf2_tools view_frames`
+- Check for broken links in the `map -> odom -> base_link -> oak` chain

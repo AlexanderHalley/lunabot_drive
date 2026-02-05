@@ -3,10 +3,10 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
-// TODO: For odometry, add these includes:
-// #include <nav_msgs/msg/odometry.hpp>
-// #include <tf2_ros/transform_broadcaster.h>
-// #include <tf2/LinearMath/Quaternion.h>
+#include <nav_msgs/msg/odometry.hpp>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include "SparkFlex.hpp"
 #include <memory>
 #include <chrono>
@@ -30,6 +30,7 @@ public:
         declare_parameter("gear_ratio", 100.0);      // 5x5x4 gearboxes
         declare_parameter("max_duty_cycle", 0.8);
         declare_parameter("joint_state_rate", 50.0); // Hz
+        declare_parameter("publish_odom_tf", true);   // Set false when EKF handles odom->base_link
 
         // Get parameters
         can_interface_ = get_parameter("can_interface").as_string();
@@ -38,6 +39,7 @@ public:
         gear_ratio_ = get_parameter("gear_ratio").as_double();
         max_duty_ = get_parameter("max_duty_cycle").as_double();
         double joint_state_rate = get_parameter("joint_state_rate").as_double();
+        publish_odom_tf_ = get_parameter("publish_odom_tf").as_bool();
 
         int lf_id = get_parameter("left_front_id").as_int();
         int rf_id = get_parameter("right_front_id").as_int();
@@ -66,15 +68,9 @@ public:
         // Publisher for joint states (wheel positions/velocities for visualization and odometry)
         joint_state_pub_ = create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
 
-        // TODO: For odometry, add these publishers:
-        // odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
-        // tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-        // Initialize odometry state variables:
-        // x_ = 0.0; y_ = 0.0; theta_ = 0.0;
-        // last_left_pos_ = 0.0; last_right_pos_ = 0.0;
-        // For sensor fusion with IMU, subscribe to the OAK-D IMU:
-        // imu_sub_ = create_subscription<sensor_msgs::msg::Imu>("oak/imu/data", 10, ...);
-        // Use an Extended Kalman Filter (robot_localization package) to fuse wheel odometry with IMU
+        // Odometry publisher and TF broadcaster
+        odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
+        tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
         // Heartbeat timer (motors need regular heartbeat)
         heartbeat_timer_ = create_wall_timer(
@@ -90,7 +86,8 @@ public:
         watchdog_timer_ = create_wall_timer(
             100ms, std::bind(&DriveNode::watchdog_callback, this));
 
-        RCLCPP_INFO(get_logger(), "Drive node started");
+        RCLCPP_INFO(get_logger(), "Drive node started (publish_odom_tf: %s)",
+                    publish_odom_tf_ ? "true" : "false");
     }
 
     ~DriveNode()
@@ -107,7 +104,6 @@ private:
             motor->SetMotorType(MotorType::kBrushless);
             motor->SetSensorType(SensorType::kHallSensor);
             motor->SetRampRate(0.1);
-            // Don't burn flash every startup - do this once during setup
         }
 
         // Invert right side motors for tank drive
@@ -167,8 +163,10 @@ private:
         // GetPosition() returns motor rotations, GetVelocity() returns RPM
         // Convert to wheel radians and rad/s for ROS joint states
 
+        auto stamp = now();
+
         auto msg = sensor_msgs::msg::JointState();
-        msg.header.stamp = now();
+        msg.header.stamp = stamp;
 
         // Joint names must match URDF joint names exactly
         msg.name = {
@@ -204,19 +202,91 @@ private:
 
         joint_state_pub_->publish(msg);
 
-        // TODO: For odometry, add differential drive kinematics here:
-        // 1. Compute wheel displacement since last update:
-        //    double left_delta = (lf_pos + lr_pos) / 2.0 - last_left_pos_;
-        //    double right_delta = (rf_pos + rr_pos) / 2.0 - last_right_pos_;
-        // 2. Convert to linear/angular displacement:
-        //    double linear = wheel_radius_ * (left_delta + right_delta) / 2.0;
-        //    double angular = wheel_radius_ * (right_delta - left_delta) / wheel_base_;
-        // 3. Update pose:
-        //    theta_ += angular;
-        //    x_ += linear * cos(theta_);
-        //    y_ += linear * sin(theta_);
-        // 4. Publish odom message and tf (odom -> base_link)
-        // 5. For better accuracy, fuse with OAK-D IMU using robot_localization EKF
+        // ── Odometry calculation ──
+        // Average left and right wheel positions (front + rear) / 2
+        double left_pos = (lf_pos + lr_pos) / 2.0;
+        double right_pos = (rf_pos + rr_pos) / 2.0;
+
+        if (!odom_initialized_) {
+            // First reading — initialize without computing a delta
+            last_left_pos_ = left_pos;
+            last_right_pos_ = right_pos;
+            odom_initialized_ = true;
+            return;
+        }
+
+        // Compute wheel displacement since last update
+        double left_delta = left_pos - last_left_pos_;
+        double right_delta = right_pos - last_right_pos_;
+        last_left_pos_ = left_pos;
+        last_right_pos_ = right_pos;
+
+        // Convert to linear and angular displacement
+        double linear_disp = wheel_radius_ * (left_delta + right_delta) / 2.0;
+        double angular_disp = wheel_radius_ * (right_delta - left_delta) / wheel_base_;
+
+        // Update pose estimate
+        theta_ += angular_disp;
+        x_ += linear_disp * std::cos(theta_);
+        y_ += linear_disp * std::sin(theta_);
+
+        // Compute velocities from wheel velocities
+        double left_vel_avg = (lf_vel + lr_vel) / 2.0;
+        double right_vel_avg = (rf_vel + rr_vel) / 2.0;
+        double linear_vel = wheel_radius_ * (left_vel_avg + right_vel_avg) / 2.0;
+        double angular_vel = wheel_radius_ * (right_vel_avg - left_vel_avg) / wheel_base_;
+
+        // Build and publish odometry message
+        auto odom_msg = nav_msgs::msg::Odometry();
+        odom_msg.header.stamp = stamp;
+        odom_msg.header.frame_id = "odom";
+        odom_msg.child_frame_id = "base_link";
+
+        // Position
+        odom_msg.pose.pose.position.x = x_;
+        odom_msg.pose.pose.position.y = y_;
+        odom_msg.pose.pose.position.z = 0.0;
+
+        tf2::Quaternion q;
+        q.setRPY(0.0, 0.0, theta_);
+        odom_msg.pose.pose.orientation = tf2::toMsg(q);
+
+        // Velocity
+        odom_msg.twist.twist.linear.x = linear_vel;
+        odom_msg.twist.twist.angular.z = angular_vel;
+
+        // Covariance — wheel odometry on regolith will have significant slip
+        // Position covariance (6x6, row-major: x, y, z, roll, pitch, yaw)
+        odom_msg.pose.covariance[0]  = 0.01;  // x
+        odom_msg.pose.covariance[7]  = 0.01;  // y
+        odom_msg.pose.covariance[14] = 1e6;   // z (not measured)
+        odom_msg.pose.covariance[21] = 1e6;   // roll (not measured)
+        odom_msg.pose.covariance[28] = 1e6;   // pitch (not measured)
+        odom_msg.pose.covariance[35] = 0.03;  // yaw
+
+        // Velocity covariance
+        odom_msg.twist.covariance[0]  = 0.01;  // vx
+        odom_msg.twist.covariance[7]  = 0.01;  // vy
+        odom_msg.twist.covariance[14] = 1e6;   // vz
+        odom_msg.twist.covariance[21] = 1e6;   // vroll
+        odom_msg.twist.covariance[28] = 1e6;   // vpitch
+        odom_msg.twist.covariance[35] = 0.03;  // vyaw
+
+        odom_pub_->publish(odom_msg);
+
+        // Optionally broadcast odom -> base_link TF
+        // Disable this when robot_localization EKF is handling the transform
+        if (publish_odom_tf_) {
+            geometry_msgs::msg::TransformStamped odom_tf;
+            odom_tf.header.stamp = stamp;
+            odom_tf.header.frame_id = "odom";
+            odom_tf.child_frame_id = "base_link";
+            odom_tf.transform.translation.x = x_;
+            odom_tf.transform.translation.y = y_;
+            odom_tf.transform.translation.z = 0.0;
+            odom_tf.transform.rotation = tf2::toMsg(q);
+            tf_broadcaster_->sendTransform(odom_tf);
+        }
     }
 
     void stop_motors()
@@ -241,22 +311,23 @@ private:
     double wheel_radius_;
     double gear_ratio_;
     double max_duty_;
+    bool publish_odom_tf_;
 
     // State
     double target_left_ = 0.0;
     double target_right_ = 0.0;
     rclcpp::Time last_cmd_time_;
 
-    // TODO: For odometry, add pose state:
-    // double x_ = 0.0, y_ = 0.0, theta_ = 0.0;
-    // double last_left_pos_ = 0.0, last_right_pos_ = 0.0;
+    // Odometry state
+    double x_ = 0.0, y_ = 0.0, theta_ = 0.0;
+    double last_left_pos_ = 0.0, last_right_pos_ = 0.0;
+    bool odom_initialized_ = false;
 
     // ROS interfaces
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
-    // TODO: For odometry:
-    // rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
-    // std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     rclcpp::TimerBase::SharedPtr joint_state_timer_;
     rclcpp::TimerBase::SharedPtr watchdog_timer_;

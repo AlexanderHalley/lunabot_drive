@@ -23,11 +23,11 @@ local_costmap:
         enabled: True
         observation_sources: depth_camera
         depth_camera:
-          # Topic from depthai_ros_driver (node name: oak_d)
-          topic: /oak_d/points
+          # Topic from depthai_ros_driver (node name: oak)
+          topic: /oak/points
           data_type: "PointCloud2"
           # Frame published by depthai for the depth sensor
-          sensor_frame: oak_d_right_camera_optical_frame
+          sensor_frame: oak_right_camera_optical_frame
           marking: True
           clearing: True
           min_obstacle_height: 0.05

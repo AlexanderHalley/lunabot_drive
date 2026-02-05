@@ -83,13 +83,13 @@ def generate_launch_description():
             arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
         ),
 
-        # Static TF: base_link -> oak_d_link (camera mount position)
-        # depthai_ros_driver publishes oak_d_link -> optical frames
+        # Static TF: base_link -> oak (camera mount position)
+        # depthai_ros_driver publishes oak -> optical frames
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='base_link_to_camera',
-            arguments=[camera_x, camera_y, camera_z, '0', '0', '0', 'base_link', 'oak_d_link'],
+            arguments=[camera_x, camera_y, camera_z, '0', '0', '0', 'base_link', 'oak'],
         ),
 
         # Local costmap node
