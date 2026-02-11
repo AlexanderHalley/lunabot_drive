@@ -10,6 +10,7 @@ lunabot_drive/
 │   ├── drive_node.cpp          # Main motor control node
 │   └── minimal_drive.cpp        # Minimal test node
 ├── launch/
+│   ├── motors_rviz.launch.py   # Motor control + URDF visualization in RViz
 │   ├── oak_d_camera.launch.py  # Oak-D S2 camera launch
 │   ├── oak_d_rviz.launch.py    # Camera + RViz visualization
 │   ├── pc_teleop.launch.py     # Launch file for offboard PC (joy + teleop)
@@ -170,6 +171,65 @@ ros2 launch lunabot_drive oak_d_rviz.launch.py launch_camera:=false
 ```
 
 See `docs/OAK_D_S2_INTEGRATION.md` for detailed camera setup and configuration.
+
+## Motor Visualization
+
+The `motors_rviz.launch.py` file provides real-time visualization of the robot's wheels and motor positions in RViz2 using the robot URDF model.
+
+### What It Does
+
+This launch file combines:
+- **drive_node** - Motor control + joint state publishing (wheel positions/velocities)
+- **robot_state_publisher** - Converts URDF + joint states into TF transforms
+- **rviz2** - 3D visualization of the robot model with moving wheels
+
+### Quick Start
+
+**Typical Setup (motors on Pi, RViz on PC):**
+```bash
+# On Raspberry Pi (publishes joint states):
+export ROS_DOMAIN_ID=42
+ros2 launch lunabot_drive motors_rviz.launch.py
+
+# On PC (visualization):
+export ROS_DOMAIN_ID=42
+ros2 run rviz2 rviz2 -d $(ros2 pkg prefix lunabot_drive)/share/lunabot_drive/config/rviz/oak_d_camera.rviz
+```
+
+**Single Machine with Display (if Pi has display):**
+```bash
+ros2 launch lunabot_drive motors_rviz.launch.py rviz:=true
+```
+
+**With Teleop Control:**
+```bash
+# Terminal 1 (PC): Launch joystick + teleop
+ros2 launch lunabot_drive pc_teleop.launch.py
+
+# Terminal 2 (Pi): Launch motors + visualization
+ros2 launch lunabot_drive motors_rviz.launch.py
+```
+
+### Launch Arguments
+
+- `rviz:=true|false` - Enable/disable RViz2 (default: false, since Pi is headless)
+- `rviz_config:=<path>` - Custom RViz config file path
+
+### Topics
+
+**Published:**
+- `/joint_states` - Wheel positions and velocities
+- `/tf`, `/tf_static` - Robot coordinate transforms
+
+**Subscribed:**
+- `/cmd_vel` - Velocity commands for motors
+
+### Prerequisites
+
+- CAN interface must be up: `sudo ip link set can0 up type can`
+- SparkFlex motor controllers connected to CAN bus
+- Motor IDs must match configuration (1-4 by default)
+- For network operation: ROS_DOMAIN_ID must match on all machines
 
 ## Controller Mapping
 

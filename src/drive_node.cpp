@@ -111,8 +111,8 @@ private:
         }
 
         // Invert right side motors for tank drive
-        right_front_->SetInverted(true);
-        right_rear_->SetInverted(true);
+        right_front_->SetInverted(false);  // Motor 1
+        right_rear_->SetInverted(false);   // Motor 4
     }
 
     void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
