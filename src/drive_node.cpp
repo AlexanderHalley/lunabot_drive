@@ -27,7 +27,7 @@ public:
         declare_parameter("right_rear_id", 4);
         declare_parameter("wheel_base", 0.762);    // meters (distance between left/right wheels)
         declare_parameter("wheel_radius", 0.1778); // meters (7 inches, from URDF)
-        declare_parameter("gear_ratio", 1.0);      // motor rotations per wheel rotation
+        declare_parameter("gear_ratio", 100.0);      // 5x5x4 gearboxes
         declare_parameter("max_duty_cycle", 0.8);
         declare_parameter("joint_state_rate", 50.0); // Hz
 
