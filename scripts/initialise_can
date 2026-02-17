@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+DEVICE=${1:-/dev/ttyACM0}
+INTERFACE=${2:-can0}
+BITRATE=${3:-s8}  # s8 = 1 Mbps (standard for REV/SparkFlex)
+
+echo "Starting slcand on $DEVICE -> $INTERFACE at bitrate $BITRATE..."
+sudo slcand -o -"$BITRATE" "$DEVICE" "$INTERFACE"
+
+echo "Bringing up $INTERFACE..."
+sudo ip link set "$INTERFACE" up
+
+echo "CAN interface $INTERFACE is up."
+ip link show "$INTERFACE"
