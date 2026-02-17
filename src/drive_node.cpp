@@ -8,6 +8,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include "SparkFlex.hpp"
+#include "motor_logger.hpp"
 #include <memory>
 #include <chrono>
 #include <cmath>
@@ -60,6 +61,19 @@ public:
             throw;
         }
 
+        // Initialize CSV logger
+        node_start_time_ = this->now();
+        system("mkdir -p /home/lunabot/logs");
+        logger_ = std::make_unique<MotorLogger>("/home/lunabot/logs");
+        if (logger_->is_open()) {
+            RCLCPP_INFO(get_logger(), "Logging to: %s", logger_->filepath().c_str());
+        } else {
+            RCLCPP_WARN(get_logger(), "Failed to open log file — check /home/lunabot/logs");
+        }
+        log_timer_ = create_wall_timer(
+            std::chrono::milliseconds(100),
+            std::bind(&DriveNode::log_callback, this));
+
         // Subscribe to cmd_vel
         cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
             "cmd_vel", 10,
@@ -85,6 +99,8 @@ public:
         // Watchdog timer (stop if no commands received)
         watchdog_timer_ = create_wall_timer(
             100ms, std::bind(&DriveNode::watchdog_callback, this));
+
+        last_cmd_time_ = now();
 
         RCLCPP_INFO(get_logger(), "Drive node started (publish_odom_tf: %s)",
                     publish_odom_tf_ ? "true" : "false");
@@ -289,6 +305,35 @@ private:
         }
     }
 
+    void log_callback()
+    {
+        if (!logger_ || !logger_->is_open()) return;
+
+        double t = (this->now() - node_start_time_).seconds();
+
+        std::pair<int, SparkFlex*> motors[] = {
+            {1, left_front_.get()},
+            {2, right_front_.get()},
+            {3, left_rear_.get()},
+            {4, right_rear_.get()}
+        };
+
+        for (auto& [id, motor] : motors) {
+            logger_->log(
+                t,
+                id,
+                motor->GetVelocity(),
+                motor->GetPosition(),
+                motor->GetCurrent(),
+                motor->GetVoltage(),
+                motor->GetTemperature(),
+                motor->GetDutyCycle(),
+                motor->GetFaults(),
+                motor->GetStickyFaults()
+            );
+        }
+    }
+
     void stop_motors()
     {
         target_left_ = 0.0;
@@ -331,6 +376,11 @@ private:
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     rclcpp::TimerBase::SharedPtr joint_state_timer_;
     rclcpp::TimerBase::SharedPtr watchdog_timer_;
+    rclcpp::TimerBase::SharedPtr log_timer_;
+
+    // Logging
+    std::unique_ptr<MotorLogger> logger_;
+    rclcpp::Time node_start_time_;
 };
 
 int main(int argc, char** argv)
