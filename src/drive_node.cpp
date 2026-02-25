@@ -63,12 +63,12 @@ public:
 
         // Initialize CSV logger
         node_start_time_ = this->now();
-        system("mkdir -p /home/lunabot/logs");
-        logger_ = std::make_unique<MotorLogger>("/home/lunabot/logs");
+        system("mkdir -p /home/lunapi/logs");
+        logger_ = std::make_unique<MotorLogger>("/home/lunapi/logs");
         if (logger_->is_open()) {
             RCLCPP_INFO(get_logger(), "Logging to: %s", logger_->filepath().c_str());
         } else {
-            RCLCPP_WARN(get_logger(), "Failed to open log file — check /home/lunabot/logs");
+            RCLCPP_WARN(get_logger(), "Failed to open log file — check /home/lunapi/logs");
         }
         log_timer_ = create_wall_timer(
             std::chrono::milliseconds(100),

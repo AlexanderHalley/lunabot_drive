@@ -8,7 +8,7 @@
 
 class MotorLogger {
 public:
-    explicit MotorLogger(const std::string& log_dir = "/home/lunabot/logs") {
+    explicit MotorLogger(const std::string& log_dir = "/home/lunapi/logs") {
         // Generate filename: motor_log_YYYYMMDD_HHMMSS.csv
         auto t = std::time(nullptr);
         auto tm = *std::localtime(&t);

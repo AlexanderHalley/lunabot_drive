@@ -50,7 +50,7 @@ def generate_launch_description():
 
     # Wheel parameters from URDF (description/robot_core.xacro)
     wheel_radius = 0.1778   # 7 inches
-    wheel_base = 0.762      # distance between left and right wheels
+    wheel_base = 0.52      # distance between left and right wheels
 
     return LaunchDescription([
         # ── Launch Arguments ──
@@ -84,7 +84,7 @@ def generate_launch_description():
                 'right_rear_id': 4,
                 'wheel_base': wheel_base,
                 'wheel_radius': wheel_radius,
-                'gear_ratio': 1.0,
+                'gear_ratio': 100.0,
                 'max_duty_cycle': 0.8,
                 'joint_state_rate': 50.0,
                 'publish_odom_tf': False,  # EKF handles this by default

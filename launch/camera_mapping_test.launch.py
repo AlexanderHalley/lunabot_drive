@@ -38,6 +38,7 @@ def generate_launch_description():
 
     use_rviz = LaunchConfiguration('rviz')
     launch_camera = LaunchConfiguration('launch_camera')
+    use_rsp = LaunchConfiguration('use_rsp')
 
     # Process the URDF xacro
     urdf_file = os.path.join(pkg_share, 'description', 'robot.urdf.xacro')
@@ -53,6 +54,10 @@ def generate_launch_description():
             'launch_camera', default_value='false',
             description='Launch camera node (true for single-machine testing)'
         ),
+        DeclareLaunchArgument(
+            'use_rsp', default_value='false',
+            description='Launch robot_state_publisher locally. Set false when Pi is already running hardware_bringup (RSP runs there)'
+        ),
 
         # Optionally launch camera
         IncludeLaunchDescription(
@@ -63,36 +68,40 @@ def generate_launch_description():
             condition=IfCondition(launch_camera),
         ),
 
-        # Robot state publisher (URDF -> TF for chassis/camera frames)
+        # Robot state publisher — disabled by default when Pi is already running
+        # hardware_bringup.launch.py (which has its own RSP on the network).
+        # Enable with use_rsp:=true for single-machine testing.
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
             name='robot_state_publisher',
             parameters=[{'robot_description': robot_description}],
             output='screen',
+            condition=IfCondition(use_rsp),
         ),
 
-        # Static TF: map -> odom (identity — no localization)
+        # Static TFs and joint_state_publisher — only needed in standalone mode.
+        # When the Pi is running hardware_bringup, the EKF publishes odom->base_link
+        # dynamically and drive_node publishes joint states; these would conflict.
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='map_to_odom',
             arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+            condition=IfCondition(use_rsp),
         ),
-
-        # Static TF: odom -> base_link (identity — stationary robot)
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name='odom_to_base_link',
             arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
+            condition=IfCondition(use_rsp),
         ),
-
-        # Joint state publisher for static wheel positions
         Node(
             package='joint_state_publisher',
             executable='joint_state_publisher',
             name='joint_state_publisher',
+            condition=IfCondition(use_rsp),
         ),
 
         # Pointcloud to LaserScan bridge (for SLAM toolbox compatibility)
@@ -115,7 +124,7 @@ def generate_launch_description():
                 'inf_epsilon': 1.0,
             }],
             remappings=[
-                ('cloud_in', '/oak/points'),
+                ('cloud_in', '/oak/stereo/points'),
                 ('scan', '/scan'),
             ],
         ),
