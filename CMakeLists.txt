@@ -23,6 +23,18 @@ install(TARGETS
   drive_node
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch config docs description DESTINATION share/${PROJECT_NAME})
-install(PROGRAMS nodes/bandwidth_monitor.py DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS
+  nodes/bandwidth_monitor.py
+  DESTINATION lib/${PROJECT_NAME})
+
+install(PROGRAMS
+  nodes/actuator_driver_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME actuator_driver_node)
+
+install(PROGRAMS
+  nodes/bucket_teleop_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME bucket_teleop_node)
 
 ament_package()

@@ -1,94 +1,70 @@
-# OAK-D-S2 Camera Integration Roadmap
+# OAK-D S2 Camera Integration
 
-This document outlines the integration of an OAK-D-S2 stereo depth camera into the Lunabot system, with the camera connected to a Raspberry Pi 5 via USB-C and relayed to an offboard computer via ROS2 DDS.
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Raspberry Pi 5                           │
-│  ┌─────────────┐    ┌──────────────────┐                   │
-│  │  OAK-D-S2   │───▶│ depthai_ros_driver│                   │
-│  │  (USB-C)    │    │  /camera/*        │                   │
-│  └─────────────┘    └────────┬─────────┘                   │
-│                              │ DDS                          │
-└──────────────────────────────┼──────────────────────────────┘
-                               │ WiFi/Ethernet
-                               ▼
-┌──────────────────────────────────────────────────────────────┐
-│                   Offboard Computer                          │
-│  ┌──────────────┐  ┌────────────┐  ┌───────────────────┐    │
-│  │ ball_tracker │  │    Nav2    │  │      RViz2        │    │
-│  │ /cmd_vel_*   │  │ (obstacle) │  │ Image/PointCloud  │    │
-│  └──────────────┘  └────────────┘  └───────────────────┘    │
-└──────────────────────────────────────────────────────────────┘
-```
+Camera connects to Pi 5 via USB 3.0 (blue port). Driver: `depthai_ros_driver`, node name: `oak`.
 
 ---
 
-## Phase 1: Hardware & Driver Setup on Raspberry Pi
+## Quick Start
 
-### 1.1 Physical Connection
-- Connect OAK-D-S2 to Pi 5 via USB-C (use a USB 3.0 port for full bandwidth)
-- Ensure adequate power — OAK-D-S2 draws ~2.5W; consider powered USB hub if issues arise
-
-### 1.2 Install DepthAI SDK on Pi
 ```bash
-# On Raspberry Pi 5
-sudo apt update
-sudo apt install python3-pip libusb-1.0-0-dev
+# Pi: launch camera
+ros2 launch lunabot_drive oak_d_camera.launch.py
 
-# Install DepthAI
-python3 -m pip install depthai
-
-# Test camera detection
-python3 -c "import depthai; print(depthai.Device.getAllAvailableDevices())"
+# Pi: launch camera + pointcloud (bandwidth-optimized)
+ros2 launch lunabot_drive oak_d_camera.launch.py \
+  config:=$(ros2 pkg prefix lunabot_drive)/share/lunabot_drive/config/oak_d_pointcloud_only.yaml
 ```
 
-### 1.3 Install depthai-ros
-```bash
-# If using ROS2 Jazzy (adjust for your distro)
-sudo apt install ros-jazzy-depthai-ros
+## Topics
 
-# Or build from source for latest features:
-cd ~/ros2_ws/src
-git clone https://github.com/luxonis/depthai-ros.git
-cd ~/ros2_ws && colcon build --packages-select depthai_ros_driver
+| Topic | Type | Description |
+|---|---|---|
+| `/oak/rgb/image_raw` | sensor_msgs/Image | RGB stream |
+| `/oak/stereo/image_raw` | sensor_msgs/Image | Depth image |
+| `/oak/points` | sensor_msgs/PointCloud2 | 3D point cloud |
+| `/oak/imu/data` | sensor_msgs/Imu | BNO086 IMU at 100 Hz |
+
+## TF Frames
+
+Published by depthai driver (node name: `oak`):
+```
+base_link → oak → oak_rgb_camera_optical_frame
+                → oak_right_camera_optical_frame
 ```
 
-### 1.4 udev Rules (for non-root access)
+## Competition: Compass Disable
+
+The BNO086 has a magnetometer. GPS/compass is prohibited by competition rules. Verify:
 ```bash
-echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666"' | sudo tee /etc/udev/rules.d/80-movidius.rules
+ros2 param get /oak imu.i_enable_rotation
+# Must be: False (default)
+```
+
+Do not fuse magnetometer axes in the EKF config (`ekf_params.yaml`).
+
+## USB 3.0 Check
+
+```bash
+lsusb -t | grep 5000M
+# Camera (03e7:2485 MyriadX) must appear under a 5000M hub
+# If under 480M: wrong port or cable (use data cable, not charge-only)
+```
+
+## udev Rule (one-time setup)
+
+```bash
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666"' | \
+  sudo tee /etc/udev/rules.d/80-movidius.rules
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
----
-
-## Phase 2: Network/DDS Configuration
-
-### 2.1 Set Common ROS_DOMAIN_ID
-```bash
-# Add to ~/.bashrc on BOTH Pi and offboard computer
-export ROS_DOMAIN_ID=42  # Pick any 0-232
-```
-
-### 2.2 (Recommended) Use CycloneDDS for better multicast
-```bash
-# On both machines
-sudo apt install ros-jazzy-rmw-cyclonedds-cpp
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-```
-
-### 2.3 DDS Config for Large Image Topics
+## DDS Config for Large Topics
 
 Create `~/.ros/cyclonedds.xml`:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <CycloneDDS>
   <Domain>
-    <General>
-      <NetworkInterfaceAddress>auto</NetworkInterfaceAddress>
-    </General>
     <Internal>
       <SocketReceiveBufferSize min="10MB"/>
     </Internal>
@@ -96,175 +72,41 @@ Create `~/.ros/cyclonedds.xml`:
 </CycloneDDS>
 ```
 
-Export in `~/.bashrc`:
+Add to `~/.bashrc` on both Pi and PC:
 ```bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI=file://$HOME/.ros/cyclonedds.xml
 ```
 
----
+## Bandwidth Tuning
 
-## Phase 3: Launch the Camera
+Key knobs in `config/oak_d_pointcloud_only.yaml` (ordered by impact):
 
-### 3.1 On Raspberry Pi
-```bash
-# Source workspace
-source ~/ros2_ws/install/setup.bash
+| Parameter | Default | Aggressive |
+|---|---|---|
+| `i_decimation_filter_decimation_factor` | 2 | 3–4 |
+| `i_fps` | 10 | 5 |
+| `i_threshold_filter_max_range` | 5000 mm | 3000 mm |
+| `i_stereo_conf_threshold` | 200 | 230 |
 
-# Launch camera node
-ros2 launch lunabot_drive oak_d_camera.launch.py
-```
-
-### 3.2 Published Topics
-
-| Topic | Type | Description |
-|-------|------|-------------|
-| `/camera/image_raw` | sensor_msgs/Image | RGB image |
-| `/camera/depth/image_raw` | sensor_msgs/Image | Depth image |
-| `/camera/depth/points` | sensor_msgs/PointCloud2 | 3D point cloud |
-| `/camera/camera_info` | sensor_msgs/CameraInfo | Camera intrinsics |
-
----
-
-## Phase 4: Testing & Visualization
-
-### 4.1 Verify on Pi
-```bash
-ros2 topic list | grep camera
-ros2 topic hz /camera/image_raw
-```
-
-### 4.2 Verify Network Relay (on offboard computer)
-```bash
-# Should see camera topics from Pi
-ros2 topic list | grep camera
-ros2 topic echo /camera/image_raw --no-arr
-```
-
-### 4.3 RViz2 Visualization
-```bash
-ros2 run rviz2 rviz2
-```
-
-Add these displays:
-- **Image**: Topic `/camera/image_raw`
-- **PointCloud2**: Topic `/camera/depth/points`
-- **Camera**: Topic `/camera/camera_info` with `/camera/image_raw`
-
-### 4.4 Quick Image Viewer
-```bash
-ros2 run rqt_image_view rqt_image_view
-# Select /camera/image_raw from dropdown
-```
-
----
-
-## Phase 5: Bandwidth Optimization
-
-If network bandwidth is insufficient, adjust camera parameters:
-
-### Option A: Reduce Resolution/Framerate
-Edit `config/oak_d_camera.yaml`:
-```yaml
-rgb_resolution: '720P'  # Lower from 1080P
-rgb_fps: 10             # Lower from 15
-```
-
-### Option B: Use Compressed Transport
-```bash
-sudo apt install ros-jazzy-image-transport-plugins
-
-# Topics appear at:
-# /camera/image_raw/compressed
-# /camera/depth/image_raw/compressedDepth
-```
-
-### Option C: Disable Unused Streams
-```yaml
-enable_depth: false      # If only using RGB
-enable_pointcloud: false # If only using depth image
-```
-
----
+Target: < 2 Mbps total for pointcloud alone (4 Mbps competition limit).
 
 ## Troubleshooting
 
-### Camera Not Detected
+**Camera not detected:**
 ```bash
-# Check USB connection
-lsusb | grep Movidius
-# Should show: "03e7:2485 Intel Movidius MyriadX"
-
-# Check depthai can see it
 python3 -c "import depthai; print(depthai.Device.getAllAvailableDevices())"
+lsusb | grep Movidius
 ```
 
-### Topics Not Visible on Offboard Computer
+**Topics not visible on PC:**
 ```bash
-# Verify same ROS_DOMAIN_ID on both machines
-echo $ROS_DOMAIN_ID
-
-# Check network connectivity
-ping <pi_ip_address>
-
-# Verify DDS discovery
+echo $ROS_DOMAIN_ID  # Must match on both machines
 ros2 daemon stop && ros2 daemon start
-ros2 topic list
 ```
 
-### Low Framerate / High Latency
-- Check WiFi signal strength
-- Use Ethernet if available
-- Reduce resolution/framerate in config
-- Enable compressed image transport
-
-### Permission Denied on USB
+**No pointcloud publisher:**
 ```bash
-# Re-apply udev rules
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-
-# Or run with sudo (not recommended for production)
-sudo -E ros2 launch lunabot_drive oak_d_camera.launch.py
+ros2 topic info /oak/points  # Publisher count must be 1
+ros2 param get /oak pointcloud.i_enable  # Must be True
 ```
-
----
-
-## URDF Integration (Optional)
-
-If you need the camera in your robot model for TF transforms, add to your URDF:
-
-```xml
-<!-- Camera link -->
-<link name="camera_link">
-  <visual>
-    <geometry>
-      <box size="0.091 0.028 0.017"/>
-    </geometry>
-  </visual>
-</link>
-
-<!-- Mount to chassis -->
-<joint name="camera_joint" type="fixed">
-  <parent link="chassis"/>
-  <child link="camera_link"/>
-  <origin xyz="0.5 0 0.1" rpy="0 0 0"/>
-</joint>
-
-<!-- Optical frame (Z forward, X right, Y down) -->
-<link name="camera_link_optical"/>
-<joint name="camera_optical_joint" type="fixed">
-  <parent link="camera_link"/>
-  <child link="camera_link_optical"/>
-  <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
-</joint>
-```
-
----
-
-## Files Added
-
-| File | Purpose |
-|------|---------|
-| `launch/oak_d_camera.launch.py` | Launch depthai_ros_driver on Pi |
-| `config/oak_d_camera.yaml` | Camera parameters (resolution, fps, etc.) |
-| `docs/OAK_D_S2_INTEGRATION.md` | This roadmap document |

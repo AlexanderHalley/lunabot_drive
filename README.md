@@ -1,51 +1,51 @@
-# Lunabot Drive Package
+# Lunabot Drive
 
-Motor drive control and sensor integration for Lunabot rover using SparkFlex controllers via CAN bus and OAK-D S2 depth camera.
+ROS2 Jazzy package for Northwestern's NASA Lunabotics 2025-2026 rover. Runs on Raspberry Pi 5 with SparkFlex motors via CAN bus, OAK-D S2 depth camera, and Firgelli linear actuators for the bucket mechanism.
+
+```
+sudo slcand -o -s8 /dev/ttyACM0 can0 && sudo ip link set can0 up
+```
+
+---
 
 ## Package Structure
 
 ```
-lunabot_drive/
-├── src/
-│   ├── drive_node.cpp              # Motor control + wheel odometry
-│   └── minimal_drive.cpp           # Minimal joystick test node
-├── nodes/
-│   └── bandwidth_monitor.py        # Competition bandwidth monitoring
-├── launch/
-│   ├── hardware_bringup.launch.py  # Unified hardware launch (Pi)
-│   ├── motors_rviz.launch.py       # Motor control + URDF visualization in RViz
-│   ├── oak_d_camera.launch.py      # OAK-D S2 camera launch
-│   ├── oak_d_rviz.launch.py        # Camera + RViz visualization
-│   ├── pc_teleop.launch.py         # Offboard PC (joy + teleop)
-│   ├── pi_drive.launch.py          # Raspberry Pi (motor control)
-│   ├── camera_only_nav2.launch.py  # Nav2 costmap test (stationary)
-│   ├── camera_mapping_test.launch.py # Camera + pointcloud_to_laserscan
-│   ├── motor_test_rviz.launch.py   # Motor test with RViz feedback
-│   └── apriltag_detection.launch.py # AprilTag detection for localization
-├── config/
-│   ├── oak_d_camera.yaml           # Full camera config (RGB + Depth + PC)
-│   ├── oak_d_pointcloud_only.yaml  # Bandwidth-optimized pointcloud
-│   ├── oak_d_rgb_only.yaml         # RGB only (low latency)
-│   ├── camera_only_nav2.yaml       # Nav2 costmap test params
-│   ├── switch_pro.yaml             # Controller mapping
-│   ├── params/
-│   │   ├── nav2_params.yaml        # Full Nav2 stack parameters
-│   │   └── ekf_params.yaml         # robot_localization EKF config
-│   └── rviz/
-│       ├── oak_d_camera.rviz       # Camera + robot model RViz config
-│       └── camera_only_nav2.rviz   # Nav2 costmap RViz config
-├── description/
-│   ├── robot.urdf.xacro            # Main URDF (includes below)
-│   ├── robot_core.xacro            # Chassis + 4 wheels
-│   ├── oak_d_s2.xacro             # Camera body (optical frames from depthai)
-│   └── inertial_macros.xacro       # Inertia calculation helpers
-├── docs/
-│   ├── OAK_D_S2_INTEGRATION.md    # Camera integration guide
-│   └── CAMERA_ONLY_NAV2.md         # Nav2 costmap testing guide
-├── CMakeLists.txt
-├── package.xml
-└── README.md
+src/
+  drive_node.cpp              # Motor control + wheel odometry (CAN)
+  minimal_drive.cpp           # Minimal joystick test node
+nodes/
+  actuator_driver_node.py     # Bucket lift/tilt linear actuator driver
+  bucket_teleop_node.py       # Joystick → bucket commands (run on PC)
+  bandwidth_monitor.py        # Competition bandwidth monitoring
+launch/
+  hardware_bringup.launch.py  # Unified hardware launch (Pi)
+  bucket_bringup.launch.py    # Both bucket actuators
+  actuator_test.launch.py     # Single actuator test
+  oak_d_camera.launch.py      # OAK-D S2 camera
+  pc_teleop.launch.py         # Offboard PC (joy + teleop)
+  pi_drive.launch.py          # Pi motor control only
+  motor_test_rviz.launch.py   # Motor test with RViz feedback
+  camera_only_nav2.launch.py  # Nav2 costmap test (no motors)
+  camera_mapping_test.launch.py
+  apriltag_detection.launch.py
+config/
+  bucket_actuators.yaml       # Lift + tilt actuator parameters
+  oak_d_pointcloud_only.yaml  # Bandwidth-optimized pointcloud
+  oak_d_camera.yaml           # Full camera config
+  switch_pro.yaml             # Controller mapping
+  params/
+    nav2_params.yaml
+    ekf_params.yaml
+description/
+  robot.urdf.xacro            # Full robot URDF
+docs/
+  OAK_D_S2_INTEGRATION.md
+  CAMERA_ONLY_NAV2.md
+  motor_logging.md            # Planned motor CSV logging (not yet implemented)
 ```
+
+---
 
 ## Building
 
@@ -55,191 +55,161 @@ colcon build --packages-select lunabot_drive
 source install/setup.bash
 ```
 
-## Quick Start: Hardware Bringup
+---
 
-Launch all hardware on the Raspberry Pi:
+## Quick Start
+
+### Full Hardware Bringup (Pi)
 
 ```bash
-# Full bringup (motors + camera + EKF + teleop)
 ros2 launch lunabot_drive hardware_bringup.launch.py
-
-# Without teleop (for autonomous operation)
-ros2 launch lunabot_drive hardware_bringup.launch.py enable_teleop:=false
-
-# Without EKF (drive_node handles odom TF directly)
-ros2 launch lunabot_drive hardware_bringup.launch.py use_ekf:=false
+# Options:
+#   enable_teleop:=false    (for autonomous operation)
+#   use_ekf:=false          (drive_node handles odom TF directly)
 ```
 
-## Individual Component Testing
-
-### Motor Test (with RViz visualization)
+### Drive Motors + Teleop
 
 ```bash
-# On Pi: launch motor control
+# Pi
 ros2 launch lunabot_drive pi_drive.launch.py
 
-# On PC: visualize + optionally teleop
-ros2 launch lunabot_drive motor_test_rviz.launch.py enable_teleop:=true
+# PC
+ros2 launch lunabot_drive pc_teleop.launch.py
 ```
 
-### Camera Test (pointcloud + mapping prep)
+### Bucket Actuators
 
 ```bash
-# On Pi: launch camera with pointcloud config
-ros2 launch lunabot_drive oak_d_camera.launch.py \
-  config:=$(ros2 pkg prefix lunabot_drive)/share/lunabot_drive/config/oak_d_pointcloud_only.yaml
+# Pi — both actuators
+ros2 launch lunabot_drive bucket_bringup.launch.py
 
-# On PC: visualize + pointcloud_to_laserscan
-ros2 launch lunabot_drive camera_mapping_test.launch.py
+# Pi — single actuator (for testing)
+ros2 launch lunabot_drive actuator_test.launch.py which:=lift
+ros2 launch lunabot_drive actuator_test.launch.py which:=tilt home_on_startup:=false
+
+# PC — joystick teleop for bucket
+ros2 run joy joy_node
+ros2 run lunabot_drive bucket_teleop_node
 ```
 
-### AprilTag Detection
+**Bucket teleop controls (Switch Pro Controller):**
+
+| Input | Action |
+|---|---|
+| D-pad UP / DOWN | Lift ±10 mm |
+| D-pad RIGHT / LEFT | Tilt ±10 mm |
+| Y | Home both actuators |
+| X | Scoop preset (lift=0, tilt=max) |
+| B | Dump preset (lift=max, tilt=0) |
+
+### Camera
 
 ```bash
-ros2 launch lunabot_drive apriltag_detection.launch.py
+ros2 launch lunabot_drive oak_d_camera.launch.py
 ```
 
-### Bandwidth Monitoring
+### Bandwidth Monitor
 
 ```bash
 ros2 run lunabot_drive bandwidth_monitor.py
 ```
 
-## Motor Visualization
+---
 
-The `motors_rviz.launch.py` file provides real-time visualization of the robot's wheels and motor positions in RViz2 using the robot URDF model.
+## Topics
 
-### What It Does
+### Drive Node
 
-This launch file combines:
-- **drive_node** - Motor control + joint state publishing (wheel positions/velocities)
-- **robot_state_publisher** - Converts URDF + joint states into TF transforms
-- **rviz2** - 3D visualization of the robot model with moving wheels
+| Topic | Type | Direction |
+|---|---|---|
+| `/cmd_vel` | geometry_msgs/Twist | Subscribed |
+| `/joint_states` | sensor_msgs/JointState | Published |
+| `/odom` | nav_msgs/Odometry | Published |
 
-### Quick Start
+### Bucket Actuators (per namespace: `/bucket/lift`, `/bucket/tilt`)
 
-**Typical Setup (motors on Pi, RViz on PC):**
-```bash
-# On Raspberry Pi (publishes joint states):
-export ROS_DOMAIN_ID=42
-ros2 launch lunabot_drive motors_rviz.launch.py
+| Topic | Type | Description |
+|---|---|---|
+| `~/command` | std_msgs/Float64 | Target position in mm |
+| `~/position` | std_msgs/Float64 | Current position in mm |
+| `~/status` | diagnostic_msgs/DiagnosticStatus | State + diagnostics |
+| `/joint_states` | sensor_msgs/JointState | Merged with drive_node |
 
-# On PC (visualization):
-export ROS_DOMAIN_ID=42
-ros2 run rviz2 rviz2 -d $(ros2 pkg prefix lunabot_drive)/share/lunabot_drive/config/rviz/oak_d_camera.rviz
-```
+Services: `~/home` (Trigger), `~/stop` (Trigger)
 
-**Single Machine with Display (if Pi has display):**
-```bash
-ros2 launch lunabot_drive motors_rviz.launch.py rviz:=true
-```
+### Camera (`/oak/` prefix)
 
-**With Teleop Control:**
-```bash
-# Terminal 1 (PC): Launch joystick + teleop
-ros2 launch lunabot_drive pc_teleop.launch.py
+- `/oak/rgb/image_raw`, `/oak/stereo/image_raw`, `/oak/points`, `/oak/imu/data`
 
-# Terminal 2 (Pi): Launch motors + visualization
-ros2 launch lunabot_drive motors_rviz.launch.py
-```
-
-### Launch Arguments
-
-- `rviz:=true|false` - Enable/disable RViz2 (default: false, since Pi is headless)
-- `rviz_config:=<path>` - Custom RViz config file path
-
-### Topics
-
-**Published:**
-- `/joint_states` - Wheel positions and velocities
-- `/tf`, `/tf_static` - Robot coordinate transforms
-
-**Subscribed:**
-- `/cmd_vel` - Velocity commands for motors
-
-### Prerequisites
-
-- CAN interface must be up: `sudo ip link set can0 up type can`
-- SparkFlex motor controllers connected to CAN bus
-- Motor IDs must match configuration (1-4 by default)
-- For network operation: ROS_DOMAIN_ID must match on all machines
-
-## Camera Topics
-
-All camera topics use the `/oak/` prefix (node name: `oak`):
-- `/oak/rgb/image_raw` - RGB camera feed
-- `/oak/stereo/image_raw` - Depth image
-- `/oak/points` - PointCloud2
-- `/oak/imu/data` - IMU (BNO086, 100 Hz)
-
-## Drive Node Topics
-
-- **Subscribes:** `/cmd_vel` (geometry_msgs/Twist)
-- **Publishes:** `/joint_states` (sensor_msgs/JointState), `/odom` (nav_msgs/Odometry)
-- **TF:** `odom -> base_link` (when `publish_odom_tf:=true`)
+---
 
 ## TF Frame Tree
 
 ```
-map -> odom -> base_link -> chassis -> oak -> {optical frames from depthai}
-                  |-> left_front_wheel
-                  |-> right_front_wheel
-                  |-> left_wheel (rear left)
-                  |-> right_wheel (rear right)
+map → odom → base_link → chassis → oak → {optical frames from depthai}
+                 |→ left_front_wheel
+                 |→ right_front_wheel
+                 |→ left_wheel
+                 |→ right_wheel
 ```
 
-## Parameters (drive_node)
+---
+
+## Key Parameters
+
+### drive_node
 
 | Parameter | Default | Description |
-|-----------|---------|-------------|
-| `can_interface` | `can0` | CAN bus interface name |
-| `left_front_id` | `1` | CAN ID for left front motor |
-| `right_front_id` | `2` | CAN ID for right front motor |
-| `left_rear_id` | `3` | CAN ID for left rear motor |
-| `right_rear_id` | `4` | CAN ID for right rear motor |
-| `wheel_base` | `0.762` | Distance between left/right wheels (m) |
-| `wheel_radius` | `0.1778` | Wheel radius (m) |
-| `gear_ratio` | `1.0` | Motor-to-wheel gear ratio |
-| `max_duty_cycle` | `0.8` | Maximum motor duty cycle (0.0-1.0) |
-| `joint_state_rate` | `50.0` | Joint state publish rate (Hz) |
-| `publish_odom_tf` | `true` | Publish odom->base_link TF (set false when EKF runs) |
+|---|---|---|
+| `can_interface` | `can0` | CAN bus interface |
+| `left_front_id` | 2 | SparkFlex CAN ID |
+| `right_front_id` | 1 | SparkFlex CAN ID |
+| `left_rear_id` | 3 | SparkFlex CAN ID |
+| `right_rear_id` | 4 | SparkFlex CAN ID |
+| `wheel_base` | 0.762 m | Left–right wheel distance |
+| `wheel_radius` | 0.1778 m | Wheel radius |
+| `gear_ratio` | 100.0 | Motor-to-wheel ratio |
+| `max_duty_cycle` | 0.8 | Max motor output |
+| `publish_odom_tf` | true | Set false when EKF runs |
 
-## Controller Mapping
+### Controller Mapping
 
 - **Left Stick Y**: Forward/Backward
-- **Right Stick X**: Turn Left/Right
-- **R Button (hold)**: Enable motor control (safety feature)
-- **L Button (hold)**: Turbo mode (faster speeds)
+- **Right Stick X**: Turn
+- **R Button** (hold): Enable motors
+- **L Button** (hold): Turbo mode
 
-## Safety Features
+---
 
-- **Watchdog timer**: Motors stop if no command received for 500ms
-- **Enable button**: Must hold R button to control motors
-- **Speed limiting**: Commands clamped to max_duty_cycle
+## Hardware Reference
 
-## Network Setup
+See `PI5_PIN_ASSIGNMENTS.md` for all GPIO, USB, and power wiring.
+See `BUCKET_ACTUATOR_SOFTWARE_SPEC.md` for actuator hardware details and ROS interface.
 
-Both computers must be on the same network and use the same ROS_DOMAIN_ID:
-```bash
-export ROS_DOMAIN_ID=42
-```
+---
 
 ## Troubleshooting
 
-**No /joy topic:**
-- Check controller is connected: `cat /proc/bus/input/devices | grep "Pro Controller"`
-- Verify ROS_DOMAIN_ID matches on both machines
-
 **Motors not responding:**
-- Check CAN interface: `ip link show can0`
-- Verify CAN IDs match motor configuration
-- Ensure you're holding the R button (enable button)
+```bash
+ip link show can0          # Check CAN interface is up
+# Hold R button to enable teleop
+```
 
 **No pointcloud:**
-- Check USB 3.0: `lsusb -t | grep 5000M`
-- Check topic: `ros2 topic hz /oak/points`
-- Verify camera node: `ros2 node list | grep oak`
+```bash
+lsusb -t | grep 5000M     # Camera must be on USB 3.0
+ros2 topic hz /oak/points  # Should be ~10 Hz
+```
 
 **TF errors:**
-- View frame tree: `ros2 run tf2_tools view_frames`
-- Check for broken links in the `map -> odom -> base_link -> oak` chain
+```bash
+ros2 run tf2_tools view_frames
+```
+
+**No /joy topic:**
+```bash
+cat /proc/bus/input/devices | grep "Pro Controller"
+# Check ROS_DOMAIN_ID matches on both machines
+```
