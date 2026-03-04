@@ -154,7 +154,7 @@ class ActuatorDriverNode(Node):
         else:
             self._gpio = lgpio
 
-        self._h = self._gpio.gpiochip_open(0)
+        self._h = self._gpio.gpiochip_open(4)  # Pi 5: GPIO header is on gpiochip4 (RP1)
         self._setup_gpio()
 
         # Mock mode: simulated position state
@@ -219,7 +219,7 @@ class ActuatorDriverNode(Node):
 
         # Hall sensor interrupts
         self._hall_cb = lgpio.callback(
-            self._h, self._hall_a_gpio, lgpio.RISING_EDGE, self._hall_pulse_callback
+            self._h, self._hall_a_gpio, lgpio.FALLING_EDGE, self._hall_pulse_callback
         )
 
         # Initialize PWM at 0% duty

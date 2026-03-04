@@ -1,47 +1,50 @@
-bucket_lift_driver:
-  ros__parameters:
-    actuator_name: "lift"
-    rpwm_gpio: 12
-    lpwm_gpio: 18
-    en_gpio: 5
-    hall_a_gpio: 22
-    hall_b_gpio: 23
-    stroke_mm: 203.2
-    pulses_per_mm: 17.4
-    deadband_mm: 1.0
-    pwm_frequency: 10000
-    max_speed_pct: 100
-    approach_distance_mm: 20.0
-    min_speed_pct: 30
-    watchdog_timeout_s: 2.0
-    home_on_startup: true
-    max_continuous_run_s: 15.0
-    cooldown_time_s: 45.0
-    joint_name: "bucket_lift_joint"
-    position_to_joint_scale: 0.001  # mm to meters (prismatic joint)
-    position_to_joint_offset: 0.0
-    invert_direction: false
+bucket:
+  lift:
+    actuator_driver:
+      ros__parameters:
+        actuator_name: "lift"
+        rpwm_gpio: 12
+        lpwm_gpio: 18
+        en_gpio: 5
+        hall_a_gpio: 22
+        hall_b_gpio: 23
+        stroke_mm: 203.2
+        pulses_per_mm: 17.4
+        deadband_mm: 1.0
+        pwm_frequency: 10000
+        max_speed_pct: 100
+        approach_distance_mm: 20.0
+        min_speed_pct: 30
+        watchdog_timeout_s: 2.0
+        home_on_startup: true
+        max_continuous_run_s: 15.0
+        cooldown_time_s: 45.0
+        joint_name: "bucket_lift_joint"
+        position_to_joint_scale: 0.001  # mm to meters (prismatic joint)
+        position_to_joint_offset: 0.0
+        invert_direction: false
 
-bucket_tilt_driver:
-  ros__parameters:
-    actuator_name: "tilt"
-    rpwm_gpio: 13
-    lpwm_gpio: 19
-    en_gpio: 6
-    hall_a_gpio: 24
-    hall_b_gpio: 25
-    stroke_mm: 254.0
-    pulses_per_mm: 17.4
-    deadband_mm: 1.0
-    pwm_frequency: 10000
-    max_speed_pct: 100
-    approach_distance_mm: 20.0
-    min_speed_pct: 30
-    watchdog_timeout_s: 2.0
-    home_on_startup: true
-    max_continuous_run_s: 15.0
-    cooldown_time_s: 45.0
-    joint_name: "bucket_tilt_joint"
-    position_to_joint_scale: 1.0  # custom conversion based on mechanism geometry
-    position_to_joint_offset: 0.0
-    invert_direction: false
+  tilt:
+    actuator_driver:
+      ros__parameters:
+        actuator_name: "tilt"
+        rpwm_gpio: 13
+        lpwm_gpio: 19
+        en_gpio: 6
+        hall_a_gpio: 24
+        hall_b_gpio: 25
+        stroke_mm: 254.0
+        pulses_per_mm: 17.4
+        deadband_mm: 1.0
+        pwm_frequency: 10000
+        max_speed_pct: 100
+        approach_distance_mm: 20.0
+        min_speed_pct: 30
+        watchdog_timeout_s: 2.0
+        home_on_startup: true
+        max_continuous_run_s: 15.0
+        cooldown_time_s: 45.0
+        joint_name: "bucket_tilt_joint"
+        position_to_joint_scale: 1.0  # custom conversion based on mechanism geometry
+        position_to_joint_offset: 0.0
+        invert_direction: false
