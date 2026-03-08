@@ -40,7 +40,7 @@ See `PI5_PIN_ASSIGNMENTS.md` for the full Pi 5 pin map.
 | Hall A | 22 | 24 |
 | Hall B | 23 | 25 |
 
-> Hall sensor outputs are 5V. Hardware team adds 1kΩ/2kΩ voltage dividers to 3.3V before Pi GPIO.
+> For the PWM inputs they need to go through the 5V powered hex inverter twice (to be the same as original but level shifted), For the Hall sensor output they need the same but through a 3.3V powered hex inverter since the Pi GPIOs are not 5V tolerant.
 
 ---
 
