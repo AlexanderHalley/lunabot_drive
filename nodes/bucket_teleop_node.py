@@ -27,8 +27,8 @@ class BucketTeleopNode(Node):
     def __init__(self):
         super().__init__("bucket_teleop")
 
-        self.declare_parameter("dpad_axis_vertical",   7)
-        self.declare_parameter("dpad_axis_horizontal", 6)
+        self.declare_parameter("dpad_axis_vertical",   5)
+        self.declare_parameter("dpad_axis_horizontal", 4)
         self.declare_parameter("publish_rate_hz",      10.0)
 
         self._dpad_vertical   = self.get_parameter("dpad_axis_vertical").value
