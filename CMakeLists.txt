@@ -22,7 +22,7 @@ install(TARGETS
   minimal_drive
   drive_node
   DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORY launch config docs description DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch config docs description dashboard DESTINATION share/${PROJECT_NAME})
 install(PROGRAMS
   nodes/bandwidth_monitor.py
   DESTINATION lib/${PROJECT_NAME})
@@ -36,5 +36,30 @@ install(PROGRAMS
   nodes/bucket_teleop_node.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME bucket_teleop_node)
+
+install(PROGRAMS
+  nodes/mission_state_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME mission_state_node)
+
+install(PROGRAMS
+  nodes/bandwidth_monitor_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME bandwidth_monitor_node)
+
+install(PROGRAMS
+  nodes/health_monitor_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME health_monitor_node)
+
+install(PROGRAMS
+  nodes/wifi_monitor_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME wifi_monitor_node)
+
+install(PROGRAMS
+  nodes/hall_sensors_read.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME hall_sensors_read)
 
 ament_package()
