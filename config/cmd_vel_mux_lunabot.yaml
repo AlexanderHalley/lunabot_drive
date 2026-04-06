@@ -1,0 +1,30 @@
+# cmd_vel_mux configuration for Lunabot
+#
+# Priority scheme:
+#   Teleop (joystick) wins when a message arrives within its timeout.
+#   Nav2 is active when teleop is silent (timeout expired).
+#
+# Topic routing:
+#   Teleop publishes to  → /cmd_vel_mux/input/joystick   (priority 10)
+#   Nav2 publishes to   → /cmd_vel_mux/input/navigation  (priority 1)
+#   Mux output          → /cmd_vel  (drive_node input)
+#
+# The controller_server in Nav2 must be remapped to publish to
+# /cmd_vel_mux/input/navigation instead of /cmd_vel.
+# teleop_twist_joy must be remapped to publish to
+# /cmd_vel_mux/input/joystick instead of /cmd_vel.
+
+cmd_vel_mux:
+  ros__parameters:
+    output_topic: "cmd_vel"
+    subscribers:
+      navigation:
+        topic:      "cmd_vel_mux/input/navigation"
+        timeout:    0.5
+        priority:   1
+        short_desc: "Nav2 controller_server autonomous velocity commands"
+      joystick:
+        topic:      "cmd_vel_mux/input/joystick"
+        timeout:    0.15
+        priority:   10
+        short_desc: "Teleop joystick — overrides Nav2 when active"

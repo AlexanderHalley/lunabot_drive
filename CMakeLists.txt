@@ -23,6 +23,7 @@ install(TARGETS
   drive_node
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch config docs description dashboard DESTINATION share/${PROJECT_NAME})
+
 install(PROGRAMS
   nodes/bandwidth_monitor.py
   DESTINATION lib/${PROJECT_NAME})
@@ -61,5 +62,10 @@ install(PROGRAMS
   nodes/hall_sensors_read.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME hall_sensors_read)
+
+install(PROGRAMS
+  nodes/apriltag_localizer_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME apriltag_localizer_node)
 
 ament_package()

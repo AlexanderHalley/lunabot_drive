@@ -111,6 +111,12 @@ class ActuatorDriverNode(Node):
         self._stop_srv = self.create_service(
             Trigger, "~/stop", self._stop_callback, callback_group=self._cb_group
         )
+        self._extend_srv = self.create_service(
+            Trigger, "~/extend", self._extend_callback, callback_group=self._cb_group
+        )
+        self._retract_srv = self.create_service(
+            Trigger, "~/retract", self._retract_callback, callback_group=self._cb_group
+        )
 
         self._control_timer = self.create_timer(
             0.02, self._control_loop, callback_group=self._cb_group  # 50 Hz
@@ -249,6 +255,62 @@ class ActuatorDriverNode(Node):
         self._stop_motor()
         response.success = True
         response.message = f"[{self._actuator_name}] Stopped."
+        return response
+
+    def _extend_callback(self, request, response):
+        """Blocking service: extend actuator for max_continuous_run_s then stop.
+
+        Safe to block here because the node uses MultiThreadedExecutor +
+        ReentrantCallbackGroup — other callbacks continue on separate threads.
+        """
+        if self._in_cooldown():
+            response.success = False
+            response.message = f"[{self._actuator_name}] In cooldown — cannot extend."
+            return response
+
+        self.get_logger().info(f"[{self._actuator_name}] Extend service: driving for up to {self._max_continuous_run_s}s")
+        self._drive_value = 1.0
+        self._last_command_time = time.time()
+
+        # Keepalive loop: ping _last_command_time every 0.5 s so the 2 s watchdog
+        # never fires while the service is intentionally running the motor.
+        deadline = time.time() + self._max_continuous_run_s
+        while time.time() < deadline:
+            self._last_command_time = time.time()   # prevent watchdog cutoff
+            if self._in_cooldown():
+                break
+            time.sleep(0.05)
+
+        self._drive_value = 0.0
+        self._stop_motor()
+        response.success = True
+        response.message = f"[{self._actuator_name}] Extend complete."
+        self.get_logger().info(f"[{self._actuator_name}] Extend service: done.")
+        return response
+
+    def _retract_callback(self, request, response):
+        """Blocking service: retract actuator for max_continuous_run_s then stop."""
+        if self._in_cooldown():
+            response.success = False
+            response.message = f"[{self._actuator_name}] In cooldown — cannot retract."
+            return response
+
+        self.get_logger().info(f"[{self._actuator_name}] Retract service: driving for up to {self._max_continuous_run_s}s")
+        self._drive_value = -1.0
+        self._last_command_time = time.time()
+
+        deadline = time.time() + self._max_continuous_run_s
+        while time.time() < deadline:
+            self._last_command_time = time.time()   # prevent watchdog cutoff
+            if self._in_cooldown():
+                break
+            time.sleep(0.05)
+
+        self._drive_value = 0.0
+        self._stop_motor()
+        response.success = True
+        response.message = f"[{self._actuator_name}] Retract complete."
+        self.get_logger().info(f"[{self._actuator_name}] Retract service: done.")
         return response
 
     # -----------------------------------------------------------------------

@@ -9,9 +9,9 @@ bucket:
         pwm_frequency: 10000
         max_speed_pct: 100
         watchdog_timeout_s: 2.0
-        max_continuous_run_s: 15.0
+        max_continuous_run_s: 18.0   # 203 mm / 15 mm/s = 13.5 s no-load; 18 s gives margin under drag load
         cooldown_time_s: 45.0
-        invert_direction: false
+        invert_direction: false       # VERIFY on bench: if extend retracts, set true
 
   tilt:
     actuator_driver:
@@ -23,6 +23,6 @@ bucket:
         pwm_frequency: 10000
         max_speed_pct: 100
         watchdog_timeout_s: 2.0
-        max_continuous_run_s: 15.0
+        max_continuous_run_s: 20.0   # 254 mm / 15 mm/s = 16.9 s no-load; was 15.0 (too short)
         cooldown_time_s: 45.0
-        invert_direction: false
+        invert_direction: false       # VERIFY on bench: if extend retracts, set true

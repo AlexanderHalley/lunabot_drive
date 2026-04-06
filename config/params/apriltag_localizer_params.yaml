@@ -1,0 +1,36 @@
+# AprilTag Localizer Parameters
+# Provides initial map->odom transform for Nav2 from known tag positions.
+#
+# Tag poses are specified as the ground-truth 6-DOF pose in the MAP frame.
+# Format per tag: [x, y, z, qx, qy, qz, qw]
+#
+# Competition arena setup (adjust before each match if tags are repositioned):
+#   Tag ID 0: mounted at (0.1, 0.0) on the arena perimeter, height 0.3 m
+#   Tag ID 1: mounted at (0.0, 0.1) on the arena perimeter, height 0.3 m
+#
+# Orientation convention:
+#   Tags are mounted vertically, facing toward the robot start zone (+x direction).
+#   The default identity quaternion (0,0,0,1) is correct if the tag's z-axis
+#   points away from the wall (toward the robot).  Rotate as needed for your
+#   specific mount geometry.
+#
+# Measure tag center positions carefully — localization accuracy depends on this.
+
+apriltag_localizer:
+  ros__parameters:
+    tag_ids: [0, 1]
+    tag_family: "tag36h11"
+    camera_frame: "oak_rgb_camera_optical_frame"
+    base_frame: "base_link"
+    odom_frame: "odom"
+    map_frame: "map"
+    publish_rate: 10.0      # Hz — how often map->odom TF is rebroadcast
+    stale_timeout: 3.0      # s — after this with no detection, status → STALE
+    tf_lookup_timeout: 0.15 # s — TF lookup timeout per detection event
+
+    # Flat list: [x0, y0, z0, qx0, qy0, qz0, qw0,  x1, y1, z1, qx1, qy1, qz1, qw1]
+    # Tag 0 at x=0.1, y=0.0; Tag 1 at x=0.0, y=0.1; both at z=0.3 m height
+    tag_poses: [
+      0.1, 0.0, 0.3,  0.0, 0.0, 0.0, 1.0,
+      0.0, 0.1, 0.3,  0.0, 0.0, 0.0, 1.0
+    ]
