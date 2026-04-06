@@ -206,6 +206,68 @@
     .cam-btn.active { background: #1a4a8a; border-color: #4488cc; color: #fff; }
 
     /* ------------------------------------------------------------------ */
+    /* Robot camera overlay                                                 */
+    /* ------------------------------------------------------------------ */
+    #cam-overlay {
+      position: fixed;
+      top: 162px;
+      right: 12px;
+      width: 640px;
+      background: #1c1c1e;
+      border: 1px solid #4488cc;
+      border-radius: 6px;
+      overflow: hidden;
+      z-index: 200;
+      display: none;
+      box-shadow: 0 6px 32px rgba(0,0,0,0.8);
+    }
+    #cam-overlay.visible { display: block; }
+    #cam-overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: #111;
+      border-bottom: 1px solid #333;
+      font-size: 13px;
+      color: #aaa;
+      user-select: none;
+    }
+    #cam-close {
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+    #cam-close:hover { color: #fff; }
+    #cam-img {
+      width: 640px;
+      height: 360px;
+      display: block;
+      background: #000;
+      object-fit: cover;
+    }
+    #cam-error {
+      display: none;
+      padding: 24px;
+      text-align: center;
+      color: #777;
+      font-size: 14px;
+      height: 360px;
+      line-height: 360px;
+    }
+    #cam-bw-note {
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #555;
+      background: #111;
+      text-align: right;
+    }
+
+    /* ------------------------------------------------------------------ */
     /* Panel 4 — Node Health (left, row 3)                                 */
     /* ------------------------------------------------------------------ */
     #p-health {
@@ -356,6 +418,11 @@
       <button class="cam-btn" id="cam-2" onclick="setCameras(2)">2</button>
     </div>
 
+    <div class="camera-toggle">
+      <span>Robot camera feed:</span>
+      <button class="cam-btn" id="btn-robot-cam" onclick="toggleRobotCam()">OFF</button>
+    </div>
+
     <div id="bw-score">Projected: — / 120 pts</div>
   </div>
 
@@ -484,6 +551,19 @@
     </div>
 
   </div><!-- end grid -->
+</div>
+
+<!-- ================================================================== -->
+<!-- Robot Camera Overlay                                                 -->
+<!-- ================================================================== -->
+<div id="cam-overlay">
+  <div id="cam-overlay-header">
+    <span>Robot Camera &mdash; /oak/rgb/image_raw</span>
+    <button id="cam-close" onclick="toggleRobotCam()" title="Close">&times;</button>
+  </div>
+  <img id="cam-img" src="" alt="" onerror="onCamError()" onload="onCamLoad()"/>
+  <div id="cam-error">Stream unavailable &mdash; check web_video_server on lunapi<br><small>sudo apt install ros-jazzy-web-video-server</small></div>
+  <div id="cam-bw-note">~0.3&ndash;0.8 Mbps at quality=50 &mdash; monitor bandwidth bar</div>
 </div>
 
 <!-- ================================================================== -->
@@ -838,6 +918,46 @@ function timerReset() {
   timerStop();
   timerSeconds = 0;
   renderTimer();
+}
+
+/* -------------------------------------------------------------------- */
+/* Robot camera toggle                                                    */
+/* -------------------------------------------------------------------- */
+const CAM_URL = 'http://lunapi:8080/stream?topic=/oak/rgb/image_raw'
+              + '&type=mjpeg&quality=50&width=640&height=360';
+
+let robotCamActive = false;
+
+function toggleRobotCam() {
+  robotCamActive = !robotCamActive;
+  const overlay = document.getElementById('cam-overlay');
+  const btn     = document.getElementById('btn-robot-cam');
+  const img     = document.getElementById('cam-img');
+  const err     = document.getElementById('cam-error');
+
+  if (robotCamActive) {
+    err.style.display = 'none';
+    img.style.display = 'block';
+    img.src = CAM_URL;
+    overlay.classList.add('visible');
+    btn.textContent = 'ON';
+    btn.classList.add('active');
+  } else {
+    img.src = '';
+    overlay.classList.remove('visible');
+    btn.textContent = 'OFF';
+    btn.classList.remove('active');
+  }
+}
+
+function onCamError() {
+  document.getElementById('cam-img').style.display   = 'none';
+  document.getElementById('cam-error').style.display = 'block';
+}
+
+function onCamLoad() {
+  document.getElementById('cam-img').style.display   = 'block';
+  document.getElementById('cam-error').style.display = 'none';
 }
 
 /* -------------------------------------------------------------------- */

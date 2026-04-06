@@ -291,4 +291,20 @@ def generate_launch_description():
             parameters=[{'port': 9090}],
             output='screen',
         ),
+
+        # ── 13. web_video_server — MJPEG stream for dashboard camera feed ────
+        #    Streams /oak/rgb/image_raw as MJPEG over HTTP on port 8080.
+        #    The Pi is the subscriber (no LAN overhead until a browser requests
+        #    the stream); the dashboard toggles it via an <img src> swap.
+        #    Install: sudo apt install ros-jazzy-web-video-server
+        Node(
+            package='web_video_server',
+            executable='web_video_server',
+            name='web_video_server',
+            parameters=[{
+                'port': 8080,
+                'default_stream_type': 'mjpeg',
+            }],
+            output='screen',
+        ),
     ])
