@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!--
+  Excavation Behavior Tree — Lunabotics 2026
+
+  This BT handles the NAVIGATION portion of an excavation cycle.
+  Bucket actuation (lift extend/retract) is handled by mission_state_node
+  BEFORE and AFTER this BT is executed.
+
+  Sequence:
+    1. Navigate to dig zone  (goal injected via blackboard 'goal' key)
+    2. Navigate to home pose (goal injected via blackboard 'home_pose' key)
+
+  Both navigation steps include full replanning + recovery behavior.
+
+  NOTE: When custom BT action nodes for bucket control are available,
+  lift_extend and lift_retract service call nodes should be inserted
+  at steps 1.5 and 2.5 respectively.
+-->
+<root BTCPP_format="4" main_tree_to_execute="ExcavationTree">
+  <BehaviorTree ID="ExcavationTree">
+    <Sequence name="ExcavationSequence">
+
+      <!-- Step 1: Navigate to dig zone (goal pose provided by bt_navigator) -->
+      <RecoveryNode number_of_retries="3" name="NavigateToDig">
+        <PipelineSequence name="NavigateWithReplanToDig">
+          <RateController hz="0.5">
+            <ComputePathToPose
+              goal="{goal}"
+              path="{dig_path}"
+              planner_id=""
+              error_code_id="{compute_path_error_code}"/>
+          </RateController>
+          <FollowPath
+            path="{dig_path}"
+            controller_id=""
+            error_code_id="{follow_path_error_code}"/>
+        </PipelineSequence>
+        <ReactiveFallback name="DigRecovery">
+          <GoalUpdated/>
+          <RoundRobin name="DigRecoveryActions">
+            <Sequence name="ClearCostmapsDig">
+              <ClearEntireCostmap
+                name="ClearLocalCostmap"
+                service_name="local_costmap/clear_entire_costmap"/>
+              <ClearEntireCostmap
+                name="ClearGlobalCostmap"
+                service_name="global_costmap/clear_entire_costmap"/>
+            </Sequence>
+            <Spin spin_dist="1.57"/>
+            <Wait wait_duration="3"/>
+            <BackUp backup_dist="0.15" backup_speed="0.025"/>
+          </RoundRobin>
+        </ReactiveFallback>
+      </RecoveryNode>
+
+      <!-- Step 2: Navigate back home -->
+      <RecoveryNode number_of_retries="3" name="NavigateHome">
+        <PipelineSequence name="NavigateWithReplanHome">
+          <RateController hz="0.5">
+            <ComputePathToPose
+              goal="{home_pose}"
+              path="{home_path}"
+              planner_id=""
+              error_code_id="{compute_path_error_code}"/>
+          </RateController>
+          <FollowPath
+            path="{home_path}"
+            controller_id=""
+            error_code_id="{follow_path_error_code}"/>
+        </PipelineSequence>
+        <ReactiveFallback name="HomeRecovery">
+          <GoalUpdated/>
+          <RoundRobin name="HomeRecoveryActions">
+            <Sequence name="ClearCostmapsHome">
+              <ClearEntireCostmap
+                name="ClearLocalCostmap"
+                service_name="local_costmap/clear_entire_costmap"/>
+              <ClearEntireCostmap
+                name="ClearGlobalCostmap"
+                service_name="global_costmap/clear_entire_costmap"/>
+            </Sequence>
+            <Spin spin_dist="1.57"/>
+            <Wait wait_duration="3"/>
+            <BackUp backup_dist="0.15" backup_speed="0.025"/>
+          </RoundRobin>
+        </ReactiveFallback>
+      </RecoveryNode>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

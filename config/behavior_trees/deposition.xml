@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<!--
+  Deposition Behavior Tree — Lunabotics 2026
+
+  This BT handles the NAVIGATION portion of a deposition cycle.
+  Bucket tilt actuation is handled by mission_state_node after navigation
+  to the hopper pose completes.
+
+  Sequence:
+    1. Navigate to hopper pose (goal provided via blackboard)
+    2. Navigate to home pose
+
+  NOTE: When custom BT action nodes for bucket control are available,
+  tilt_extend, wait, and tilt_retract nodes should be inserted between
+  steps 1 and 2.
+-->
+<root BTCPP_format="4" main_tree_to_execute="DepositionTree">
+  <BehaviorTree ID="DepositionTree">
+    <Sequence name="DepositionSequence">
+
+      <!-- Step 1: Navigate to ISRU hopper bin -->
+      <RecoveryNode number_of_retries="3" name="NavigateToHopper">
+        <PipelineSequence name="NavigateWithReplanToHopper">
+          <RateController hz="0.5">
+            <ComputePathToPose
+              goal="{goal}"
+              path="{hopper_path}"
+              planner_id=""
+              error_code_id="{compute_path_error_code}"/>
+          </RateController>
+          <FollowPath
+            path="{hopper_path}"
+            controller_id=""
+            error_code_id="{follow_path_error_code}"/>
+        </PipelineSequence>
+        <ReactiveFallback name="HopperRecovery">
+          <GoalUpdated/>
+          <RoundRobin name="HopperRecoveryActions">
+            <Sequence name="ClearCostmapsHopper">
+              <ClearEntireCostmap
+                name="ClearLocalCostmap"
+                service_name="local_costmap/clear_entire_costmap"/>
+              <ClearEntireCostmap
+                name="ClearGlobalCostmap"
+                service_name="global_costmap/clear_entire_costmap"/>
+            </Sequence>
+            <Spin spin_dist="1.57"/>
+            <Wait wait_duration="3"/>
+            <BackUp backup_dist="0.15" backup_speed="0.025"/>
+          </RoundRobin>
+        </ReactiveFallback>
+      </RecoveryNode>
+
+      <!-- Step 2: Navigate back home -->
+      <RecoveryNode number_of_retries="3" name="NavigateHome">
+        <PipelineSequence name="NavigateWithReplanHome">
+          <RateController hz="0.5">
+            <ComputePathToPose
+              goal="{home_pose}"
+              path="{home_path}"
+              planner_id=""
+              error_code_id="{compute_path_error_code}"/>
+          </RateController>
+          <FollowPath
+            path="{home_path}"
+            controller_id=""
+            error_code_id="{follow_path_error_code}"/>
+        </PipelineSequence>
+        <ReactiveFallback name="HomeRecovery">
+          <GoalUpdated/>
+          <RoundRobin name="HomeRecoveryActions">
+            <Sequence name="ClearCostmapsHome">
+              <ClearEntireCostmap
+                name="ClearLocalCostmap"
+                service_name="local_costmap/clear_entire_costmap"/>
+              <ClearEntireCostmap
+                name="ClearGlobalCostmap"
+                service_name="global_costmap/clear_entire_costmap"/>
+            </Sequence>
+            <Spin spin_dist="1.57"/>
+            <Wait wait_duration="3"/>
+            <BackUp backup_dist="0.15" backup_speed="0.025"/>
+          </RoundRobin>
+        </ReactiveFallback>
+      </RecoveryNode>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

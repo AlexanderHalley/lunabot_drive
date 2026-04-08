@@ -1,0 +1,36 @@
+bucket:
+  lift:
+    lift_driver:
+      ros__parameters:
+        actuator_name: "lift"
+        rpwm_gpio: 12
+        lpwm_gpio: 18
+        en_gpio: 5
+        gpio_chip: 4                  # Pi 5 = 4, Pi 4 / CM4 = 0
+        pwm_frequency: 10000
+        max_speed_pct: 100
+        watchdog_timeout_s: 2.0
+        max_continuous_run_s: 18.0    # 203 mm / 15 mm/s = 13.5 s no-load; 18 s gives margin under drag load
+        cooldown_time_s: 45.0
+        invert_direction: false       # VERIFY on bench: if extend retracts, set true
+        dead_band: 0.01
+        stroke_length_mm: 203.0       # full mechanical stroke (lift)
+        no_load_speed_mm_s: 15.0
+
+  tilt:
+    tilt_driver:
+      ros__parameters:
+        actuator_name: "tilt"
+        rpwm_gpio: 13
+        lpwm_gpio: 19
+        en_gpio: 6
+        gpio_chip: 4                  # Pi 5 = 4, Pi 4 / CM4 = 0
+        pwm_frequency: 10000
+        max_speed_pct: 100
+        watchdog_timeout_s: 2.0
+        max_continuous_run_s: 20.0    # 254 mm / 15 mm/s = 16.9 s no-load; was 15.0 (too short)
+        cooldown_time_s: 45.0
+        invert_direction: false       # VERIFY on bench: if extend retracts, set true
+        dead_band: 0.01
+        stroke_length_mm: 254.0       # full mechanical stroke (tilt)
+        no_load_speed_mm_s: 15.0

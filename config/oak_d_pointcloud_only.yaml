@@ -1,0 +1,85 @@
+# OAK-D-S2 — Pointcloud + Low-Rate RGB (Bandwidth Optimized for Autonomy)
+#
+# This config powers obstacle avoidance (via stereo pointcloud) AND AprilTag
+# localization (via low-rate RGB). AprilTag detection only needs a few frames
+# per second of 720p mono/color, so we keep RGB at 5 fps / 720p to stay well
+# under the 4 Mbps competition cap while still providing reliable tag reads.
+#
+# If you need RGB-free mode (e.g. pre-match baseline test) switch the drive
+# launch file back to a depth-only config.
+#
+# IMPORTANT: The top-level namespace must match the node name.
+# Run `ros2 node list` after launching to confirm — use /oak: or adjust accordingly.
+/oak:
+  ros__parameters:
+    # ── Camera / Pipeline ──
+    camera:
+      # RGBD pipeline — stereo depth + RGB color. Required by apriltag_ros
+      # which subscribes to /oak/rgb/image_raw + /oak/rgb/camera_info.
+      i_pipeline_type: 'RGBD'
+      i_nn_type: 'none'
+      i_enable_imu: true
+      i_usb_speed: 'SUPER'        # Must be on a USB 3.0 (blue) port
+      i_enable_ir: false
+
+    # ── RGB camera (for apriltag_ros only — keep bandwidth low) ──
+    rgb:
+      i_publish_topic: true
+      i_resolution: '720P'         # 1280x720 is plenty for tag36h11 decoding
+      i_fps: 5.0                   # AprilTag only needs a few fps
+      i_interleaved: false
+      i_keep_preview_aspect_ratio: true
+
+    # ── Left & Right Sensors (control stereo input resolution) ──
+    left:
+      i_publish_topic: false       # Don't publish raw left image
+      i_width: 640
+      i_height: 400
+      i_fps: 10.0
+
+    right:
+      i_publish_topic: false       # Don't publish raw right image
+      i_width: 640
+      i_height: 400
+      i_fps: 10.0
+
+    # ── Stereo Depth Node ──
+    stereo:
+      i_publish_topic: true        # MUST be true — pointcloud reads from stereo depth output
+      i_fps: 10.0
+      i_depth_preset: 'HIGH_ACCURACY'
+      i_subpixel: false            # Saves bandwidth and compute
+      i_extended_disp: false
+      i_lrc_threshold: 10
+      i_stereo_conf_threshold: 200 # Higher = fewer but more confident depth values
+
+      # Decimation filter — KEY bandwidth saver, reduces resolution by factor in each axis
+      i_enable_decimation_filter: true
+      i_decimation_filter_decimation_factor: 2
+      i_decimation_filter_decimation_mode: 'PIXEL_SKIPPING'
+
+      # Spatial filter — smooths depth, removes noise
+      i_enable_spatial_filter: true
+      i_spatial_filter_alpha: 0.5
+      i_spatial_filter_delta: 20
+      i_spatial_filter_num_iterations: 1
+      i_spatial_filter_hole_filling_radius: 2
+
+      # Temporal filter — reduces flickering, slight latency tradeoff
+      i_enable_temporal_filter: true
+      i_temporal_filter_alpha: 0.4
+      i_temporal_filter_delta: 20
+      i_temporal_filter_persistency: 'VALID_2_IN_LAST_4'
+
+      # Speckle filter — removes isolated noise points
+      i_enable_speckle_filter: true
+      i_speckle_filter_speckle_range: 12
+
+      # Threshold filter — limits range (values in MILLIMETERS)
+      i_enable_threshold_filter: true
+      i_threshold_filter_min_range: 200    # 0.2m — ignore anything closer
+      i_threshold_filter_max_range: 5000   # 5.0m — arena diagonal is ~8.4m, 5m is plenty
+
+    # ── IMU ──
+    imu:
+      i_imu_update_rate: 100       # Reduced from 400 to save bandwidth

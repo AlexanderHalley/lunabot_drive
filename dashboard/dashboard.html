@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920" />
+  <title>Lunabot MCC Dashboard</title>
+
+  <!--
+    CDN roslibjs — for competition OFFLINE use:
+      1. Download https://cdn.jsdelivr.net/npm/roslib/build/roslib.min.js
+      2. Save to dashboard/lib/roslib.min.js
+      3. Change the src below to: lib/roslib.min.js
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/roslib/build/roslib.min.js"></script>
+
+  <style>
+    /* ------------------------------------------------------------------ */
+    /* Reset & base                                                         */
+    /* ------------------------------------------------------------------ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      width: 1920px;
+      min-height: 1080px;
+      overflow-x: hidden;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Grid layout                                                          */
+    /* ------------------------------------------------------------------ */
+    .grid {
+      display: grid;
+      grid-template-columns: 480px 1fr;
+      grid-template-rows: 150px auto auto 90px;
+      gap: 6px;
+      padding: 6px;
+      height: 1080px;
+    }
+
+    .panel {
+      background: #1c1c1e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 14px 18px;
+      overflow: hidden;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Panel 1 — Autonomy State Banner (full width)                         */
+    /* ------------------------------------------------------------------ */
+    #p-state {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s;
+      background: #555555;
+    }
+
+    #state-text {
+      font-size: 48px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-align: center;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+
+    @keyframes flash-red {
+      0%, 100% { background: #CC0000; }
+      50%       { background: #880000; }
+    }
+    .estop-flash { animation: flash-red 0.5s infinite; }
+
+    /* ------------------------------------------------------------------ */
+    /* Panel 2 — Behavior Trigger Controls (right, row 2)                  */
+    /* ------------------------------------------------------------------ */
+    #p-controls {
+      grid-column: 2;
+      grid-row: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #p-controls h2 { font-size: 16px; color: #aaa; margin-bottom: 4px; }
+
+    .ctrl-btn {
+      width: 100%;
+      height: 60px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.2s, filter 0.2s;
+      letter-spacing: 0.5px;
+    }
+    .ctrl-btn:disabled {
+      opacity: 0.28;
+      cursor: not-allowed;
+      filter: grayscale(60%);
+    }
+
+    #btn-arm        { background: #2255aa; color: #fff; }
+    #btn-excavation { background: #226622; color: #fff; }
+    #btn-deposition { background: #225522; color: #cfc; }
+    #btn-abort      { background: #882200; color: #fff; }
+    #btn-ack        { background: #335566; color: #fff; }
+
+    #cycle-display {
+      font-size: 22px;
+      color: #ccc;
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    #connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      margin-top: auto;
+    }
+    .dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .dot-green { background: #33cc55; box-shadow: 0 0 6px #33cc55; }
+    .dot-red   { background: #cc2200; box-shadow: 0 0 6px #cc2200; }
+
+    /* ------------------------------------------------------------------ */
+    /* Panel 3 — Bandwidth (left, row 2)                                   */
+    /* ------------------------------------------------------------------ */
+    #p-bw {
+      grid-column: 1;
+      grid-row: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #p-bw h2, #p-health h2, #p-bucket h2 {
+      font-size: 15px;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .bar-wrap {
+      background: #2a2a2a;
+      border-radius: 4px;
+      height: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s, background-color 0.4s;
+    }
+    .bar-label {
+      position: absolute;
+      right: 8px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: #fff;
+      font-weight: 600;
+      text-shadow: 0 0 4px #000;
+      pointer-events: none;
+    }
+
+    #bw-status {
+      font-size: 20px;
+      font-weight: 700;
+      text-align: center;
+    }
+    #bw-score {
+      font-size: 14px;
+      color: #bbb;
+      text-align: center;
+    }
+
+    .camera-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .cam-btn {
+      width: 40px; height: 28px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #2a2a2a;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .cam-btn.active { background: #1a4a8a; border-color: #4488cc; color: #fff; }
+
+    /* ------------------------------------------------------------------ */
+    /* Robot camera overlay                                                 */
+    /* ------------------------------------------------------------------ */
+    #cam-overlay {
+      position: fixed;
+      top: 162px;
+      right: 12px;
+      width: 640px;
+      background: #1c1c1e;
+      border: 1px solid #4488cc;
+      border-radius: 6px;
+      overflow: hidden;
+      z-index: 200;
+      display: none;
+      box-shadow: 0 6px 32px rgba(0,0,0,0.8);
+    }
+    #cam-overlay.visible { display: block; }
+    #cam-overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: #111;
+      border-bottom: 1px solid #333;
+      font-size: 13px;
+      color: #aaa;
+      user-select: none;
+    }
+    #cam-close {
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+    #cam-close:hover { color: #fff; }
+    #cam-img {
+      width: 640px;
+      height: 360px;
+      display: block;
+      background: #000;
+      object-fit: cover;
+    }
+    #cam-error {
+      display: none;
+      padding: 24px;
+      text-align: center;
+      color: #777;
+      font-size: 14px;
+      height: 360px;
+      line-height: 360px;
+    }
+    #cam-bw-note {
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #555;
+      background: #111;
+      text-align: right;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Panel 4 — Node Health (left, row 3)                                 */
+    /* ------------------------------------------------------------------ */
+    #p-health {
+      grid-column: 1;
+      grid-row: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .node-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 2px;
+      border-bottom: 1px solid #282828;
+      font-size: 14px;
+    }
+    .node-name { font-weight: 600; min-width: 180px; }
+    .node-impact { font-size: 11px; color: #777; }
+
+    /* ------------------------------------------------------------------ */
+    /* Panel 5 — Bucket Subsystem (right, row 3)                           */
+    /* ------------------------------------------------------------------ */
+    #p-bucket {
+      grid-column: 2;
+      grid-row: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .bucket-bar-row { display: flex; flex-direction: column; gap: 4px; }
+    .bucket-bar-title {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #ccc;
+    }
+
+    #bucket-state-display {
+      margin-top: auto;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #88ccff;
+      background: #151d28;
+      border-radius: 6px;
+      padding: 10px;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Panel 6 — Telemetry Strip (full width, row 4)                       */
+    /* ------------------------------------------------------------------ */
+    #p-telem {
+      grid-column: 1 / -1;
+      grid-row: 4;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 8px 18px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+
+    .telem-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .telem-label {
+      font-size: 10px;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .telem-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #eee;
+    }
+    .telem-sep {
+      width: 1px;
+      height: 60px;
+      background: #333;
+      flex-shrink: 0;
+    }
+
+    #timer-display { font-size: 28px; font-weight: 900; color: #eee; }
+    #timer-display.over { color: #cc2200; }
+
+    .run-btn {
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #2a2a2a;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .run-btn.active { background: #1a4a8a; border-color: #4488cc; color: #fff; }
+
+    .timer-controls {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .timer-btn {
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #222;
+      color: #bbb;
+      cursor: pointer;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="grid">
+
+  <!-- ================================================================ -->
+  <!-- PANEL 1: Autonomy State Banner                                    -->
+  <!-- ================================================================ -->
+  <div class="panel" id="p-state">
+    <div id="state-text">TELEOP — Manual Control Active</div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- PANEL 3: Bandwidth Monitor (left, row 2)                          -->
+  <!-- ================================================================ -->
+  <div class="panel" id="p-bw">
+    <h2>Live Bandwidth</h2>
+
+    <div class="bar-wrap">
+      <div class="bar-fill" id="bw-bar" style="width:0%; background:#33cc55;"></div>
+      <span class="bar-label" id="bw-bar-label">0.00 Mbps / 4.0 Mbps</span>
+    </div>
+
+    <div id="bw-status" style="color:#33cc55;">EXCELLENT</div>
+
+    <div class="camera-toggle">
+      <span>Arena cameras:</span>
+      <button class="cam-btn active" id="cam-0" onclick="setCameras(0)">0</button>
+      <button class="cam-btn" id="cam-1" onclick="setCameras(1)">1</button>
+      <button class="cam-btn" id="cam-2" onclick="setCameras(2)">2</button>
+    </div>
+
+    <div class="camera-toggle">
+      <span>Robot camera feed:</span>
+      <button class="cam-btn" id="btn-robot-cam" onclick="toggleRobotCam()">OFF</button>
+    </div>
+
+    <div id="bw-score">Projected: — / 120 pts</div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- PANEL 2: Behavior Trigger Controls (right, row 2)                 -->
+  <!-- ================================================================ -->
+  <div class="panel" id="p-controls">
+    <h2>Behavior Trigger Controls</h2>
+
+    <button class="ctrl-btn" id="btn-arm"        onclick="sendCommand('arm')">ARM AUTONOMY</button>
+    <button class="ctrl-btn" id="btn-excavation" onclick="sendCommand('start_excavation')">CONFIRM START — Excavation</button>
+    <button class="ctrl-btn" id="btn-deposition" onclick="sendCommand('start_deposition')">CONFIRM START — Deposition</button>
+    <button class="ctrl-btn" id="btn-abort"      onclick="sendCommand('abort')">ABORT — RESUME TELEOP</button>
+    <button class="ctrl-btn" id="btn-ack"        onclick="sendCommand('acknowledge')">ACKNOWLEDGE COMPLETE</button>
+
+    <div id="cycle-display">Cycle 0 of 2</div>
+
+    <div id="connection-status">
+      <span class="dot dot-red" id="conn-dot"></span>
+      <span id="conn-label">Disconnected</span>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- PANEL 4: Node Health Monitor (left, row 3)                        -->
+  <!-- ================================================================ -->
+  <div class="panel" id="p-health">
+    <h2>Node Health</h2>
+    <!-- Rows populated by JS -->
+    <div id="health-rows"></div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- PANEL 5: Bucket Subsystem (right, row 3)                          -->
+  <!-- ================================================================ -->
+  <div class="panel" id="p-bucket">
+    <h2>Bucket Subsystem</h2>
+
+    <div class="bucket-bar-row">
+      <div class="bucket-bar-title">
+        <span>Lift</span>
+        <span id="lift-label">0% / 0 mm — RETRACTED</span>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-fill" id="lift-bar" style="width:0%; background:#4488cc;"></div>
+      </div>
+    </div>
+
+    <div class="bucket-bar-row">
+      <div class="bucket-bar-title">
+        <span>Tilt</span>
+        <span id="tilt-label">0% / 0 mm — FLAT</span>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-fill" id="tilt-bar" style="width:0%; background:#44aacc;"></div>
+      </div>
+    </div>
+
+    <div id="bucket-state-display">Bucket State: —</div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- PANEL 6: Telemetry Strip                                          -->
+  <!-- ================================================================ -->
+  <div class="panel" id="p-telem">
+
+    <div class="telem-cell">
+      <span class="telem-label">Mode</span>
+      <span class="telem-value" id="t-mode">TELEOP</span>
+    </div>
+    <div class="telem-sep"></div>
+
+    <div class="telem-cell">
+      <span class="telem-label">Velocity</span>
+      <span class="telem-value" id="t-vel">— m/s</span>
+    </div>
+    <div class="telem-sep"></div>
+
+    <div class="telem-cell">
+      <span class="telem-label">Roll</span>
+      <span class="telem-value" id="t-roll">—°</span>
+    </div>
+    <div class="telem-sep"></div>
+
+    <div class="telem-cell">
+      <span class="telem-label">Pitch</span>
+      <span class="telem-value" id="t-pitch">—°</span>
+    </div>
+    <div class="telem-sep"></div>
+
+    <div class="telem-cell">
+      <span class="telem-label">EKF Cov</span>
+      <span class="telem-value" id="t-ekf">—</span>
+    </div>
+    <div class="telem-sep"></div>
+
+    <div class="telem-cell">
+      <span class="telem-label">CAN</span>
+      <span class="telem-value" id="t-can">—</span>
+    </div>
+    <div class="telem-sep"></div>
+
+    <div class="telem-cell">
+      <span class="telem-label">RSSI</span>
+      <span class="telem-value" id="t-rssi">— dBm</span>
+    </div>
+    <div class="telem-sep"></div>
+
+    <!-- Timer -->
+    <div class="telem-cell" style="align-items:center;">
+      <div id="timer-display">00:00</div>
+      <div class="timer-controls">
+        <button class="timer-btn" id="btn-timer-start" onclick="timerStartStop()">Start</button>
+        <button class="timer-btn" onclick="timerReset()">Reset</button>
+      </div>
+    </div>
+    <div class="telem-sep"></div>
+
+    <!-- Run selector -->
+    <div class="telem-cell">
+      <span class="telem-label">Run #</span>
+      <div style="display:flex; gap:6px; margin-top:4px;">
+        <button class="run-btn active" id="run-1" onclick="selectRun(1)">Run 1</button>
+        <button class="run-btn"        id="run-2" onclick="selectRun(2)">Run 2</button>
+      </div>
+    </div>
+
+  </div><!-- end grid -->
+</div>
+
+<!-- ================================================================== -->
+<!-- Robot Camera Overlay                                                 -->
+<!-- ================================================================== -->
+<div id="cam-overlay">
+  <div id="cam-overlay-header">
+    <span>Robot Camera &mdash; /oak/rgb/image_raw</span>
+    <button id="cam-close" onclick="toggleRobotCam()" title="Close">&times;</button>
+  </div>
+  <img id="cam-img" src="" alt="" onerror="onCamError()" onload="onCamLoad()"/>
+  <div id="cam-error">Stream unavailable &mdash; check web_video_server on lunapi<br><small>sudo apt install ros-jazzy-web-video-server</small></div>
+  <div id="cam-bw-note">~0.3&ndash;0.8 Mbps at quality=50 &mdash; monitor bandwidth bar</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- JavaScript                                                           -->
+<!-- ================================================================== -->
+<script>
+'use strict';
+
+/* -------------------------------------------------------------------- */
+/* State                                                                  */
+/* -------------------------------------------------------------------- */
+let autonomyState = 'TELEOP';
+let cycleCount    = 0;
+let cameraCount   = 0;
+let bwMbps        = 0.0;
+
+/* -------------------------------------------------------------------- */
+/* ROS connection                                                         */
+/* -------------------------------------------------------------------- */
+const ROS_URL = 'ws://lunapi:9090';
+
+let ros = null;
+let reconnectTimer = null;
+
+// Publishers
+let cmdPub = null;
+
+function connect() {
+  if (ros) {
+    try { ros.close(); } catch(e) {}
+  }
+
+  ros = new ROSLIB.Ros({ url: ROS_URL });
+
+  ros.on('connection', () => {
+    clearTimeout(reconnectTimer);
+    setConnected(true);
+    setupSubscriptions();
+    setupPublisher();
+  });
+
+  ros.on('error', () => {
+    setConnected(false);
+    scheduleReconnect();
+  });
+
+  ros.on('close', () => {
+    setConnected(false);
+    scheduleReconnect();
+  });
+}
+
+function scheduleReconnect() {
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(connect, 3000);
+}
+
+function setConnected(ok) {
+  document.getElementById('conn-dot').className   = 'dot ' + (ok ? 'dot-green' : 'dot-red');
+  document.getElementById('conn-label').textContent = ok ? 'Connected' : 'Disconnected';
+}
+
+function setupPublisher() {
+  cmdPub = new ROSLIB.Topic({
+    ros: ros,
+    name: '/autonomy_command',
+    messageType: 'std_msgs/String',
+  });
+}
+
+function sendCommand(cmd) {
+  if (!cmdPub) { alert('Not connected to rosbridge'); return; }
+  cmdPub.publish(new ROSLIB.Message({ data: cmd }));
+}
+
+/* -------------------------------------------------------------------- */
+/* Subscriptions                                                          */
+/* -------------------------------------------------------------------- */
+function setupSubscriptions() {
+
+  // Autonomy state
+  sub('/autonomy_state', 'std_msgs/String', (msg) => {
+    autonomyState = msg.data;
+    updateStateBanner();
+    updateControlButtons();
+    document.getElementById('t-mode').textContent = msg.data;
+  });
+
+  // Autonomy cycle
+  sub('/autonomy_cycle', 'std_msgs/Int32', (msg) => {
+    cycleCount = msg.data;
+    document.getElementById('cycle-display').textContent = `Cycle ${cycleCount} of 2`;
+  });
+
+  // Bandwidth
+  sub('/bandwidth_mbps', 'std_msgs/Float32', (msg) => {
+    bwMbps = msg.data;
+    updateBandwidth();
+  });
+
+  // Node health
+  sub('/node_health', 'std_msgs/String', (msg) => {
+    try { updateNodeHealth(JSON.parse(msg.data)); } catch(e) {}
+  });
+
+  // Bucket
+  sub('/bucket/lift_position', 'std_msgs/Float32', (msg) => updateBucketBar('lift', msg.data));
+  sub('/bucket/tilt_position', 'std_msgs/Float32', (msg) => updateBucketBar('tilt', msg.data));
+  sub('/bucket/state', 'std_msgs/String', (msg) => {
+    document.getElementById('bucket-state-display').textContent = 'Bucket State: ' + msg.data;
+  });
+
+  // Telemetry — odometry velocity
+  sub('/odom', 'nav_msgs/Odometry', (msg) => {
+    const v = msg.twist.twist.linear.x;
+    document.getElementById('t-vel').textContent = v.toFixed(2) + ' m/s';
+  });
+
+  // IMU roll/pitch
+  sub('/imu/data', 'sensor_msgs/Imu', (msg) => {
+    const q = msg.orientation;
+    const roll  = Math.atan2(2*(q.w*q.x + q.y*q.z), 1 - 2*(q.x*q.x + q.y*q.y));
+    const pitch = Math.asin(Math.max(-1, Math.min(1, 2*(q.w*q.y - q.z*q.x))));
+    document.getElementById('t-roll').textContent  = (roll  * 180/Math.PI).toFixed(1) + '°';
+    document.getElementById('t-pitch').textContent = (pitch * 180/Math.PI).toFixed(1) + '°';
+  });
+
+  // EKF covariance (position x,x element)
+  sub('/odometry/filtered', 'nav_msgs/Odometry', (msg) => {
+    const cov = msg.pose.covariance[0];  // x,x
+    document.getElementById('t-ekf').textContent = cov.toExponential(2);
+  });
+
+  // CAN status
+  sub('/can_status', 'std_msgs/String', (msg) => {
+    document.getElementById('t-can').textContent = msg.data;
+  });
+
+  // WiFi RSSI
+  sub('/wifi_rssi', 'std_msgs/Int32', (msg) => {
+    document.getElementById('t-rssi').textContent = msg.data + ' dBm';
+  });
+}
+
+function sub(topic, type, cb) {
+  const t = new ROSLIB.Topic({ ros, name: topic, messageType: type });
+  t.subscribe(cb);
+}
+
+/* -------------------------------------------------------------------- */
+/* State banner                                                           */
+/* -------------------------------------------------------------------- */
+const STATE_COLORS = {
+  TELEOP:     '#555555',
+  READY:      '#1A3A5C',
+  AUTONOMOUS: '#00AA44',
+  COMPLETE:   '#009999',
+  FAILED:     '#CC2200',
+  ESTOP:      '#CC0000',
+};
+
+// Note: AUTONOMOUS is intentionally absent here. updateStateBanner() builds
+// the autonomous-state text dynamically from the live cycle counter so we
+// can render "Cycle N of 2" instead of a static label.
+const STATE_LABELS = {
+  TELEOP:     'TELEOP \u2014 Manual Control Active',
+  READY:      'READY \u2014 Press button to begin autonomy attempt',
+  COMPLETE:   'AUTONOMY COMPLETE \u2014 Declare to MCJ',
+  FAILED:     'AUTONOMY FAILED \u2014 Announce failure, resume manual',
+  ESTOP:      'E-STOP ACTIVE',
+};
+
+function updateStateBanner() {
+  const banner = document.getElementById('p-state');
+  const text   = document.getElementById('state-text');
+
+  // Only toggle the estop-flash modifier — don't wipe out the other classes
+  // that the panel started with.
+  banner.classList.toggle('estop-flash', autonomyState === 'ESTOP');
+  banner.style.background = STATE_COLORS[autonomyState] || '#555';
+
+  if (autonomyState === 'ESTOP') {
+    text.textContent = STATE_LABELS.ESTOP;
+  } else if (autonomyState === 'AUTONOMOUS') {
+    text.textContent = `AUTONOMOUS \u2014 HANDS FREE \u2014 Cycle ${cycleCount + 1} of 2`;
+  } else {
+    text.textContent = STATE_LABELS[autonomyState] || autonomyState;
+  }
+}
+
+/* -------------------------------------------------------------------- */
+/* Control buttons                                                        */
+/* -------------------------------------------------------------------- */
+function updateControlButtons() {
+  const s = autonomyState;
+  setBtn('btn-arm',        s === 'TELEOP');
+  setBtn('btn-excavation', s === 'READY');
+  setBtn('btn-deposition', s === 'READY');
+  setBtn('btn-abort',      s === 'READY' || s === 'AUTONOMOUS');
+  setBtn('btn-ack',        s === 'COMPLETE' || s === 'ESTOP');
+}
+
+function setBtn(id, enabled) {
+  document.getElementById(id).disabled = !enabled;
+}
+
+/* -------------------------------------------------------------------- */
+/* Bandwidth                                                              */
+/* -------------------------------------------------------------------- */
+function setCameras(n) {
+  cameraCount = n;
+  [0, 1, 2].forEach(i => {
+    document.getElementById('cam-' + i).className = 'cam-btn' + (i === n ? ' active' : '');
+  });
+  updateBandwidth();
+}
+
+function updateBandwidth() {
+  const totalMbps = bwMbps + cameraCount * 0.2;
+  const pct       = Math.min(100, (totalMbps / 4.0) * 100);
+
+  const bar    = document.getElementById('bw-bar');
+  const status = document.getElementById('bw-status');
+  const score  = document.getElementById('bw-score');
+  const lbl    = document.getElementById('bw-bar-label');
+
+  bar.style.width = pct + '%';
+  lbl.textContent = totalMbps.toFixed(2) + ' Mbps / 4.0 Mbps';
+
+  let color, statusText;
+  if (totalMbps <= 1.5) {
+    color = '#33cc55'; statusText = 'EXCELLENT';
+  } else if (totalMbps <= 3.0) {
+    color = '#ccaa00'; statusText = 'CAUTION';
+  } else if (totalMbps <= 3.8) {
+    color = '#cc6600'; statusText = 'WARNING';
+  } else if (totalMbps <= 4.0) {
+    color = '#cc0000'; statusText = 'CRITICAL';
+  } else {
+    color = '#cc0000'; statusText = 'OVER LIMIT';
+  }
+
+  bar.style.background   = color;
+  status.style.color     = color;
+  status.textContent     = statusText;
+
+  const pts = Math.max(0, totalMbps * -30 + 120);
+  score.textContent = `Projected bandwidth score: ${pts.toFixed(1)} / 120 pts`;
+}
+
+/* -------------------------------------------------------------------- */
+/* Node health                                                            */
+/* -------------------------------------------------------------------- */
+const NODE_IMPACTS = {
+  drive_node:          'Drive motors offline',
+  ekf_filter_node:     'EKF dead — no fused odom',
+  apriltag_node:       'No AprilTag detections',
+  apriltag_localizer:  'No map→odom — Nav2 cannot localise',
+  oak:                 'No depth camera / RGB feed',
+  bt_navigator:        'Autonomy navigation offline',
+  controller_server:   'Path following offline',
+  rosbridge_server:    'Dashboard disconnects',
+  actuator_driver:     'Bucket lift/tilt uncontrolled',
+  mission_state_node:  'Autonomy state machine offline',
+};
+
+const EXPECTED_NODES = [
+  'drive_node','ekf_filter_node','apriltag_node','apriltag_localizer',
+  'oak','bt_navigator','controller_server','rosbridge_server',
+  'actuator_driver','mission_state_node',
+];
+
+function buildHealthRows() {
+  const container = document.getElementById('health-rows');
+  container.innerHTML = '';
+  EXPECTED_NODES.forEach(name => {
+    const row = document.createElement('div');
+    row.className = 'node-row';
+    row.id = 'hr-' + name;
+    row.innerHTML =
+      `<span class="dot dot-red" id="dot-${name}"></span>` +
+      `<span class="node-name">${name}</span>` +
+      `<span class="node-impact">${NODE_IMPACTS[name] || ''}</span>`;
+    container.appendChild(row);
+  });
+}
+
+function updateNodeHealth(data) {
+  EXPECTED_NODES.forEach(name => {
+    const dot = document.getElementById('dot-' + name);
+    if (!dot) return;
+    const alive = data[name] === true;
+    dot.className = 'dot ' + (alive ? 'dot-green' : 'dot-red');
+  });
+}
+
+/* -------------------------------------------------------------------- */
+/* Bucket                                                                 */
+/* -------------------------------------------------------------------- */
+
+function updateBucketBar(axis, value) {
+  const pct = Math.min(100, Math.max(0, value * 100));
+  const mm  = Math.round(value * 300);
+  const bar = document.getElementById(axis + '-bar');
+  const lbl = document.getElementById(axis + '-label');
+  bar.style.width = pct + '%';
+
+  let stateLabel;
+  if (value < 0.05)       stateLabel = axis === 'lift' ? 'RETRACTED' : 'FLAT';
+  else if (value < 0.95)  stateLabel = axis === 'lift' ? 'EXTENDING' : 'TILTING';
+  else                    stateLabel = axis === 'lift' ? 'EXTENDED'  : 'DUMPING';
+
+  lbl.textContent = `${pct.toFixed(0)}% / ${mm} mm \u2014 ${stateLabel}`;
+}
+
+/* -------------------------------------------------------------------- */
+/* Run timer                                                              */
+/* -------------------------------------------------------------------- */
+const MAX_SECS = 15 * 60;  // 15:00
+let timerRunning = false;
+let timerSeconds = 0;
+let timerInterval = null;
+
+function timerTick() {
+  timerSeconds++;
+  renderTimer();
+  if (timerSeconds >= MAX_SECS) timerStop();
+}
+
+function renderTimer() {
+  const m = Math.floor(timerSeconds / 60);
+  const s = timerSeconds % 60;
+  const el = document.getElementById('timer-display');
+  el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  // Toggle the `over` modifier without clobbering other classes on the element.
+  el.classList.toggle('over', timerSeconds >= MAX_SECS);
+}
+
+function timerStartStop() {
+  if (timerRunning) {
+    timerStop();
+  } else {
+    timerRunning = true;
+    timerInterval = setInterval(timerTick, 1000);
+    document.getElementById('btn-timer-start').textContent = 'Stop';
+  }
+}
+
+function timerStop() {
+  timerRunning = false;
+  clearInterval(timerInterval);
+  document.getElementById('btn-timer-start').textContent = 'Start';
+}
+
+function timerReset() {
+  timerStop();
+  timerSeconds = 0;
+  renderTimer();
+}
+
+/* -------------------------------------------------------------------- */
+/* Robot camera toggle                                                    */
+/* -------------------------------------------------------------------- */
+const CAM_URL = 'http://lunapi:8080/stream?topic=/oak/rgb/image_raw'
+              + '&type=mjpeg&quality=50&width=640&height=360';
+
+let robotCamActive = false;
+
+function toggleRobotCam() {
+  robotCamActive = !robotCamActive;
+  const overlay = document.getElementById('cam-overlay');
+  const btn     = document.getElementById('btn-robot-cam');
+  const img     = document.getElementById('cam-img');
+  const err     = document.getElementById('cam-error');
+
+  if (robotCamActive) {
+    err.style.display = 'none';
+    img.style.display = 'block';
+    img.src = CAM_URL;
+    overlay.classList.add('visible');
+    btn.textContent = 'ON';
+    btn.classList.add('active');
+  } else {
+    img.src = '';
+    overlay.classList.remove('visible');
+    btn.textContent = 'OFF';
+    btn.classList.remove('active');
+  }
+}
+
+function onCamError() {
+  document.getElementById('cam-img').style.display   = 'none';
+  document.getElementById('cam-error').style.display = 'block';
+}
+
+function onCamLoad() {
+  document.getElementById('cam-img').style.display   = 'block';
+  document.getElementById('cam-error').style.display = 'none';
+}
+
+/* -------------------------------------------------------------------- */
+/* Run selector                                                           */
+/* -------------------------------------------------------------------- */
+function selectRun(n) {
+  [1, 2].forEach(i => {
+    document.getElementById('run-' + i).className = 'run-btn' + (i === n ? ' active' : '');
+  });
+}
+
+/* -------------------------------------------------------------------- */
+/* Init                                                                   */
+/* -------------------------------------------------------------------- */
+buildHealthRows();
+updateStateBanner();
+updateControlButtons();
+updateBandwidth();
+renderTimer();
+connect();
+</script>
+
+</body>
+</html>
