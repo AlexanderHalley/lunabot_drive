@@ -1,18 +1,21 @@
 # cmd_vel_mux configuration for Lunabot
 #
 # Priority scheme:
-#   Teleop (joystick) wins when a message arrives within its timeout.
-#   Nav2 is active when teleop is silent (timeout expired).
+#   GUI (dashboard) wins when a drive button is held — priority 10 (highest).
+#   Joystick overrides Nav2 but yields to the GUI — priority 5.
+#   Nav2 drives when both GUI and joystick are silent — priority 1.
 #
 # Topic routing:
-#   Teleop publishes to  → /cmd_vel_mux/input/joystick   (priority 10)
-#   Nav2 publishes to   → /cmd_vel_mux/input/navigation  (priority 1)
-#   Mux output          → /cmd_vel  (drive_node input)
+#   GUI publishes to      → /cmd_vel_mux/input/gui         (priority 10)
+#   Joystick publishes to → /cmd_vel_mux/input/joystick    (priority  5)
+#   Nav2 publishes to     → /cmd_vel_mux/input/navigation  (priority  1)
+#   Mux output            → /cmd_vel  (drive_node input)
 #
 # The controller_server in Nav2 must be remapped to publish to
 # /cmd_vel_mux/input/navigation instead of /cmd_vel.
 # teleop_twist_joy must be remapped to publish to
 # /cmd_vel_mux/input/joystick instead of /cmd_vel.
+# The dashboard publishes to /cmd_vel_mux/input/gui via rosbridge.
 
 cmd_vel_mux:
   ros__parameters:
@@ -26,8 +29,13 @@ cmd_vel_mux:
       joystick:
         topic:      "cmd_vel_mux/input/joystick"
         # 0.5 s — matches the 0.15s stream from teleop_twist_joy with plenty of
-        # slack for LAN jitter between dreamfyre and lunapi. 0.15 was too tight
-        # and caused dropouts to fall back to Nav2 mid-teleop on a lossy WiFi.
+        # slack for LAN jitter between dreamfyre and lunapi.
+        timeout:    0.5
+        priority:   5
+        short_desc: "Teleop joystick — overrides Nav2 when active"
+      gui:
+        topic:      "cmd_vel_mux/input/gui"
+        # 0.5 s — dashboard publishes at 10 Hz while a drive button is held
         timeout:    0.5
         priority:   10
-        short_desc: "Teleop joystick — overrides Nav2 when active"
+        short_desc: "Dashboard GUI drive commands — highest priority"

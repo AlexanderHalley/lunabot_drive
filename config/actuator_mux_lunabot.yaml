@@ -1,0 +1,59 @@
+# Actuator command mux configuration for Lunabot
+#
+# Priority scheme (mirrors cmd_vel_mux_lunabot.yaml):
+#   GUI (dashboard, priority 10) wins over Teleop (d-pad, priority 5),
+#   which wins over Autonomy (mission_state, priority 1).
+#   An input is "active" while messages arrive within its timeout window.
+#   When no input is active, the mux goes silent and the actuator
+#   driver watchdog stops the motor after 2 seconds.
+#
+# Topic routing:
+#   GUI       → /bucket/{lift,tilt}_mux/input/gui       (priority 10)
+#   Teleop    → /bucket/{lift,tilt}_mux/input/teleop    (priority  5)
+#   Autonomy  → /bucket/{lift,tilt}_mux/input/autonomy  (priority  1)
+#   Mux out   → /bucket/{lift,tilt}/lift_driver/command
+
+bucket:
+  lift_mux:
+    ros__parameters:
+      output_topic: "/bucket/lift/lift_driver/command"
+      subscriber_names: ["gui", "teleop", "autonomy"]
+      subscribers:
+        gui:
+          topic:      "/bucket/lift_mux/input/gui"
+          # 0.5 s — dashboard publishes at 10 Hz while button is held
+          timeout:    0.5
+          priority:   10
+          short_desc: "Dashboard GUI (lift) — highest priority"
+        teleop:
+          topic:      "/bucket/lift_mux/input/teleop"
+          # 0.5 s — teleop only publishes while d-pad is held; goes silent on release
+          timeout:    0.5
+          priority:   5
+          short_desc: "Teleop d-pad (lift)"
+        autonomy:
+          topic:      "/bucket/lift_mux/input/autonomy"
+          timeout:    0.5
+          priority:   1
+          short_desc: "Autonomy sequence (lift)"
+
+  tilt_mux:
+    ros__parameters:
+      output_topic: "/bucket/tilt/tilt_driver/command"
+      subscriber_names: ["gui", "teleop", "autonomy"]
+      subscribers:
+        gui:
+          topic:      "/bucket/tilt_mux/input/gui"
+          timeout:    0.5
+          priority:   10
+          short_desc: "Dashboard GUI (tilt) — highest priority"
+        teleop:
+          topic:      "/bucket/tilt_mux/input/teleop"
+          timeout:    0.5
+          priority:   5
+          short_desc: "Teleop d-pad (tilt)"
+        autonomy:
+          topic:      "/bucket/tilt_mux/input/autonomy"
+          timeout:    0.5
+          priority:   1
+          short_desc: "Autonomy sequence (tilt)"

@@ -30,6 +30,11 @@ install(PROGRAMS
   RENAME actuator_driver_node)
 
 install(PROGRAMS
+  nodes/actuator_mux_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME actuator_mux_node)
+
+install(PROGRAMS
   nodes/bucket_teleop_node.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME bucket_teleop_node)

@@ -11,6 +11,16 @@ Control mapping:
   D-pad LEFT  -> Tilt retract  (-1.0)
   Release     -> Stop          (0.0)
 
+Topic routing (via actuator mux):
+  Publishes to /bucket/lift_mux/input/teleop and /bucket/tilt_mux/input/teleop.
+  The actuator_mux_node forwards the highest-priority active input to the
+  actuator drivers. GUI (dashboard) has priority 10 (highest); teleop has
+  priority 5, overriding autonomy (1) when the d-pad is active.
+
+  Publishing discipline: only publish while the d-pad is non-zero, plus one
+  explicit 0.0 stop message on release. After that, go silent so the mux
+  timeout expires and lower-priority inputs (GUI, autonomy) can win.
+
 Axis indices
 ------------
 On Linux with the `hid-nintendo` kernel driver (standard on Ubuntu 22.04+
@@ -45,14 +55,19 @@ class BucketTeleopNode(Node):
 
         self._lift_drive: float = 0.0
         self._tilt_drive: float = 0.0
+        # True while we are actively publishing a non-zero command. Used to
+        # send exactly one 0.0 stop message on d-pad release, then go quiet so
+        # the mux timeout expires and lower-priority inputs can win.
+        self._lift_active: bool = False
+        self._tilt_active: bool = False
 
         self._joy_sub = self.create_subscription(Joy, "/joy", self._joy_callback, 10)
 
         self._lift_pub = self.create_publisher(
-            Float64, "/bucket/lift/lift_driver/command", 10
+            Float64, "/bucket/lift_mux/input/teleop", 10
         )
         self._tilt_pub = self.create_publisher(
-            Float64, "/bucket/tilt/tilt_driver/command", 10
+            Float64, "/bucket/tilt_mux/input/teleop", 10
         )
 
         # Publish at a fixed rate to keep the actuator watchdog fed
@@ -73,13 +88,22 @@ class BucketTeleopNode(Node):
         self._tilt_drive = float(dpad_h)
 
     def _publish(self):
-        lift_msg = Float64()
-        lift_msg.data = self._lift_drive
-        self._lift_pub.publish(lift_msg)
+        # Lift: publish while active; send one explicit stop on release; then
+        # stay silent so the mux timeout expires and lower-priority inputs win.
+        if self._lift_drive != 0.0:
+            self._lift_active = True
+            self._lift_pub.publish(Float64(data=self._lift_drive))
+        elif self._lift_active:
+            self._lift_active = False
+            self._lift_pub.publish(Float64(data=0.0))
 
-        tilt_msg = Float64()
-        tilt_msg.data = self._tilt_drive
-        self._tilt_pub.publish(tilt_msg)
+        # Tilt: same logic.
+        if self._tilt_drive != 0.0:
+            self._tilt_active = True
+            self._tilt_pub.publish(Float64(data=self._tilt_drive))
+        elif self._tilt_active:
+            self._tilt_active = False
+            self._tilt_pub.publish(Float64(data=0.0))
 
 
 def main(args=None):

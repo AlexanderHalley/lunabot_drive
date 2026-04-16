@@ -14,7 +14,7 @@ Stack launched here
 -------------------
   1. joy_node            — reads Switch Pro controller
   2. teleop_twist_joy    — maps sticks → /cmd_vel_mux/input/joystick (over LAN)
-  3. bucket_teleop_node  — d-pad → /bucket/lift/lift_driver/command, /bucket/tilt/tilt_driver/command
+  3. bucket_teleop_node  — d-pad → /bucket/lift_mux/input/teleop, /bucket/tilt_mux/input/teleop
 
 NOT launched here (all run on lunapi via autonomy_bringup_pi.launch.py):
   - drive_node, camera, EKF, Nav2, apriltag, mission_state_node, rosbridge, etc.

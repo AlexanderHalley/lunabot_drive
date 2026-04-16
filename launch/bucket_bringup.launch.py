@@ -1,11 +1,11 @@
 """
 Bucket actuator bringup launch file.
 
-Launches two ActuatorDriverNode instances under distinct names so logs,
-lifecycle messages, and the node health monitor can tell them apart:
-
-  /bucket/lift/lift_driver  (lift params)
-  /bucket/tilt/tilt_driver  (tilt params)
+Launches four nodes:
+  /bucket/lift_mux   — actuator_mux_node: teleop (10) > gui (5) > autonomy (1)
+  /bucket/tilt_mux   — actuator_mux_node: teleop (10) > gui (5) > autonomy (1)
+  /bucket/lift/lift_driver  — ActuatorDriverNode (lift params)
+  /bucket/tilt/tilt_driver  — ActuatorDriverNode (tilt params)
 
 Dashboard remaps
 ----------------
@@ -44,7 +44,8 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_share = get_package_share_directory("lunabot_drive")
-    config_file = os.path.join(pkg_share, "config", "bucket_actuators.yaml")
+    config_file     = os.path.join(pkg_share, "config", "bucket_actuators.yaml")
+    mux_config_file = os.path.join(pkg_share, "config", "actuator_mux_lunabot.yaml")
 
     use_sim_time_arg = DeclareLaunchArgument(
         "use_sim_time",
@@ -52,6 +53,27 @@ def generate_launch_description():
         description="Use simulation clock",
     )
     use_sim_time = LaunchConfiguration("use_sim_time")
+
+    # ── Actuator mux nodes ────────────────────────────────────────────────────
+    # Priority: teleop (10) > gui (5) > autonomy (1)
+    # Output topics: /bucket/lift/lift_driver/command, /bucket/tilt/tilt_driver/command
+    lift_mux_node = Node(
+        package="lunabot_drive",
+        executable="actuator_mux_node",
+        name="lift_mux",
+        namespace="bucket",
+        parameters=[mux_config_file],
+        output="screen",
+    )
+
+    tilt_mux_node = Node(
+        package="lunabot_drive",
+        executable="actuator_mux_node",
+        name="tilt_mux",
+        namespace="bucket",
+        parameters=[mux_config_file],
+        output="screen",
+    )
 
     lift_node = Node(
         package="lunabot_drive",
@@ -90,6 +112,8 @@ def generate_launch_description():
     return LaunchDescription(
         [
             use_sim_time_arg,
+            lift_mux_node,
+            tilt_mux_node,
             lift_node,
             tilt_node,
         ]
