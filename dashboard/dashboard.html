@@ -105,6 +105,21 @@
       filter: grayscale(60%);
     }
 
+    #btn-estop {
+      background: #CC0000;
+      color: #fff;
+      font-size: 24px;
+      height: 76px;
+      border: 3px solid #FF5555;
+      box-shadow: 0 0 14px rgba(204,0,0,0.5);
+      letter-spacing: 2px;
+    }
+    #btn-estop:not(:disabled):hover {
+      background: #EE0000;
+      box-shadow: 0 0 22px rgba(255,0,0,0.9);
+    }
+    #btn-estop:disabled { opacity: 0.45; cursor: not-allowed; }
+
     #btn-arm        { background: #2255aa; color: #fff; }
     #btn-excavation { background: #226622; color: #fff; }
     #btn-deposition { background: #225522; color: #cfc; }
@@ -287,6 +302,7 @@
       font-size: 14px;
     }
     .node-name { font-weight: 600; min-width: 180px; }
+    .node-priority { font-size: 10px; font-weight: 700; min-width: 58px; text-transform: uppercase; letter-spacing: 0.5px; }
     .node-impact { font-size: 11px; color: #777; }
 
     /* ------------------------------------------------------------------ */
@@ -317,6 +333,68 @@
       background: #151d28;
       border-radius: 6px;
       padding: 10px;
+    }
+
+    /* Actuator + drive manual controls */
+    .actuator-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 2px;
+    }
+    .actuator-label {
+      font-size: 13px;
+      color: #aaa;
+      min-width: 36px;
+    }
+    .act-btn {
+      flex: 1;
+      height: 38px;
+      font-size: 14px;
+      font-weight: 700;
+      border: 1px solid #444;
+      border-radius: 5px;
+      background: #2a2a2a;
+      color: #ccc;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.1s;
+    }
+    .act-btn:active, .act-btn.held { background: #1a4a8a; border-color: #4488cc; color: #fff; }
+    .act-btn.stop-btn { background: #3a1a1a; border-color: #883333; color: #ffaaaa; }
+    .act-btn.stop-btn:active, .act-btn.stop-btn.held { background: #881a1a; }
+
+    .drive-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 5px;
+      max-width: 220px;
+    }
+    .drive-btn {
+      height: 44px;
+      font-size: 18px;
+      font-weight: 700;
+      border: 1px solid #444;
+      border-radius: 5px;
+      background: #2a2a2a;
+      color: #ccc;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.1s;
+    }
+    .drive-btn:active, .drive-btn.held { background: #1a4a8a; border-color: #4488cc; color: #fff; }
+    .drive-btn.stop-btn { background: #3a1a1a; border-color: #883333; color: #ffaaaa; }
+    .drive-btn.stop-btn:active, .drive-btn.stop-btn.held { background: #881a1a; }
+    .drive-btn.empty { visibility: hidden; pointer-events: none; }
+
+    .gui-source-indicator {
+      font-size: 11px;
+      color: #555;
+      text-align: right;
+      margin-top: -6px;
     }
 
     /* ------------------------------------------------------------------ */
@@ -432,6 +510,7 @@
   <div class="panel" id="p-controls">
     <h2>Behavior Trigger Controls</h2>
 
+    <button class="ctrl-btn" id="btn-estop"      onclick="triggerEstop()">&#9888; E-STOP</button>
     <button class="ctrl-btn" id="btn-arm"        onclick="sendCommand('arm')">ARM AUTONOMY</button>
     <button class="ctrl-btn" id="btn-excavation" onclick="sendCommand('start_excavation')">CONFIRM START — Excavation</button>
     <button class="ctrl-btn" id="btn-deposition" onclick="sendCommand('start_deposition')">CONFIRM START — Deposition</button>
@@ -471,6 +550,26 @@
       </div>
     </div>
 
+    <div class="actuator-controls">
+      <span class="actuator-label">Lift</span>
+      <button class="act-btn"
+              onmousedown="startActuator('lift', -1.0)" onmouseup="stopActuator('lift')"
+              onmouseleave="stopActuator('lift')"
+              ontouchstart="startActuator('lift', -1.0)" ontouchend="stopActuator('lift')">
+        ▲ Retract
+      </button>
+      <button class="act-btn stop-btn"
+              onclick="stopActuator('lift')">
+        ■ Stop
+      </button>
+      <button class="act-btn"
+              onmousedown="startActuator('lift', 1.0)" onmouseup="stopActuator('lift')"
+              onmouseleave="stopActuator('lift')"
+              ontouchstart="startActuator('lift', 1.0)" ontouchend="stopActuator('lift')">
+        ▼ Extend
+      </button>
+    </div>
+
     <div class="bucket-bar-row">
       <div class="bucket-bar-title">
         <span>Tilt</span>
@@ -481,7 +580,28 @@
       </div>
     </div>
 
+    <div class="actuator-controls">
+      <span class="actuator-label">Tilt</span>
+      <button class="act-btn"
+              onmousedown="startActuator('tilt', -1.0)" onmouseup="stopActuator('tilt')"
+              onmouseleave="stopActuator('tilt')"
+              ontouchstart="startActuator('tilt', -1.0)" ontouchend="stopActuator('tilt')">
+        ◀ Retract
+      </button>
+      <button class="act-btn stop-btn"
+              onclick="stopActuator('tilt')">
+        ■ Stop
+      </button>
+      <button class="act-btn"
+              onmousedown="startActuator('tilt', 1.0)" onmouseup="stopActuator('tilt')"
+              onmouseleave="stopActuator('tilt')"
+              ontouchstart="startActuator('tilt', 1.0)" ontouchend="stopActuator('tilt')">
+        ▶ Extend
+      </button>
+    </div>
+
     <div id="bucket-state-display">Bucket State: —</div>
+    <div class="gui-source-indicator">GUI inputs routed via mux at priority 5 (teleop overrides)</div>
   </div>
 
   <!-- ================================================================ -->
@@ -549,6 +669,36 @@
         <button class="run-btn"        id="run-2" onclick="selectRun(2)">Run 2</button>
       </div>
     </div>
+    <div class="telem-sep"></div>
+
+    <!-- GUI drive controls -->
+    <div class="telem-cell" style="align-items:center;">
+      <span class="telem-label" style="margin-bottom:4px;">Drive (GUI)</span>
+      <div class="drive-controls">
+        <div class="drive-btn empty"></div>
+        <button class="drive-btn"
+                onmousedown="startDrive(0.3,0)" onmouseup="stopDrive()"
+                onmouseleave="stopDrive()"
+                ontouchstart="startDrive(0.3,0)" ontouchend="stopDrive()">▲</button>
+        <div class="drive-btn empty"></div>
+        <button class="drive-btn"
+                onmousedown="startDrive(0,0.4)" onmouseup="stopDrive()"
+                onmouseleave="stopDrive()"
+                ontouchstart="startDrive(0,0.4)" ontouchend="stopDrive()">◀</button>
+        <button class="drive-btn stop-btn"
+                onclick="stopDrive()">■</button>
+        <button class="drive-btn"
+                onmousedown="startDrive(0,-0.4)" onmouseup="stopDrive()"
+                onmouseleave="stopDrive()"
+                ontouchstart="startDrive(0,-0.4)" ontouchend="stopDrive()">▶</button>
+        <div class="drive-btn empty"></div>
+        <button class="drive-btn"
+                onmousedown="startDrive(-0.3,0)" onmouseup="stopDrive()"
+                onmouseleave="stopDrive()"
+                ontouchstart="startDrive(-0.3,0)" ontouchend="stopDrive()">▼</button>
+        <div class="drive-btn empty"></div>
+      </div>
+    </div>
 
   </div><!-- end grid -->
 </div>
@@ -589,7 +739,16 @@ let ros = null;
 let reconnectTimer = null;
 
 // Publishers
-let cmdPub = null;
+let cmdPub      = null;
+let estopPub    = null;
+let liftGuiPub  = null;
+let tiltGuiPub  = null;
+let driveGuiPub = null;
+
+// GUI hold-to-move state
+let _liftInterval  = null;
+let _tiltInterval  = null;
+let _driveInterval = null;
 
 function connect() {
   if (ros) {
@@ -632,11 +791,41 @@ function setupPublisher() {
     name: '/autonomy_command',
     messageType: 'std_msgs/String',
   });
+
+  estopPub = new ROSLIB.Topic({
+    ros: ros,
+    name: '/emergency_stop',
+    messageType: 'std_msgs/Bool',
+  });
+
+  // Actuator GUI mux inputs (priority 5 — teleop overrides at 10)
+  liftGuiPub = new ROSLIB.Topic({
+    ros: ros,
+    name: '/bucket/lift_mux/input/gui',
+    messageType: 'std_msgs/Float64',
+  });
+  tiltGuiPub = new ROSLIB.Topic({
+    ros: ros,
+    name: '/bucket/tilt_mux/input/gui',
+    messageType: 'std_msgs/Float64',
+  });
+
+  // Drive GUI mux input (priority 5 — joystick overrides at 10)
+  driveGuiPub = new ROSLIB.Topic({
+    ros: ros,
+    name: '/cmd_vel_mux/input/gui',
+    messageType: 'geometry_msgs/Twist',
+  });
 }
 
 function sendCommand(cmd) {
   if (!cmdPub) { alert('Not connected to rosbridge'); return; }
   cmdPub.publish(new ROSLIB.Message({ data: cmd }));
+}
+
+function triggerEstop() {
+  if (!estopPub) { alert('Not connected to rosbridge'); return; }
+  estopPub.publish(new ROSLIB.Message({ data: true }));
 }
 
 /* -------------------------------------------------------------------- */
@@ -759,6 +948,7 @@ function updateStateBanner() {
 /* -------------------------------------------------------------------- */
 function updateControlButtons() {
   const s = autonomyState;
+  setBtn('btn-estop',      s !== 'ESTOP');
   setBtn('btn-arm',        s === 'TELEOP');
   setBtn('btn-excavation', s === 'READY');
   setBtn('btn-deposition', s === 'READY');
@@ -830,6 +1020,29 @@ const NODE_IMPACTS = {
   mission_state_node:  'Autonomy state machine offline',
 };
 
+// Priority of each node if it goes down during a run.
+// CRITICAL = blocks autonomy or locomotion immediately
+// HIGH     = degrades autonomy or sensing significantly
+// MEDIUM   = degrades operator visibility only
+const NODE_PRIORITY = {
+  drive_node:          'CRITICAL',
+  ekf_filter_node:     'CRITICAL',
+  apriltag_localizer:  'CRITICAL',
+  bt_navigator:        'CRITICAL',
+  actuator_driver:     'CRITICAL',
+  controller_server:   'HIGH',
+  oak:                 'HIGH',
+  apriltag_node:       'HIGH',
+  mission_state_node:  'HIGH',
+  rosbridge_server:    'MEDIUM',
+};
+
+const PRIORITY_COLORS = {
+  CRITICAL: '#cc2200',
+  HIGH:     '#cc6600',
+  MEDIUM:   '#ccaa00',
+};
+
 const EXPECTED_NODES = [
   'drive_node','ekf_filter_node','apriltag_node','apriltag_localizer',
   'oak','bt_navigator','controller_server','rosbridge_server',
@@ -840,12 +1053,15 @@ function buildHealthRows() {
   const container = document.getElementById('health-rows');
   container.innerHTML = '';
   EXPECTED_NODES.forEach(name => {
+    const prio      = NODE_PRIORITY[name] || 'MEDIUM';
+    const prioColor = PRIORITY_COLORS[prio] || '#888';
     const row = document.createElement('div');
     row.className = 'node-row';
     row.id = 'hr-' + name;
     row.innerHTML =
       `<span class="dot dot-red" id="dot-${name}"></span>` +
       `<span class="node-name">${name}</span>` +
+      `<span class="node-priority" style="color:${prioColor}">${prio}</span>` +
       `<span class="node-impact">${NODE_IMPACTS[name] || ''}</span>`;
     container.appendChild(row);
   });
@@ -971,6 +1187,49 @@ function selectRun(n) {
   [1, 2].forEach(i => {
     document.getElementById('run-' + i).className = 'run-btn' + (i === n ? ' active' : '');
   });
+}
+
+/* -------------------------------------------------------------------- */
+/* GUI actuator controls (hold-to-move, 10 Hz, routed via mux priority 5) */
+/* -------------------------------------------------------------------- */
+
+function startActuator(axis, value) {
+  const pub = axis === 'lift' ? liftGuiPub : tiltGuiPub;
+  const key = axis === 'lift' ? '_liftInterval' : '_tiltInterval';
+  if (!pub) return;
+  stopActuator(axis);  // clear any previous interval
+  pub.publish(new ROSLIB.Message({ data: value }));
+  window[key] = setInterval(() => {
+    if (pub) pub.publish(new ROSLIB.Message({ data: value }));
+  }, 100);  // 10 Hz
+}
+
+function stopActuator(axis) {
+  const pub = axis === 'lift' ? liftGuiPub : tiltGuiPub;
+  const key = axis === 'lift' ? '_liftInterval' : '_tiltInterval';
+  if (window[key]) { clearInterval(window[key]); window[key] = null; }
+  if (pub) pub.publish(new ROSLIB.Message({ data: 0.0 }));
+}
+
+/* -------------------------------------------------------------------- */
+/* GUI drive controls (hold-to-move, 10 Hz, routed via mux priority 5)   */
+/* linear.x in m/s, angular.z in rad/s                                   */
+/* -------------------------------------------------------------------- */
+
+function startDrive(linearX, angularZ) {
+  if (!driveGuiPub) return;
+  stopDrive();
+  const msg = { linear: { x: linearX, y: 0, z: 0 }, angular: { x: 0, y: 0, z: angularZ } };
+  driveGuiPub.publish(new ROSLIB.Message(msg));
+  _driveInterval = setInterval(() => {
+    if (driveGuiPub) driveGuiPub.publish(new ROSLIB.Message(msg));
+  }, 100);  // 10 Hz
+}
+
+function stopDrive() {
+  if (_driveInterval) { clearInterval(_driveInterval); _driveInterval = null; }
+  const zero = { linear: { x: 0, y: 0, z: 0 }, angular: { x: 0, y: 0, z: 0 } };
+  if (driveGuiPub) driveGuiPub.publish(new ROSLIB.Message(zero));
 }
 
 /* -------------------------------------------------------------------- */
