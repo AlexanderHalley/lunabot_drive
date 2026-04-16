@@ -27,25 +27,44 @@ E-STOP does NOT auto-clear the state — the operator must publish
 momentary E-STOP must not silently re-enable autonomy.
 
 Excavation sequence (runs in background thread)
-  1. Call /lift_actuator/extend  — lower bucket into regolith position
-  2. Navigate to dig_pose        — drive forward to scoop material
-  3. Call /lift_actuator/retract — lift bucket
-  4. Navigate to home_pose       — return to start area
+  1. Publish +1.0 to lift mux autonomy input for lift_extend_s  — lower bucket
+  2. Navigate to dig_pose                                        — drive to scoop
+  3. Publish -1.0 to lift mux autonomy input for lift_retract_s — lift bucket
+  4. Navigate to home_pose                                       — return home
 
 Deposition sequence (runs in background thread)
-  1. Navigate to hopper_pose     — drive to ISRU bin
-  2. Call /tilt_actuator/extend  — tilt bucket to dump
-  3. Sleep dump_wait_s           — let material fall
-  4. Call /tilt_actuator/retract — return bucket
-  5. Navigate to home_pose       — return to start area
+  1. Navigate to hopper_pose                                     — drive to bin
+  2. Publish +1.0 to tilt mux autonomy input for tilt_extend_s  — tilt to dump
+  3. Sleep dump_wait_s                                           — let material fall
+  4. Publish -1.0 to tilt mux autonomy input for tilt_retract_s — level bucket
+  5. Navigate to home_pose                                       — return home
+
+Actuator commands go through the actuator_mux_node at autonomy priority (1).
+Teleop (priority 10) and GUI (priority 5) can override at any time.
+
+Localization gate
+-----------------
+start_excavation / start_deposition are rejected unless /localization_status is
+LOCALIZED (published by apriltag_localizer_node). Set require_localization:=false
+to bypass during bench testing without AprilTags.
+
+Sequence cooldown
+-----------------
+After an AUTONOMOUS sequence ends (either COMPLETE or FAILED transition from
+AUTONOMOUS), the arm command is blocked for arm_cooldown_s seconds. This prevents
+immediately re-running the linear actuators before they have cooled down. The
+remaining cooldown is logged whenever arm is rejected.
 
 Publishes:
-  /autonomy_state  (std_msgs/String) at 5 Hz
-  /autonomy_cycle  (std_msgs/Int32)
+  /autonomy_state                 (std_msgs/String) at 5 Hz
+  /autonomy_cycle                 (std_msgs/Int32)
+  /bucket/lift_mux/input/autonomy (std_msgs/Float64) during sequences
+  /bucket/tilt_mux/input/autonomy (std_msgs/Float64) during sequences
 
 Subscribes:
-  /autonomy_command (std_msgs/String) — arm | start_excavation | start_deposition | abort | acknowledge
-  /emergency_stop   (std_msgs/Bool)
+  /autonomy_command    (std_msgs/String) — arm | start_excavation | start_deposition | abort | acknowledge
+  /emergency_stop      (std_msgs/Bool)
+  /localization_status (std_msgs/String) — UNLOCALIZED | LOCALIZED | STALE
 
 Parameters
 ----------
@@ -53,10 +72,13 @@ Parameters
   hopper_x, hopper_y         — ISRU hopper pose in map frame (default 0.5, 2.5)
   home_x, home_y             — home pose in map frame (default 0.3, 2.5)
   nav_timeout_s              — seconds before nav goal is cancelled (default 120.0)
-  service_timeout_s          — seconds to wait for actuator service (default 35.0)
   dump_wait_s                — seconds to wait while dumping (default 3.0)
-  lift_actuator_ns           — namespace for lift actuator (default '/lift_actuator')
-  tilt_actuator_ns           — namespace for tilt actuator (default '/tilt_actuator')
+  lift_extend_s              — seconds to publish lift extend command (default 18.0)
+  lift_retract_s             — seconds to publish lift retract command (default 18.0)
+  tilt_extend_s              — seconds to publish tilt extend command (default 20.0)
+  tilt_retract_s             — seconds to publish tilt retract command (default 20.0)
+  require_localization       — gate sequences on LOCALIZED status (default True)
+  arm_cooldown_s             — seconds to block re-arm after a sequence ends (default 15.0)
 """
 
 import time
@@ -67,9 +89,8 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 
-from std_msgs.msg import String, Int32, Bool
+from std_msgs.msg import String, Int32, Bool, Float64
 from geometry_msgs.msg import PoseStamped
-from std_srvs.srv import Trigger
 
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus
@@ -98,17 +119,17 @@ class MissionStateNode(Node):
         self.declare_parameter('hopper_y', 2.5)
         self.declare_parameter('home_x',   0.3)
         self.declare_parameter('home_y',   2.5)
-        self.declare_parameter('nav_timeout_s',     120.0)
-        self.declare_parameter('service_timeout_s',  35.0)
-        self.declare_parameter('dump_wait_s',          3.0)
-        # Updated to match bucket_bringup.launch.py which now uses distinct
-        # node names (lift_driver / tilt_driver) instead of two nodes both
-        # called "actuator_driver".
-        self.declare_parameter('lift_actuator_ns', '/bucket/lift/lift_driver')
-        self.declare_parameter('tilt_actuator_ns', '/bucket/tilt/tilt_driver')
-
-        lift_ns = self.get_parameter('lift_actuator_ns').value
-        tilt_ns = self.get_parameter('tilt_actuator_ns').value
+        self.declare_parameter('nav_timeout_s', 120.0)
+        self.declare_parameter('dump_wait_s',     3.0)
+        # Actuator run durations — must match max_continuous_run_s in
+        # bucket_actuators.yaml (18 s lift, 20 s tilt). Commands are published
+        # at 10 Hz to /bucket/{lift,tilt}_mux/input/autonomy for this duration.
+        self.declare_parameter('lift_extend_s',  18.0)
+        self.declare_parameter('lift_retract_s', 18.0)
+        self.declare_parameter('tilt_extend_s',  20.0)
+        self.declare_parameter('tilt_retract_s', 20.0)
+        self.declare_parameter('require_localization', True)
+        self.declare_parameter('arm_cooldown_s', 15.0)
 
         # ── State ─────────────────────────────────────────────────────────────
         self._state: str          = TELEOP
@@ -116,6 +137,8 @@ class MissionStateNode(Node):
         self._cycle: int          = 0
         self._failed_time: float | None = None
         self._abort_event = threading.Event()
+        self._localization_status: str     = 'UNLOCALIZED'
+        self._last_auto_end_time: float | None = None
         self._sequence_thread: threading.Thread | None = None
         self._current_goal_handle = None      # holds Nav2 goal handle for cancel
 
@@ -125,19 +148,27 @@ class MissionStateNode(Node):
             callback_group=self._cb_group,
         )
 
-        # ── Actuator service clients ───────────────────────────────────────────
-        self._lift_extend  = self.create_client(Trigger, f'{lift_ns}/extend',  callback_group=self._cb_group)
-        self._lift_retract = self.create_client(Trigger, f'{lift_ns}/retract', callback_group=self._cb_group)
-        self._tilt_extend  = self.create_client(Trigger, f'{tilt_ns}/extend',  callback_group=self._cb_group)
-        self._tilt_retract = self.create_client(Trigger, f'{tilt_ns}/retract', callback_group=self._cb_group)
+        # ── Actuator command publishers (routed through actuator_mux_node) ────
+        # Commands arrive at the mux at priority 1 (autonomy).
+        # Teleop (10) and GUI (5) override when active.
+        self._lift_pub = self.create_publisher(
+            Float64, '/bucket/lift_mux/input/autonomy', 10,
+            callback_group=self._cb_group,
+        )
+        self._tilt_pub = self.create_publisher(
+            Float64, '/bucket/tilt_mux/input/autonomy', 10,
+            callback_group=self._cb_group,
+        )
 
         # ── Publishers / subscribers ──────────────────────────────────────────
         self._state_pub = self.create_publisher(String, '/autonomy_state', 10)
         self._cycle_pub = self.create_publisher(Int32,  '/autonomy_cycle', 10)
 
-        self.create_subscription(String, '/autonomy_command', self._on_command, 10,
+        self.create_subscription(String, '/autonomy_command',    self._on_command,             10,
                                  callback_group=self._cb_group)
-        self.create_subscription(Bool,   '/emergency_stop',   self._on_estop,   10,
+        self.create_subscription(Bool,   '/emergency_stop',       self._on_estop,               10,
+                                 callback_group=self._cb_group)
+        self.create_subscription(String, '/localization_status',  self._on_localization_status, 10,
                                  callback_group=self._cb_group)
 
         self.create_timer(0.2, self._publish_state, callback_group=self._cb_group)
@@ -158,6 +189,8 @@ class MissionStateNode(Node):
 
     def _transition(self, new_state: str, reason: str = '') -> None:
         old = self._state
+        if old == AUTONOMOUS:
+            self._last_auto_end_time = time.monotonic()
         self._state = new_state
         self._failed_time = time.monotonic() if new_state == FAILED else None
         msg = f'State: {old} → {new_state}'
@@ -165,27 +198,59 @@ class MissionStateNode(Node):
             msg += f'  ({reason})'
         self.get_logger().info(msg)
 
-    # ── Service call helper (runs from sequence thread) ───────────────────────
+    def _check_cooldown(self) -> bool:
+        """Return True if the arm cooldown has elapsed (or never ran)."""
+        cooldown = self.get_parameter('arm_cooldown_s').value
+        if self._last_auto_end_time is None:
+            return True
+        elapsed = time.monotonic() - self._last_auto_end_time
+        if elapsed >= cooldown:
+            return True
+        remaining = cooldown - elapsed
+        self.get_logger().warn(
+            f'Arm rejected — actuator cooldown active: {remaining:.1f} s remaining '
+            f'(arm_cooldown_s={cooldown:.1f})'
+        )
+        return False
 
-    def _call_service(self, client, name: str) -> bool:
-        """Call a Trigger service and return True on success. Polls until done."""
-        timeout = self.get_parameter('service_timeout_s').value
-        if not client.wait_for_service(timeout_sec=5.0):
-            self.get_logger().error(f'Service {name} not available')
-            return False
-        future = client.call_async(Trigger.Request())
-        deadline = time.monotonic() + timeout
-        while not future.done():
+    def _check_localization(self, cmd: str) -> bool:
+        """Return True if localization gate passes (or is disabled)."""
+        if not self.get_parameter('require_localization').value:
+            return True
+        if self._localization_status == 'LOCALIZED':
+            return True
+        self.get_logger().warn(
+            f'Command "{cmd}" rejected — localization status is '
+            f'"{self._localization_status}" (need LOCALIZED). '
+            f'Set require_localization:=false to override.'
+        )
+        return False
+
+    # ── Actuator command helper (runs from sequence thread) ───────────────────
+
+    def _run_actuator(self, pub, value: float, duration_s: float, name: str) -> bool:
+        """Publish a Float64 actuator command at 10 Hz for duration_s seconds.
+
+        Commands go to the actuator_mux_node autonomy input (priority 1).
+        Teleop (10) and GUI (5) can override at any time while this runs.
+        Returns True on completion, False if abort was signalled.
+        """
+        self.get_logger().info(
+            f'Actuator "{name}": publishing {value:+.1f} for {duration_s:.1f} s'
+        )
+        msg  = Float64(data=value)
+        stop = Float64(data=0.0)
+        deadline = time.monotonic() + duration_s
+        while time.monotonic() < deadline:
             if self._abort_event.is_set():
+                pub.publish(stop)
+                self.get_logger().info(f'Actuator "{name}": aborted')
                 return False
-            if time.monotonic() > deadline:
-                self.get_logger().error(f'Service {name} timed out')
-                return False
-            time.sleep(0.05)
-        result = future.result()
-        if not result.success:
-            self.get_logger().warn(f'Service {name} returned failure: {result.message}')
-        return result.success
+            pub.publish(msg)
+            time.sleep(0.1)
+        pub.publish(stop)
+        self.get_logger().info(f'Actuator "{name}": complete')
+        return True
 
     # ── Nav2 navigation helper (runs from sequence thread) ────────────────────
 
@@ -262,8 +327,10 @@ class MissionStateNode(Node):
 
         try:
             self.get_logger().info('Excavation sequence: step 1 — extend lift')
-            if not self._call_service(self._lift_extend, 'lift/extend'):
-                raise RuntimeError('Lift extend failed')
+            if not self._run_actuator(self._lift_pub, 1.0,
+                                      self.get_parameter('lift_extend_s').value,
+                                      'lift extend'):
+                raise RuntimeError('Lift extend aborted')
 
             if self._abort_event.is_set():
                 raise RuntimeError('Aborted after lift extend')
@@ -276,8 +343,10 @@ class MissionStateNode(Node):
                 raise RuntimeError('Aborted after navigate to dig')
 
             self.get_logger().info('Excavation sequence: step 3 — retract lift')
-            if not self._call_service(self._lift_retract, 'lift/retract'):
-                raise RuntimeError('Lift retract failed')
+            if not self._run_actuator(self._lift_pub, -1.0,
+                                      self.get_parameter('lift_retract_s').value,
+                                      'lift retract'):
+                raise RuntimeError('Lift retract aborted')
 
             if self._abort_event.is_set():
                 raise RuntimeError('Aborted after lift retract')
@@ -313,8 +382,10 @@ class MissionStateNode(Node):
                 raise RuntimeError('Aborted after navigate to hopper')
 
             self.get_logger().info('Deposition sequence: step 2 — tilt bucket to dump')
-            if not self._call_service(self._tilt_extend, 'tilt/extend'):
-                raise RuntimeError('Tilt extend failed')
+            if not self._run_actuator(self._tilt_pub, 1.0,
+                                      self.get_parameter('tilt_extend_s').value,
+                                      'tilt extend'):
+                raise RuntimeError('Tilt extend aborted')
 
             self.get_logger().info(f'Deposition sequence: step 3 — waiting {dump_wait}s')
             for _ in range(int(dump_wait / 0.1)):
@@ -323,8 +394,10 @@ class MissionStateNode(Node):
                 time.sleep(0.1)
 
             self.get_logger().info('Deposition sequence: step 4 — retract tilt')
-            if not self._call_service(self._tilt_retract, 'tilt/retract'):
-                raise RuntimeError('Tilt retract failed')
+            if not self._run_actuator(self._tilt_pub, -1.0,
+                                      self.get_parameter('tilt_retract_s').value,
+                                      'tilt retract'):
+                raise RuntimeError('Tilt retract aborted')
 
             if self._abort_event.is_set():
                 raise RuntimeError('Aborted after tilt retract')
@@ -365,19 +438,28 @@ class MissionStateNode(Node):
         # deliberately not in STATE_LABELS because the dashboard renders it
         # with a dynamic "Cycle X of 2" suffix.
         if self._state == TELEOP and cmd == 'arm':
+            if not self._check_cooldown():
+                return
             self._transition(READY, 'arm command')
 
         # Allow re-arming immediately from FAILED so the operator does not
-        # have to wait out the 5 s auto-recovery timer after a bad sequence.
+        # have to wait out the 5 s auto-recovery timer after a bad sequence,
+        # but still enforce the actuator cooldown.
         elif self._state == FAILED and cmd == 'arm':
+            if not self._check_cooldown():
+                return
             self._transition(READY, 'arm command (re-arm from FAILED)')
 
         elif self._state == READY and cmd == 'start_excavation':
+            if not self._check_localization('start_excavation'):
+                return
             self._mode = 'excavation'
             self._transition(AUTONOMOUS, 'excavation confirmed')
             self._start_sequence('excavation')
 
         elif self._state == READY and cmd == 'start_deposition':
+            if not self._check_localization('start_deposition'):
+                return
             self._mode = 'deposition'
             self._transition(AUTONOMOUS, 'deposition confirmed')
             self._start_sequence('deposition')
@@ -398,6 +480,9 @@ class MissionStateNode(Node):
 
         else:
             self.get_logger().debug(f'Command "{cmd}" ignored in state {self._state}')
+
+    def _on_localization_status(self, msg: String) -> None:
+        self._localization_status = msg.data.strip().upper()
 
     def _on_estop(self, msg: Bool) -> None:
         if msg.data and self._state != ESTOP:
