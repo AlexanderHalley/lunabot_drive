@@ -12,11 +12,21 @@ Starts everything the Pi needs for a manual teleop run:
   7. wifi_monitor_node      — RSSI monitor
   8. rosbridge_websocket    — WebSocket bridge for dashboard.html on dreamfyre
 
-Pre-requisite: CAN bus must be up before launch.
-  Run once on boot (or via systemd): sudo ./scripts/initialise_can
+Arguments
+---------
+  enable_drive:=true   (default)  Include drive_node — requires CAN bus (can0) to be up.
+                                  Run once on boot: sudo ./scripts/initialise_can
+  enable_drive:=false             Skip drive_node — use for GUI / actuator-only testing
+                                  when motors are not connected.
 
 Usage:
+    # Full hardware (CAN + actuators):
     ros2 launch lunabot_drive proof_of_life_bringup_pi.launch.py
+
+    # GUI + actuators only, no CAN/motors:
+    ros2 launch lunabot_drive proof_of_life_bringup_pi.launch.py enable_drive:=false
+
+    # Add OAK-D camera to either of the above:
     ros2 launch lunabot_drive proof_of_life_bringup_pi.launch.py enable_camera:=true
 """
 
@@ -39,6 +49,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description():
     pkg_share = get_package_share_directory('lunabot_drive')
 
+    enable_drive  = LaunchConfiguration('enable_drive')
     enable_camera = LaunchConfiguration('enable_camera')
 
     urdf_file = os.path.join(pkg_share, 'description', 'robot.urdf.xacro')
@@ -50,13 +61,21 @@ def generate_launch_description():
     return LaunchDescription([
 
         DeclareLaunchArgument(
+            'enable_drive',
+            default_value='true',
+            description='Launch drive_node (requires CAN bus / can0). '
+                        'Set false for GUI or actuator-only testing without motors.',
+        ),
+        DeclareLaunchArgument(
             'enable_camera',
             default_value='false',
             description='Launch OAK-D S2 camera node (adds ~0.5 Mbps to bandwidth)',
         ),
 
         # ── 1. Drive node (open-loop, no EKF) ──────────────────────────────
+        # Skipped when enable_drive:=false — CAN bus not required in that mode.
         Node(
+            condition=IfCondition(enable_drive),
             package='lunabot_drive',
             executable='drive_node',
             name='drive_node',
