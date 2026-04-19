@@ -388,10 +388,11 @@ class MissionStateNode(Node):
                 raise RuntimeError('Tilt extend aborted')
 
             self.get_logger().info(f'Deposition sequence: step 3 — waiting {dump_wait}s')
-            for _ in range(int(dump_wait / 0.1)):
+            deadline = time.monotonic() + float(dump_wait)
+            while time.monotonic() < deadline:
                 if self._abort_event.is_set():
                     raise RuntimeError('Aborted during dump wait')
-                time.sleep(0.1)
+                time.sleep(min(0.1, deadline - time.monotonic()))
 
             self.get_logger().info('Deposition sequence: step 4 — retract tilt')
             if not self._run_actuator(self._tilt_pub, -1.0,

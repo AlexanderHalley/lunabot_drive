@@ -186,6 +186,8 @@ class ActuatorDriverNode(Node):
             self._stop_motor()
             return
 
+        speed_pct = max(0, min(100, int(speed_pct)))
+
         effective = direction
         if self._invert_direction:
             effective = Direction.RETRACT if direction == Direction.EXTEND else Direction.EXTEND

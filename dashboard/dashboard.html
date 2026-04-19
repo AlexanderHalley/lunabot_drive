@@ -1080,9 +1080,12 @@ function updateNodeHealth(data) {
 /* Bucket                                                                 */
 /* -------------------------------------------------------------------- */
 
+const BUCKET_STROKE_MM = { lift: 203, tilt: 254 };
+
 function updateBucketBar(axis, value) {
   const pct = Math.min(100, Math.max(0, value * 100));
-  const mm  = Math.round(value * 300);
+  const stroke = BUCKET_STROKE_MM[axis] ?? 0;
+  const mm  = Math.round(value * stroke);
   const bar = document.getElementById(axis + '-bar');
   const lbl = document.getElementById(axis + '-label');
   bar.style.width = pct + '%';
