@@ -33,7 +33,7 @@
     /* ------------------------------------------------------------------ */
     .grid {
       display: grid;
-      grid-template-columns: 480px 1fr;
+      grid-template-columns: 480px 1fr 400px;
       grid-template-rows: 150px auto auto 90px;
       gap: 6px;
       padding: 6px;
@@ -76,10 +76,45 @@
     .estop-flash { animation: flash-red 0.5s infinite; }
 
     /* ------------------------------------------------------------------ */
+    /* Panel M — SLAM Map (centre, rows 2–3)                               */
+    /* ------------------------------------------------------------------ */
+    #p-map {
+      grid-column: 2;
+      grid-row: 2 / 4;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+    }
+
+    #p-map h2 {
+      font-size: 15px;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    #map-canvas {
+      flex: 1;
+      width: 100%;
+      border-radius: 4px;
+      background: #111;
+      display: block;
+    }
+
+    #map-status {
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    /* ------------------------------------------------------------------ */
     /* Panel 2 — Behavior Trigger Controls (right, row 2)                  */
     /* ------------------------------------------------------------------ */
     #p-controls {
-      grid-column: 2;
+      grid-column: 3;
       grid-row: 2;
       display: flex;
       flex-direction: column;
@@ -126,12 +161,6 @@
     #btn-abort      { background: #882200; color: #fff; }
     #btn-ack        { background: #335566; color: #fff; }
 
-    #cycle-display {
-      font-size: 22px;
-      color: #ccc;
-      margin-top: 6px;
-      text-align: center;
-    }
 
     #connection-status {
       display: flex;
@@ -309,7 +338,7 @@
     /* Panel 5 — Bucket Subsystem (right, row 3)                           */
     /* ------------------------------------------------------------------ */
     #p-bucket {
-      grid-column: 2;
+      grid-column: 3;
       grid-row: 3;
       display: flex;
       flex-direction: column;
@@ -490,18 +519,20 @@
     <div id="bw-status" style="color:#33cc55;">EXCELLENT</div>
 
     <div class="camera-toggle">
-      <span>Arena cameras:</span>
-      <button class="cam-btn active" id="cam-0" onclick="setCameras(0)">0</button>
-      <button class="cam-btn" id="cam-1" onclick="setCameras(1)">1</button>
-      <button class="cam-btn" id="cam-2" onclick="setCameras(2)">2</button>
-    </div>
-
-    <div class="camera-toggle">
       <span>Robot camera feed:</span>
       <button class="cam-btn" id="btn-robot-cam" onclick="toggleRobotCam()">OFF</button>
     </div>
 
     <div id="bw-score">Projected: — / 120 pts</div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- PANEL M: SLAM Map (centre, rows 2–3)                             -->
+  <!-- ================================================================ -->
+  <div class="panel" id="p-map">
+    <h2>SLAM Map</h2>
+    <canvas id="map-canvas"></canvas>
+    <div id="map-status">Waiting for /map…</div>
   </div>
 
   <!-- ================================================================ -->
@@ -512,12 +543,11 @@
 
     <button class="ctrl-btn" id="btn-estop"      onclick="triggerEstop()">&#9888; E-STOP</button>
     <button class="ctrl-btn" id="btn-arm"        onclick="sendCommand('arm')">ARM AUTONOMY</button>
+    <button class="ctrl-btn" id="btn-autonomy"   onclick="sendCommand('start_autonomy')">START AUTONOMY</button>
     <button class="ctrl-btn" id="btn-excavation" onclick="sendCommand('start_excavation')">CONFIRM START — Excavation</button>
     <button class="ctrl-btn" id="btn-deposition" onclick="sendCommand('start_deposition')">CONFIRM START — Deposition</button>
     <button class="ctrl-btn" id="btn-abort"      onclick="sendCommand('abort')">ABORT — RESUME TELEOP</button>
     <button class="ctrl-btn" id="btn-ack"        onclick="sendCommand('acknowledge')">ACKNOWLEDGE COMPLETE</button>
-
-    <div id="cycle-display">Cycle 0 of 2</div>
 
     <div id="connection-status">
       <span class="dot dot-red" id="conn-dot"></span>
@@ -726,8 +756,6 @@
 /* State                                                                  */
 /* -------------------------------------------------------------------- */
 let autonomyState = 'TELEOP';
-let cycleCount    = 0;
-let cameraCount   = 0;
 let bwMbps        = 0.0;
 
 /* -------------------------------------------------------------------- */
@@ -762,6 +790,7 @@ function connect() {
     setConnected(true);
     setupSubscriptions();
     setupPublisher();
+    setupTFClient();
   });
 
   ros.on('error', () => {
@@ -841,12 +870,6 @@ function setupSubscriptions() {
     document.getElementById('t-mode').textContent = msg.data;
   });
 
-  // Autonomy cycle
-  sub('/autonomy_cycle', 'std_msgs/Int32', (msg) => {
-    cycleCount = msg.data;
-    document.getElementById('cycle-display').textContent = `Cycle ${cycleCount} of 2`;
-  });
-
   // Bandwidth
   sub('/bandwidth_mbps', 'std_msgs/Float32', (msg) => {
     bwMbps = msg.data;
@@ -895,6 +918,16 @@ function setupSubscriptions() {
   sub('/wifi_rssi', 'std_msgs/Int32', (msg) => {
     document.getElementById('t-rssi').textContent = msg.data + ' dBm';
   });
+
+  // SLAM map (updates slowly — slam_toolbox typically 0.1–0.5 Hz)
+  const mapTopic = new ROSLIB.Topic({
+    ros,
+    name: '/map',
+    messageType: 'nav_msgs/OccupancyGrid',
+    throttle_rate: 2000,   // at most one message per 2 s
+    queue_length: 1,
+  });
+  mapTopic.subscribe(onMapMsg);
 }
 
 function sub(topic, type, cb) {
@@ -914,12 +947,10 @@ const STATE_COLORS = {
   ESTOP:      '#CC0000',
 };
 
-// Note: AUTONOMOUS is intentionally absent here. updateStateBanner() builds
-// the autonomous-state text dynamically from the live cycle counter so we
-// can render "Cycle N of 2" instead of a static label.
 const STATE_LABELS = {
   TELEOP:     'TELEOP \u2014 Manual Control Active',
   READY:      'READY \u2014 Press button to begin autonomy attempt',
+  AUTONOMOUS: 'AUTONOMOUS \u2014 HANDS FREE',
   COMPLETE:   'AUTONOMY COMPLETE \u2014 Declare to MCJ',
   FAILED:     'AUTONOMY FAILED \u2014 Announce failure, resume manual',
   ESTOP:      'E-STOP ACTIVE',
@@ -934,13 +965,7 @@ function updateStateBanner() {
   banner.classList.toggle('estop-flash', autonomyState === 'ESTOP');
   banner.style.background = STATE_COLORS[autonomyState] || '#555';
 
-  if (autonomyState === 'ESTOP') {
-    text.textContent = STATE_LABELS.ESTOP;
-  } else if (autonomyState === 'AUTONOMOUS') {
-    text.textContent = `AUTONOMOUS \u2014 HANDS FREE \u2014 Cycle ${cycleCount + 1} of 2`;
-  } else {
-    text.textContent = STATE_LABELS[autonomyState] || autonomyState;
-  }
+  text.textContent = STATE_LABELS[autonomyState] || autonomyState;
 }
 
 /* -------------------------------------------------------------------- */
@@ -950,6 +975,7 @@ function updateControlButtons() {
   const s = autonomyState;
   setBtn('btn-estop',      s !== 'ESTOP');
   setBtn('btn-arm',        s === 'TELEOP');
+  setBtn('btn-autonomy',   s === 'READY');
   setBtn('btn-excavation', s === 'READY');
   setBtn('btn-deposition', s === 'READY');
   setBtn('btn-abort',      s === 'READY' || s === 'AUTONOMOUS');
@@ -963,16 +989,8 @@ function setBtn(id, enabled) {
 /* -------------------------------------------------------------------- */
 /* Bandwidth                                                              */
 /* -------------------------------------------------------------------- */
-function setCameras(n) {
-  cameraCount = n;
-  [0, 1, 2].forEach(i => {
-    document.getElementById('cam-' + i).className = 'cam-btn' + (i === n ? ' active' : '');
-  });
-  updateBandwidth();
-}
-
 function updateBandwidth() {
-  const totalMbps = bwMbps + cameraCount * 0.2;
+  const totalMbps = bwMbps;
   const pct       = Math.min(100, (totalMbps / 4.0) * 100);
 
   const bar    = document.getElementById('bw-bar');
@@ -1236,8 +1254,127 @@ function stopDrive() {
 }
 
 /* -------------------------------------------------------------------- */
+/* SLAM Map                                                               */
+/* -------------------------------------------------------------------- */
+let _mapInfo   = null;
+let _mapData   = null;
+let _robotPose = null;   // {translation:{x,y,z}, rotation:{x,y,z,w}}
+let _tfClient  = null;
+let _mapCanvas = null;
+let _mapCtx    = null;
+
+function setupMap() {
+  _mapCanvas = document.getElementById('map-canvas');
+  _mapCtx    = _mapCanvas.getContext('2d');
+
+  // Size canvas to its CSS layout box
+  const ro = new ResizeObserver(() => {
+    _mapCanvas.width  = _mapCanvas.clientWidth;
+    _mapCanvas.height = _mapCanvas.clientHeight;
+    drawMap();
+  });
+  ro.observe(_mapCanvas);
+}
+
+function setupTFClient() {
+  _tfClient = new ROSLIB.TFClient({
+    ros,
+    fixedFrame: 'map',
+    angularThres: 0.02,
+    transThres:   0.02,
+    rate: 10.0,
+  });
+  _tfClient.subscribe('base_link', (tf) => {
+    _robotPose = tf;
+    drawMap();
+  });
+}
+
+function onMapMsg(msg) {
+  _mapInfo = msg.info;
+  _mapData = msg.data;
+  document.getElementById('map-status').textContent =
+    `${_mapInfo.width}×${_mapInfo.height} cells · ${_mapInfo.resolution.toFixed(3)} m/cell`;
+  drawMap();
+}
+
+function drawMap() {
+  if (!_mapData || !_mapInfo || !_mapCtx) return;
+
+  const W = _mapInfo.width;
+  const H = _mapInfo.height;
+  const cW = _mapCanvas.width;
+  const cH = _mapCanvas.height;
+  if (cW === 0 || cH === 0) return;
+
+  // Build pixel data (flip Y: OccupancyGrid is row-major bottom-up)
+  const offscreen = new OffscreenCanvas(W, H);
+  const offCtx    = offscreen.getContext('2d');
+  const imgData   = offCtx.createImageData(W, H);
+  const d         = imgData.data;
+
+  for (let i = 0; i < _mapData.length; i++) {
+    const v   = _mapData[i];
+    const row = Math.floor(i / W);
+    const col = i % W;
+    const dst = ((H - 1 - row) * W + col) * 4;
+    if (v === -1)       { d[dst]=100; d[dst+1]=100; d[dst+2]=110; }  // unknown — blue-grey
+    else if (v === 0)   { d[dst]=210; d[dst+1]=210; d[dst+2]=210; }  // free — light grey
+    else                { d[dst]=30;  d[dst+1]=30;  d[dst+2]=30;  }  // occupied — near-black
+    d[dst + 3] = 255;
+  }
+  offCtx.putImageData(imgData, 0, 0);
+
+  // Scale to fit canvas, preserving aspect ratio
+  const scale   = Math.min(cW / W, cH / H);
+  const drawW   = W * scale;
+  const drawH   = H * scale;
+  const offsetX = (cW - drawW) / 2;
+  const offsetY = (cH - drawH) / 2;
+
+  _mapCtx.fillStyle = '#111';
+  _mapCtx.fillRect(0, 0, cW, cH);
+  _mapCtx.drawImage(offscreen, offsetX, offsetY, drawW, drawH);
+
+  // Robot marker
+  if (_robotPose) {
+    const origin = _mapInfo.origin.position;
+    const res    = _mapInfo.resolution;
+
+    const rx = (_robotPose.translation.x - origin.x) / res;
+    const ry = (_robotPose.translation.y - origin.y) / res;
+
+    const cx = offsetX + rx * scale;
+    const cy = offsetY + (H - ry) * scale;
+
+    // Heading from quaternion (yaw around Z)
+    const q   = _robotPose.rotation;
+    const yaw = Math.atan2(2*(q.w*q.z + q.x*q.y), 1 - 2*(q.y*q.y + q.z*q.z));
+
+    // Direction arrow
+    const arrowLen = 16;
+    _mapCtx.beginPath();
+    _mapCtx.moveTo(cx, cy);
+    _mapCtx.lineTo(cx + arrowLen * Math.cos(yaw), cy - arrowLen * Math.sin(yaw));
+    _mapCtx.strokeStyle = '#88bbff';
+    _mapCtx.lineWidth   = 2.5;
+    _mapCtx.stroke();
+
+    // Robot dot
+    _mapCtx.beginPath();
+    _mapCtx.arc(cx, cy, 6, 0, 2 * Math.PI);
+    _mapCtx.fillStyle   = '#4488ff';
+    _mapCtx.fill();
+    _mapCtx.strokeStyle = '#aaccff';
+    _mapCtx.lineWidth   = 1.5;
+    _mapCtx.stroke();
+  }
+}
+
+/* -------------------------------------------------------------------- */
 /* Init                                                                   */
 /* -------------------------------------------------------------------- */
+setupMap();
 buildHealthRows();
 updateStateBanner();
 updateControlButtons();
