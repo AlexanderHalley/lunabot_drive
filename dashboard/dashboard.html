@@ -530,9 +530,9 @@
   <!-- PANEL M: SLAM Map (centre, rows 2–3)                             -->
   <!-- ================================================================ -->
   <div class="panel" id="p-map">
-    <h2>SLAM Map</h2>
+    <h2>Global Costmap</h2>
     <canvas id="map-canvas"></canvas>
-    <div id="map-status">Waiting for /map…</div>
+    <div id="map-status">Waiting for /global_costmap/costmap…</div>
   </div>
 
   <!-- ================================================================ -->
@@ -919,12 +919,12 @@ function setupSubscriptions() {
     document.getElementById('t-rssi').textContent = msg.data + ' dBm';
   });
 
-  // SLAM map (updates slowly — slam_toolbox typically 0.1–0.5 Hz)
+  // Global costmap (Nav2 publishes this continuously as obstacles are detected)
   const mapTopic = new ROSLIB.Topic({
     ros,
-    name: '/map',
+    name: '/global_costmap/costmap',
     messageType: 'nav_msgs/OccupancyGrid',
-    throttle_rate: 2000,   // at most one message per 2 s
+    throttle_rate: 500,    // cap at 2 Hz — costmap updates frequently
     queue_length: 1,
   });
   mapTopic.subscribe(onMapMsg);
@@ -1294,7 +1294,7 @@ function onMapMsg(msg) {
   _mapInfo = msg.info;
   _mapData = msg.data;
   document.getElementById('map-status').textContent =
-    `${_mapInfo.width}×${_mapInfo.height} cells · ${_mapInfo.resolution.toFixed(3)} m/cell`;
+    `global costmap · ${_mapInfo.width}×${_mapInfo.height} cells · ${_mapInfo.resolution.toFixed(3)} m/cell`;
   drawMap();
 }
 
@@ -1318,9 +1318,16 @@ function drawMap() {
     const row = Math.floor(i / W);
     const col = i % W;
     const dst = ((H - 1 - row) * W + col) * 4;
-    if (v === -1)       { d[dst]=100; d[dst+1]=100; d[dst+2]=110; }  // unknown — blue-grey
+    if (v === -1)       { d[dst]=100; d[dst+1]=100; d[dst+2]=120; }  // unknown — blue-grey
     else if (v === 0)   { d[dst]=210; d[dst+1]=210; d[dst+2]=210; }  // free — light grey
-    else                { d[dst]=30;  d[dst+1]=30;  d[dst+2]=30;  }  // occupied — near-black
+    else if (v >= 253)  { d[dst]=30;  d[dst+1]=30;  d[dst+2]=30;  }  // lethal — near-black
+    else {
+      // inflation gradient: low cost → yellow, high cost → orange-red
+      const t = v / 252;
+      d[dst]   = 255;
+      d[dst+1] = Math.round(200 * (1 - t));
+      d[dst+2] = 0;
+    }
     d[dst + 3] = 255;
   }
   offCtx.putImageData(imgData, 0, 0);
