@@ -171,7 +171,7 @@ class ActuatorDriverNode(Node):
             return
         lgpio.gpio_claim_output(self._h, self._rpwm_gpio, 0)
         lgpio.gpio_claim_output(self._h, self._lpwm_gpio, 0)
-        lgpio.gpio_claim_output(self._h, self._en_gpio,   0)
+        lgpio.gpio_claim_output(self._h, self._en_gpio,   1)  # always enabled
         lgpio.tx_pwm(self._h, self._rpwm_gpio, self._pwm_frequency, 0)
         lgpio.tx_pwm(self._h, self._lpwm_gpio, self._pwm_frequency, 0)
 
@@ -198,7 +198,6 @@ class ActuatorDriverNode(Node):
         if self._mock_mode:
             return
 
-        lgpio.gpio_write(self._h, self._en_gpio, 1)
         if effective == Direction.EXTEND:
             lgpio.tx_pwm(self._h, self._rpwm_gpio, self._pwm_frequency, speed_pct)
             lgpio.tx_pwm(self._h, self._lpwm_gpio, self._pwm_frequency, 0)
@@ -214,7 +213,6 @@ class ActuatorDriverNode(Node):
             return
         lgpio.tx_pwm(self._h, self._rpwm_gpio, self._pwm_frequency, 0)
         lgpio.tx_pwm(self._h, self._lpwm_gpio, self._pwm_frequency, 0)
-        lgpio.gpio_write(self._h, self._en_gpio, 0)
 
     # -----------------------------------------------------------------------
     # Duty-cycle enforcement
