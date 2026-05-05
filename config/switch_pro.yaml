@@ -29,7 +29,7 @@ teleop_twist_joy_node:
       yaw: 2.0  # Max angular speed (rad/s)
 
     # Turbo mode (hold L button for faster speeds)
-    enable_turbo_button: 4  # L button
+    enable_turbo_button: 6  # L button
     scale_linear_turbo:
       x: 1.0
       y: 0.0
