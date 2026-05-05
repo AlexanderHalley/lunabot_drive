@@ -23,9 +23,9 @@ Topic routing (via actuator mux):
 
 Axis indices
 ------------
-On Linux with the `hid-nintendo` kernel driver (standard on Ubuntu 22.04+
-and the Pi 5) the Switch Pro Controller reports its d-pad on axes 6
-(horizontal) and 7 (vertical). Each axis is ternary: -1.0, 0.0, +1.0.
+Actuator axes default to axis 4 (vertical/lift) and axis 5 (horizontal/tilt),
+which correspond to the left and right triggers (ZL/ZR) on the Switch Pro
+Controller under the Linux `hid-nintendo` driver.
 Override via `dpad_axis_horizontal` / `dpad_axis_vertical` params if your
 distro uses a different joystick driver.
 
@@ -45,8 +45,8 @@ class BucketTeleopNode(Node):
     def __init__(self):
         super().__init__("bucket_teleop")
 
-        self.declare_parameter("dpad_axis_vertical",   7)
-        self.declare_parameter("dpad_axis_horizontal", 6)
+        self.declare_parameter("dpad_axis_vertical",   4)
+        self.declare_parameter("dpad_axis_horizontal", 5)
         self.declare_parameter("publish_rate_hz",      10.0)
 
         self._dpad_vertical   = self.get_parameter("dpad_axis_vertical").value

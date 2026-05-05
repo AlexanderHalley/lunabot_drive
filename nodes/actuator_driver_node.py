@@ -169,6 +169,14 @@ class ActuatorDriverNode(Node):
     def _setup_gpio(self):
         if self._mock_mode:
             return
+        # Release any pins left claimed by a previous process that died without
+        # calling gpiochip_close (e.g. SIGKILL). gpio_free is a no-op if the
+        # pin is not currently claimed by this handle.
+        for gpio in (self._rpwm_gpio, self._lpwm_gpio, self._en_gpio):
+            try:
+                lgpio.gpio_free(self._h, gpio)
+            except Exception:
+                pass
         lgpio.gpio_claim_output(self._h, self._rpwm_gpio, 0)
         lgpio.gpio_claim_output(self._h, self._lpwm_gpio, 0)
         lgpio.gpio_claim_output(self._h, self._en_gpio,   1)  # always enabled

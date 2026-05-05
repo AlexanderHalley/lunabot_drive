@@ -1,4 +1,4 @@
-teleop_node:
+teleop_twist_joy_node:
   ros__parameters:
     # Enable control with R button (button 5)
     enable_button: 5
@@ -10,13 +10,13 @@ teleop_node:
     # Left stick Y  -> forward/backward
     # Right stick X -> left/right turning
     axis_linear:
-      x: 1  # Left stick Y
-      y: 0
-      z: 0
+      x: 1   # Left stick Y (forward/backward)
+      y: -1
+      z: -1
     axis_angular:
-      pitch: 0
-      roll: 0
-      yaw: 2  # Right stick X
+      pitch: -1
+      roll: -1
+      yaw: 2  # Right stick X (turning)
 
     # Speed scaling (adjust these for desired max speeds)
     scale_linear:
