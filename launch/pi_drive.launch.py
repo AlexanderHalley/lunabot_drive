@@ -19,7 +19,7 @@ def generate_launch_description():
                 'wheel_base': wheel_base,
                 'wheel_radius': wheel_radius,
                 'gear_ratio': 100.0,        # 5x5x4 gearbox on every drive motor
-                'max_duty_cycle': 0.8,
+                'max_duty_cycle': 1.0,
                 'joint_state_rate': 50.0,   # Hz - rate to publish joint states
             }]
         ),
