@@ -45,6 +45,8 @@
   <exec_depend>nav2_planner</exec_depend>
   <exec_depend>nav2_behaviors</exec_depend>
   <exec_depend>pointcloud_to_laserscan</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
 
   <!-- AprilTag detection -->
   <exec_depend>apriltag_ros</exec_depend>

@@ -209,8 +209,7 @@ verbose logging and grep the Pi's launch terminal for
 
 ## 6. Does this build a map?
 
-**No — not as currently configured.** Here is exactly what the pipeline
-produces today:
+What each launch publishes today:
 
 | Launch file | Image | Pointcloud | LaserScan | SLAM map | Costmap |
 |---|---|---|---|---|---|
@@ -218,25 +217,43 @@ produces today:
 | `oak_d_rviz.launch.py`             | ✓ | ✓ | — | — | — |
 | `camera_mapping_test.launch.py`    | ✓ | ✓ | ✓ | — | — |
 | `hardware_bringup.launch.py`       | ✓ | ✓ | — | — | — |
+| `slam_bringup_pi.launch.py`        | ✓ | ✓ | ✓ | ✓ | — |
 | `autonomy_bringup_pi.launch.py`    | ✓ | ✓ | — | — | ✓ (Nav2 obstacle layer) |
 
-What the `map` frame *means* in this stack: in `autonomy_bringup_pi`,
-`apriltag_localizer_node` publishes `map → odom` from AprilTag detections.
-The `map` frame is the *arena coordinate frame*, not a SLAM-built occupancy
-grid. Nav2's costmap is populated *in* that frame from the pointcloud, but it
-does not retain a long-term map — it's a rolling obstacle layer.
+In `autonomy_bringup_pi`, the `map` frame is published by
+`apriltag_localizer_node` — it's the *arena coordinate frame* from tag
+detections, not a SLAM-built occupancy grid. Nav2's costmap is populated *in*
+that frame from the pointcloud, but it doesn't retain a long-term map.
 
-To actually build a SLAM map you would need to add a SLAM node:
+### Running SLAM
+
+`slam_bringup_pi.launch.py` wires up `slam_toolbox` (online async) on top of
+`hardware_bringup`. It does NOT load AprilTag localization — slam_toolbox and
+`apriltag_localizer_node` both want to publish `map → odom` and cannot
+coexist. Use this for exploration / pre-match map capture; switch back to
+`autonomy_bringup_pi` for tag-localized runs.
 
 ```bash
-sudo apt install ros-jazzy-slam-toolbox
+# Pi: install once, then launch
+sudo apt install ros-jazzy-slam-toolbox ros-jazzy-nav2-map-server
+ros2 launch lunabot_drive slam_bringup_pi.launch.py
+
+# PC: watch the map build live
+ros2 launch lunabot_drive slam_view_pc.launch.py
+
+# Save the map (from any terminal on the same domain)
+ros2 run nav2_map_server map_saver_cli -f ~/maps/arena
 ```
 
-…and either (a) launch `slam_toolbox` subscribing to `/scan` (the output of
-`pointcloud_to_laserscan` in `camera_mapping_test.launch.py`), or (b) use an
-RGB-D SLAM node like `rtabmap_ros` directly on `/oak/stereo/image_raw` +
-`/oak/rgb/image_raw`. Either path will publish `map → odom` and conflict
-with the AprilTag localizer — they cannot run together.
+Drive the robot slowly with the controller while mapping; `slam_toolbox`
+needs ~10 cm of travel between scans (`minimum_travel_distance`) to add a
+submap. Loop closure runs continuously.
 
-For tonight's test, expect: **image, pointcloud, TF tree, and IMU stream
-arriving on dreamfyre.** Map-building is a follow-up task.
+Config knobs in `config/params/slam_toolbox_params.yaml`:
+
+| Param | Default | Effect |
+|---|---|---|
+| `resolution` | 0.05 | map cell size (matches Nav2 costmap) |
+| `max_laser_range` | 5.0 | match `pointcloud_to_laserscan range_max` |
+| `minimum_travel_distance` | 0.1 | scan cadence — lower = more submaps, more CPU |
+| `loop_search_space_dimension` | 8.0 | matches arena diagonal |
