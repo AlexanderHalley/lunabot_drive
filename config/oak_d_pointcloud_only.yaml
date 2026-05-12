@@ -81,5 +81,11 @@
       i_threshold_filter_max_range: 5000   # 5.0m — arena diagonal is ~8.4m, 5m is plenty
 
     # ── IMU ──
+    # depthai_ros_driver has no "i_imu_update_rate" key; rates are per-axis.
+    # 100 Hz acc/gyro is plenty for the EKF and keeps batch traffic light.
     imu:
-      i_imu_update_rate: 100       # Reduced from 400 to save bandwidth
+      i_acc_freq: 100
+      i_gyro_freq: 100
+      i_enable_rotation: false        # competition forbids magnetometer fusion
+      i_batch_report_threshold: 1
+      i_max_batch_reports: 10

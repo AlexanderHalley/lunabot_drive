@@ -1,35 +1,27 @@
 # OAK-D-S2 Camera Configuration - RGB Only (Low Latency)
-# Use this for lowest latency with only RGB stream
+# Use this for lowest latency with only RGB stream.
 
 /oak:
   ros__parameters:
-    i_mx_id: ''
-    i_usb_speed: 'SUPER'
-
-    pipeline_gen:
+    camera:
+      i_mx_id: ''
+      i_usb_speed: 'SUPER'
+      i_pipeline_type: 'RGB'   # RGB-only pipeline
       i_nn_type: 'none'
       i_enable_imu: true
       i_enable_ir: false
 
-    # IMU Settings
     imu:
       i_acc_freq: 400
       i_gyro_freq: 400
+      i_enable_rotation: false
       i_batch_report_threshold: 1
       i_max_batch_reports: 10
 
-    # RGB Camera Settings
+    # RGB Camera
     rgb:
       i_publish_topic: true
-      i_resolution: '720P'  # Lower resolution for less bandwidth
+      i_resolution: '720P'   # 1280x720 — lower than 1080P to save bandwidth
       i_fps: 30.0
       i_interleaved: false
       i_keep_preview_aspect_ratio: true
-
-    # Disable Stereo Depth
-    stereo:
-      i_publish_topic: true
-
-    # Disable Point Cloud
-    pointcloud:
-      i_enable: false

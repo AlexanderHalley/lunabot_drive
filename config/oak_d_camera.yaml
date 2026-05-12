@@ -1,26 +1,33 @@
 # OAK-D-S2 Camera Configuration
-# Adjust these parameters based on your bandwidth and performance needs
+# Adjust these parameters based on your bandwidth and performance needs.
+#
+# Param group layout matches upstream depthai_ros_driver (jazzy):
+#   camera:  device-level (mx_id, usb_speed, pipeline_type, IMU/IR enables, NN type)
+#   imu:     IMU rate / batching
+#   rgb:     RGB sensor
+#   stereo:  stereo depth node
+#   pointcloud: on-device pointcloud (if used)
 
 /oak:
   ros__parameters:
-    # Camera identification (leave empty to use first available)
-    i_mx_id: ''
-    i_usb_speed: 'SUPER'  # USB3 mode
-
-    # Disable neural network (saves bandwidth)
-    pipeline_gen:
-      i_nn_type: 'none'
+    # Device / pipeline
+    camera:
+      i_mx_id: ''              # leave empty to use first available device
+      i_usb_speed: 'SUPER'     # USB 3 — must be plugged into a blue port
+      i_pipeline_type: 'RGBD'  # stereo depth + RGB
+      i_nn_type: 'none'        # no on-device NN (saves bandwidth)
       i_enable_imu: true
       i_enable_ir: false
 
-    # IMU Settings
+    # IMU
     imu:
       i_acc_freq: 400
       i_gyro_freq: 400
+      i_enable_rotation: false   # competition forbids magnetometer fusion
       i_batch_report_threshold: 1
       i_max_batch_reports: 10
 
-    # RGB Camera Settings
+    # RGB Camera
     rgb:
       i_publish_topic: true
       i_resolution: '1080P'  # Options: 1080P, 4K, 720P, 480P
@@ -28,7 +35,7 @@
       i_interleaved: false
       i_keep_preview_aspect_ratio: true
 
-    # Stereo Depth Settings
+    # Stereo Depth
     stereo:
       i_publish_topic: true
       i_resolution: '720P'
@@ -37,13 +44,13 @@
       i_extended_disparity: false
       i_subpixel: true
       i_depth_filter_size: 5
-      i_enable_decimation_filter: true  # Recommended when using post-processing filters
+      i_enable_decimation_filter: true
       i_decimation_filter_decimation_factor: 1
       i_enable_spatial_filter: true
-      i_spatial_filter_iterations: 2
+      i_spatial_filter_num_iterations: 2
       i_enable_temporal_filter: true
-      i_enable_speckle_filter: false  # Disabled due to memory constraints on OAK-D S2
+      i_enable_speckle_filter: false  # disabled — memory constraint on OAK-D S2
 
-    # Point Cloud Settings
+    # On-device pointcloud
     pointcloud:
       i_enable: true
