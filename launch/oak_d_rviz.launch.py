@@ -83,14 +83,8 @@ def generate_launch_description():
             output='screen'
         ),
 
-        Node(
-            package='joint_state_publisher_gui',
-            executable='joint_state_publisher_gui',
-            name='joint_state_publisher_gui',
-        ),
-
-        # Joint states come from the Pi's drive_node over the network
-        # For testing without the robot, uncomment the joint_state_publisher below:
+        # Joint states come from the Pi's drive_node over the network.
+        # For testing without the robot (no drive_node), use:
         # Node(
         #     package='joint_state_publisher_gui',
         #     executable='joint_state_publisher_gui',
