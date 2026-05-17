@@ -4,9 +4,10 @@
 # When this EKF is running, drive_node should have publish_odom_tf:=false
 # because the EKF publishes the odom -> base_link transform.
 #
-# Competition note: The OAK-D S2 BNO086 magnetometer MUST be disabled
-# (depthai default: i_enable_rotation: false). Per Lunabotics rules,
-# compass data cannot be used.
+# Competition note: The OAK-D S2 BNO086 magnetometer is currently ENABLED
+# (oak_d_*.yaml: i_enable_rotation: true) for on-campus showcase / testing.
+# Per Lunabotics rules compass data cannot be used — set i_enable_rotation
+# back to false in all oak_d_*.yaml configs before any competition run.
 
 ekf_filter_node:
   ros__parameters:

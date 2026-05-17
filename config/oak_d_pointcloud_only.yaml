@@ -89,6 +89,6 @@
     imu:
       i_acc_freq: 100
       i_gyro_freq: 100
-      i_enable_rotation: false        # competition forbids magnetometer fusion
+      i_enable_rotation: true         # magnetometer-fused orientation (DISABLE for Lunabotics competition)
       i_batch_report_threshold: 1
       i_max_batch_reports: 10
