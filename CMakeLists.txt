@@ -64,4 +64,9 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
   RENAME apriltag_localizer_node)
 
+install(PROGRAMS
+  nodes/pattern_driver_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME pattern_driver_node)
+
 ament_package()
