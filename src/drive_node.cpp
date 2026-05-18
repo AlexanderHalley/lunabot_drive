@@ -25,9 +25,9 @@ public:
     {
         // Declare parameters
         declare_parameter("can_interface", "can0");
-        declare_parameter("left_front_id", 1);
-        declare_parameter("right_front_id", 2);
-        declare_parameter("left_rear_id", 3);
+        declare_parameter("left_front_id", 2);
+        declare_parameter("right_front_id", 3);
+        declare_parameter("left_rear_id", 1);
         declare_parameter("right_rear_id", 4);
         declare_parameter("wheel_base", 0.762);    // meters (distance between left/right wheels)
         declare_parameter("wheel_radius", 0.1778); // meters (7 inches, from URDF)
