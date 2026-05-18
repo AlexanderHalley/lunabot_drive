@@ -27,8 +27,8 @@ public:
         declare_parameter("can_interface", "can0");
         declare_parameter("left_front_id", 2);
         declare_parameter("right_front_id", 3);
-        declare_parameter("left_rear_id", 1);
-        declare_parameter("right_rear_id", 4);
+        declare_parameter("left_rear_id", 4);
+        declare_parameter("right_rear_id", 1);
         declare_parameter("wheel_base", 0.762);    // meters (distance between left/right wheels)
         declare_parameter("wheel_radius", 0.1778); // meters (7 inches, from URDF)
         declare_parameter("gear_ratio", 100.0);      // 5x5x4 gearboxes
@@ -142,11 +142,8 @@ private:
             motor->SetRampRate(0.1);
         }
 
-        // Right side not inverted in firmware — the physical motor wiring
-        // already reverses rotation direction so these SetInverted(false)
-        // calls are intentional no-ops that document the known-good state.
-        right_front_->SetInverted(false);  // Motor 1
-        right_rear_->SetInverted(false);   // Motor 4
+        right_front_->SetInverted(true);
+        right_rear_->SetInverted(false);
     }
 
     void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
