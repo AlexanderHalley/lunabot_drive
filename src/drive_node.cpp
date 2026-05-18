@@ -142,8 +142,7 @@ private:
             motor->SetRampRate(0.1);
         }
 
-        right_front_->SetInverted(true);
-        right_rear_->SetInverted(false);
+        left_rear_->SetInverted(true);
     }
 
     void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
