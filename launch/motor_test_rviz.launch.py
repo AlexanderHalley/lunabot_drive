@@ -79,8 +79,8 @@ def generate_launch_description():
                 'can_interface': 'can0',
                 'left_front_id': 2,
                 'right_front_id': 3,
-                'left_rear_id': 1,
-                'right_rear_id': 4,
+                'left_rear_id': 4,
+                'right_rear_id': 1,
                 'wheel_base': wheel_base,
                 'wheel_radius': wheel_radius,
                 'gear_ratio': 100.0,        # 5x5x4 gearbox on every drive motor
