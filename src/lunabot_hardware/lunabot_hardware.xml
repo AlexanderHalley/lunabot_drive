@@ -1,0 +1,10 @@
+<library path="lunabot_hardware">
+  <class name="lunabot_hardware/SparkFlexSystem"
+         type="lunabot_hardware::SparkFlexSystem"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      ros2_control system interface driving SparkFlex controllers over CAN.
+      Referenced by lunabot.ros2_control.xacro when sim_mode=none.
+    </description>
+  </class>
+</library>

@@ -1,0 +1,10 @@
+# Stage-1 topic bridge mapping (topic_based_ros2_control side).
+# Mirrors the params in lunabot.ros2_control.xacro (sim_mode=isaac branch) and the
+# topic names produced by the Isaac ROS 2 Bridge action graph.
+sim_bridge:
+  ros__parameters:
+    use_sim_time: true
+    joint_commands_topic: /isaac/joint_commands   # ROS -> Isaac (wheel vel cmds)
+    joint_states_topic:   /isaac/joint_states      # Isaac -> ROS (wheel feedback)
+    # Sensor topics are published directly by Isaac to the 2026 names:
+    #   /camera/image_raw, /camera/depth/points, /imu, /scan, /clock, /tf

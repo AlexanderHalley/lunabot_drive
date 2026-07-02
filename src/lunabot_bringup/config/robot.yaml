@@ -1,0 +1,8 @@
+# Shared robot defaults, kept in one place so sim and hardware agree.
+/**:
+  ros__parameters:
+    drive_type: diff        # diff | skid | mecanum  (the drivetrain switch)
+    ros_domain_id: 42       # carried over from 2026 distributed setup
+    base_frame: base_link
+    odom_frame: odom
+    map_frame: map

@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<!--
+  Shared ros2_control interface. The SAME command/state interfaces are exposed
+  regardless of drivetrain; only the hardware *plugin* changes with sim_mode:
+
+    sim_mode=none  -> lunabot_hardware/SparkFlexSystem   (real CAN motors)
+    sim_mode=isaac -> topic_based_ros2_control OR isaacsim.ros2.control plugin
+    sim_mode=mock  -> mock_components/GenericSystem       (no hardware, echoes cmd)
+
+  The wheel joint names here MUST match the drivetrain xacro and the controller
+  YAML in lunabot_control. This stub wires the differential pair; extend the
+  <xacro:if> blocks for skid (4-6 joints) and mecanum (4 joints).
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="lunabot_ros2_control" params="sim_mode drive_type">
+
+    <ros2_control name="lunabot_drivetrain" type="system">
+
+      <hardware>
+        <xacro:if value="${sim_mode == 'none'}">
+          <plugin>lunabot_hardware/SparkFlexSystem</plugin>
+          <param name="can_interface">can0</param>
+          <!-- CAN ids carried over from 2026 pi_drive.launch.py -->
+          <param name="left_ids">1,3</param>
+          <param name="right_ids">2,4</param>
+        </xacro:if>
+        <xacro:if value="${sim_mode == 'isaac'}">
+          <!-- Start with topic bridge; swap to isaacsim.ros2.control for parity -->
+          <plugin>topic_based_ros2_control/TopicBasedSystem</plugin>
+          <param name="joint_commands_topic">/isaac/joint_commands</param>
+          <param name="joint_states_topic">/isaac/joint_states</param>
+        </xacro:if>
+        <xacro:if value="${sim_mode == 'mock'}">
+          <plugin>mock_components/GenericSystem</plugin>
+        </xacro:if>
+      </hardware>
+
+      <!-- Differential pair. TODO: expand per drive_type. -->
+      <joint name="left_wheel_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="velocity"/>
+        <state_interface name="position"/>
+      </joint>
+      <joint name="right_wheel_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="velocity"/>
+        <state_interface name="position"/>
+      </joint>
+
+    </ros2_control>
+
+  </xacro:macro>
+
+</robot>

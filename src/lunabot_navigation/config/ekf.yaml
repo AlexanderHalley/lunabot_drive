@@ -1,0 +1,33 @@
+# robot_localization EKF: fuse wheel odom + IMU (+ visual odom) for a smooth
+# odom->base_link estimate on high-slip regolith. AprilTag pose fixes enter as a
+# separate map->odom source (or a second EKF) to reset drift.
+ekf_filter_node:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: true          # planar arena; ignore roll/pitch/z drift
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom         # local EKF; a second (world_frame=map) fuses AprilTags
+
+    # Wheel odometry from diff_drive_controller. Trust x + yaw only (wheels slip).
+    odom0: /odom
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,   # vx
+                   false, false, true,    # vyaw
+                   false, false, false]
+    odom0_differential: false
+
+    # IMU: trust yaw rate + yaw. Primary heading source when wheels slip.
+    imu0: /imu
+    imu0_config: [false, false, false,
+                  false, false, true,     # yaw
+                  false, false, false,
+                  false, false, true,     # vyaw
+                  false, false, false]
+    imu0_differential: false
+    imu0_remove_gravitational_acceleration: true
+
+    # TODO: add visual odometry (odom1) from OAK-D VIO/RTAB-Map as primary xy.

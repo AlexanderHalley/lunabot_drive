@@ -1,0 +1,18 @@
+# Command arbitration: highest active priority wins -> /cmd_vel.
+# Teleop must always be able to override autonomy; e-stop overrides all.
+twist_mux:
+  ros__parameters:
+    topics:
+      estop:
+        topic:    cmd_vel_estop
+        timeout:  0.5
+        priority: 255
+      joystick:
+        topic:    cmd_vel_joy
+        timeout:  0.5
+        priority: 100
+      navigation:
+        topic:    cmd_vel_nav
+        timeout:  0.5
+        priority: 10
+    # Output is /cmd_vel, consumed by the active drive controller.

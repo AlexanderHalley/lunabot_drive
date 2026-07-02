@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>lunabot_simulation</name>
+  <version>0.1.0</version>
+  <description>Isaac Sim integration: URDF->USD assets, regolith arena, ROS 2
+    bridge config, and sim bring-up launch. Runs the SAME control/nav stack as
+    hardware.</description>
+  <maintainer email="alexhalley@outlook.fr">Alexander Halley</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>lunabot_description</exec_depend>
+  <exec_depend>lunabot_control</exec_depend>
+  <!-- topic bridge fallback for stage 1; isaacsim.ros2.control for parity -->
+  <exec_depend>topic_based_ros2_control</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

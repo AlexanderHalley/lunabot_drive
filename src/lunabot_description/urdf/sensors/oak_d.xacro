@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+  OAK-D S2 mount. Provides camera_link + camera_link_optical (Z fwd, X right,
+  Y down) so perception/nav TF works in both sim and hardware. Dimensions from
+  the 2026 OAK_D_S2_INTEGRATION.md notes.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="oak_d" params="parent xyz rpy">
+    <link name="camera_link">
+      <visual><geometry><box size="0.091 0.028 0.017"/></geometry></visual>
+    </link>
+    <joint name="camera_joint" type="fixed">
+      <parent link="${parent}"/><child link="camera_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+    <link name="camera_link_optical"/>
+    <joint name="camera_optical_joint" type="fixed">
+      <parent link="camera_link"/><child link="camera_link_optical"/>
+      <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+    </joint>
+    <!-- TODO: add IMU link, and a lidar link if a 2D/3D lidar is added (see plan §5.1) -->
+  </xacro:macro>
+</robot>

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!--
+  Skid-steer / tracked drivetrain (tank drive).  PLACEHOLDER.
+
+  Skid-steer uses differential kinematics, so this reuses diff_drive_controller
+  in lunabot_control but with more wheels and slip-tuned wheel_separation.
+
+  TODO:
+    - 4 (or 6) driven wheels: left_front/left_rear/right_front/right_rear joints.
+    - Group per-side joints so the controller commands "left" and "right".
+    - For a real tracked base, model tracks as wheels + a visual track mesh.
+    - Tune wheel_separation_multiplier in the controller for regolith slip.
+
+  The macro signature must match diff.xacro so lunabot.urdf.xacro can swap
+  drive_type with no other changes.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="drivetrain" params="wheel_separation wheel_radius">
+    <!-- TODO: define left_front_wheel/right_front_wheel/left_rear_wheel/right_rear_wheel -->
+    <link name="skid_placeholder"/>
+    <joint name="skid_placeholder_joint" type="fixed">
+      <parent link="chassis"/><child link="skid_placeholder"/>
+    </joint>
+  </xacro:macro>
+</robot>

@@ -1,0 +1,40 @@
+# Differential (and skid-steer) drivetrain controllers.
+# Used when drive_type = diff | skid.
+controller_manager:
+  ros__parameters:
+    update_rate: 50  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+
+diff_drive_controller:
+  ros__parameters:
+    left_wheel_names:  ["left_wheel_joint"]
+    right_wheel_names: ["right_wheel_joint"]
+    # For skid-steer, list all left/right wheels here, e.g.:
+    #   left_wheel_names:  ["left_front_wheel_joint",  "left_rear_wheel_joint"]
+    #   right_wheel_names: ["right_front_wheel_joint", "right_rear_wheel_joint"]
+
+    wheel_separation: 0.5      # keep in sync with lunabot.urdf.xacro
+    wheel_radius: 0.10
+
+    # Skid-steer slip: bump these >1.0 to model effective track width on regolith.
+    wheel_separation_multiplier: 1.0
+    wheel_radius_multiplier: 1.0
+
+    publish_rate: 50.0
+    odom_frame_id: odom
+    base_frame_id: base_link
+    enable_odom_tf: true
+
+    cmd_vel_timeout: 0.5       # carry over the 2026 watchdog behaviour
+    use_stamped_vel: false
+
+    # TODO tune on hardware
+    linear.x.max_velocity: 1.0
+    linear.x.max_acceleration: 1.0
+    angular.z.max_velocity: 2.0
+    angular.z.max_acceleration: 2.0

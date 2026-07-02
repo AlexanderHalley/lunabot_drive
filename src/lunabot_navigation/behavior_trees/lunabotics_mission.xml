@@ -1,0 +1,27 @@
+<!--
+  Lunabotics autonomous mission (STRUCTURAL STUB).
+  Sequence: traverse to dig zone -> excavate -> traverse to berm -> deposit,
+  with retries. Excavate/Deposit are custom BT action nodes that command the
+  excavation subsystem (plan §5.5) — not yet implemented.
+
+  Run via Nav2 bt_navigator or a mission-level BehaviorTree.CPP executor.
+-->
+<root BTCPP_format="4" main_tree_to_execute="LunaboticsMission">
+  <BehaviorTree ID="LunaboticsMission">
+    <Sequence name="mission">
+      <RetryUntilSuccessful num_attempts="3">
+        <NavigateToPose goal="{dig_zone_pose}"/>   <!-- Nav2 -->
+      </RetryUntilSuccessful>
+
+      <!-- TODO: custom action node driving the excavation controller -->
+      <Excavate name="excavate" target_volume="{target_kg}"/>
+
+      <RetryUntilSuccessful num_attempts="3">
+        <NavigateToPose goal="{berm_pose}"/>
+      </RetryUntilSuccessful>
+
+      <!-- TODO: custom action node driving deposition -->
+      <Deposit name="deposit"/>
+    </Sequence>
+  </BehaviorTree>
+</root>

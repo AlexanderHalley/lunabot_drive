@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<!--
+  Top-level Lunabot description.
+
+  Args:
+    drive_type : diff | skid | mecanum   (which drivetrain macro to include)
+    sim_mode   : none | isaac | mock     (which ros2_control hardware plugin)
+
+  Example:
+    xacro lunabot.urdf.xacro drive_type:=diff sim_mode:=isaac
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="lunabot">
+
+  <xacro:arg name="drive_type" default="diff"/>
+  <xacro:arg name="sim_mode"   default="none"/>
+
+  <!-- ================= Chassis (placeholder box until CAD meshes land) ======= -->
+  <xacro:property name="base_length" value="0.7"/>
+  <xacro:property name="base_width"  value="0.5"/>
+  <xacro:property name="base_height" value="0.2"/>
+  <xacro:property name="wheel_separation" value="0.5"/>
+  <xacro:property name="wheel_radius" value="0.10"/>
+
+  <link name="base_link"/>
+
+  <link name="chassis">
+    <visual>
+      <geometry><box size="${base_length} ${base_width} ${base_height}"/></geometry>
+    </visual>
+    <collision>
+      <geometry><box size="${base_length} ${base_width} ${base_height}"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="20.0"/>
+      <inertia ixx="0.5" ixy="0" ixz="0" iyy="0.8" iyz="0" izz="1.0"/>
+    </inertial>
+  </link>
+
+  <joint name="base_to_chassis" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis"/>
+    <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================= Drivetrain (SWAP POINT) =============================== -->
+  <!-- Each macro defines the wheel links/joints for that mechanism.            -->
+  <xacro:include filename="$(find lunabot_description)/urdf/drivetrains/$(arg drive_type).xacro"/>
+  <xacro:drivetrain
+      wheel_separation="${wheel_separation}"
+      wheel_radius="${wheel_radius}"/>
+
+  <!-- ================= Sensors =============================================== -->
+  <xacro:include filename="$(find lunabot_description)/urdf/sensors/oak_d.xacro"/>
+  <xacro:oak_d parent="chassis" xyz="${base_length/2} 0 ${base_height/2}" rpy="0 0 0"/>
+
+  <!-- ================= ros2_control (shared sim + hardware) ================== -->
+  <xacro:include filename="$(find lunabot_description)/urdf/lunabot.ros2_control.xacro"/>
+  <xacro:lunabot_ros2_control sim_mode="$(arg sim_mode)" drive_type="$(arg drive_type)"/>
+
+</robot>

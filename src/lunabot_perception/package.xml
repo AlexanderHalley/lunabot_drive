@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>lunabot_perception</name>
+  <version>0.1.0</version>
+  <description>Perception for the Lunabot: OAK-D S2 driver bring-up, pointcloud
+    -> costmap/laserscan conversion, and AprilTag detection for GPS-denied
+    relocalization. Migrated from the 2026 lunabot_drive camera work.</description>
+  <maintainer email="alexhalley@outlook.fr">Alexander Halley</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>depthai_ros_driver</exec_depend>
+  <exec_depend>pointcloud_to_laserscan</exec_depend>
+  <exec_depend>apriltag_ros</exec_depend>
+  <exec_depend>image_transport_plugins</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

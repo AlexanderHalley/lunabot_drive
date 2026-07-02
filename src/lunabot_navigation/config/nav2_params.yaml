@@ -1,0 +1,45 @@
+# Nav2 parameters (STARTING POINT — tune in Isaac Sim first).
+# Trimmed to the choices that matter for a skid-steer rover on regolith; fill the
+# remaining standard Nav2 sections from nav2_bringup defaults.
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: true          # flip to false on hardware (or set via launch)
+    global_frame: map
+    robot_base_frame: base_link
+
+controller_server:
+  ros__parameters:
+    use_sim_time: true
+    controller_frequency: 20.0
+    # MPPI handles skid-steer slip and non-smooth terrain better than DWB.
+    FollowPath:
+      plugin: "nav2_mppi_controller::MPPIController"
+      # TODO: tune vx_max/wz_max to match diff_drive_controller limits; add a
+      #       Constraint critic for the arena, Obstacles critic from the costmap.
+
+planner_server:
+  ros__parameters:
+    use_sim_time: true
+    GridBased:
+      plugin: "nav2_smac_planner::SmacPlanner2D"   # or NavfnPlanner
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      use_sim_time: true
+      global_frame: odom
+      robot_base_frame: base_link
+      rolling_window: true
+      # Obstacles from OAK-D pointcloud (or LiDAR /scan if added).
+      plugins: ["obstacle_layer", "inflation_layer"]
+      # TODO: point obstacle_layer at /scan (pointcloud_to_laserscan) or voxel layer.
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      use_sim_time: true
+      global_frame: map
+      robot_base_frame: base_link
+      plugins: ["static_layer", "obstacle_layer", "keepout_layer", "inflation_layer"]
+      # keepout_layer: mask the berm/collector + arena walls.
