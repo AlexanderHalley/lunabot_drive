@@ -1,0 +1,73 @@
+# Isaac ROS Visual SLAM (cuVSLAM) parameters.
+#
+# ==================== SCAFFOLDING ====================
+# This backend is NOT known to run. Two things must be true first:
+#
+#   1. An Isaac ROS release supporting this ROS distro exists. Isaac ROS
+#      binaries have historically targeted Ubuntu 22.04 / Humble.
+#   2. The robot carries an NVIDIA GPU. A Raspberry Pi 5 cannot run cuVSLAM
+#      at all, so this is blocked on the 2027 compute decision.
+#
+# Until both hold, rtabmap is the default and this file exists so that the
+# launch plumbing, the topic contract and the frame ownership are already
+# correct when the decision is made. See docs/SLAM.md.
+#
+# VERIFY every parameter name below against the installed package:
+#   ros2 param list /visual_slam_node
+# The topic naming in particular changed around Isaac ROS 3.x, from
+# stereo_camera/left/image to a multi-camera image_0 / camera_info_0 scheme.
+# =====================================================
+
+visual_slam_node:
+  ros__parameters:
+    # ==================== Frames ====================
+    # Same frame names as every other backend. This is the part that is worth
+    # getting right now: whatever cuVSLAM ends up being called, it has to
+    # slot into the same tree.
+    map_frame: map
+    odom_frame: odom
+    base_frame: base_link
+    imu_frame: oak_d_imu_frame
+
+    # cuVSLAM owns map -> odom, like rtabmap does.
+    publish_map_to_odom_tf: true
+
+    # And does NOT own odom -> base_link unless it is the odom source.
+    # Overridden by the launch file from publish_odom_tf. Exactly one node
+    # may publish this transform.
+    publish_odom_to_base_tf: false
+
+    # ==================== Input ====================
+    # The stereo_rect camera profile publishes rectified images, and cuVSLAM
+    # produces nonsense from raw frames. If images are NOT rectified, this
+    # must be false and cuVSLAM will rectify internally at a cost.
+    rectified_images: true
+
+    # Number of camera inputs. Two = one stereo pair.
+    num_cameras: 2
+    min_num_images: 2
+
+    enable_imu_fusion: true
+
+    # PLACEHOLDERS. These are BNO086-plausible noise densities, not measured
+    # values. Measure them with the IMU stationary before trusting the fusion:
+    # too-low noise makes cuVSLAM believe a drifting IMU.
+    gyro_noise_density: 0.000244
+    gyro_random_walk: 0.000019393
+    accel_noise_density: 0.001862
+    accel_random_walk: 0.003
+
+    # ==================== Behaviour ====================
+    # Localisation against a saved map is a separate mode; mapping is the
+    # default, matching rtabmap's behaviour.
+    enable_localization_n_mapping: true
+
+    # Off by default -- both are debug aids that cost bandwidth.
+    enable_observations_view: false
+    enable_landmarks_view: false
+    enable_slam_visualization: false
+
+    # Lunar regolith is low-texture and self-similar. If tracking is lost
+    # frequently, this is the knob: cuVSLAM's default assumes a richer scene
+    # than a regolith bin provides.
+    enable_debug_mode: false

@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>lunabot_slam</name>
+  <version>0.1.0</version>
+  <description>
+    SLAM launch and configuration with a swappable backend: rtabmap on CPU, or
+    Isaac ROS Visual SLAM on an NVIDIA GPU.
+  </description>
+  <maintainer email="alexhalley@outlook.fr">Alexander Halley</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>rtabmap_slam</exec_depend>
+  <exec_depend>rtabmap_odom</exec_depend>
+  <exec_depend>rtabmap_util</exec_depend>
+
+  <!-- Deliberately NOT declared: isaac_ros_visual_slam.
+       It is not resolvable by rosdep on every distro and may not have a
+       release for this one at all. Declaring it would make the whole
+       workspace un-installable to get a backend that is scaffolding. The
+       cuvslam launch file fails at runtime with a clear message instead. -->
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>launch</test_depend>
+  <test_depend>launch_ros</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

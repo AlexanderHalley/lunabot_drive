@@ -84,13 +84,17 @@ diff_drive_controller:
     # Matches the 500 ms watchdog the 2026 drive node enforced by hand.
     cmd_vel_timeout: 0.5
 
-    # Diagonal only. Large values on the unobservable axes (y, z, roll, pitch)
+    # Diagonal only. Written as plain decimals rather than 1.0e6: under
+    # YAML 1.1 an exponent without a sign parses as a STRING, and the
+    # controller then rejects the parameter at load.
+    #
+    # Large values on the unobservable axes (y, z, roll, pitch)
     # tell the EKF and rtabmap not to trust them at all -- a planar rover has
     # no information about those, and claiming otherwise makes fusion worse
     # than not fusing.
     #                          x     y      z    roll  pitch  yaw
-    pose_covariance_diagonal: [0.05, 0.05, 1.0e6, 1.0e6, 1.0e6, 0.1]
-    twist_covariance_diagonal: [0.05, 0.05, 1.0e6, 1.0e6, 1.0e6, 0.1]
+    pose_covariance_diagonal: [0.05, 0.05, 1000000.0, 1000000.0, 1000000.0, 0.1]
+    twist_covariance_diagonal: [0.05, 0.05, 1000000.0, 1000000.0, 1000000.0, 0.1]
 
     # PLACEHOLDERS, and deliberately conservative. The acceleration limits
     # matter more than the velocity ones on a skid-steer: a step command

@@ -1,0 +1,112 @@
+# rtabmap parameters for a planar skid-steer rover with one RGB-D camera.
+#
+# rtabmap has several hundred parameters. These are the ones that matter for
+# this robot; everything else is left at its default deliberately, because a
+# config file that restates defaults hides which values were actually chosen.
+#
+# The Rtabmap/ and Reg/ style keys are rtabmap's own internal parameter names,
+# passed through as strings. They are case-sensitive and a typo is silently
+# ignored -- rtabmap does not warn about unknown parameters. If a setting
+# seems to have no effect, check the spelling against
+#   rtabmap --params
+# before concluding the parameter does not work.
+
+rtabmap:
+  ros__parameters:
+    frame_id: base_link
+    odom_frame_id: odom
+    map_frame_id: map
+
+    subscribe_depth: true
+    subscribe_rgb: true
+    subscribe_scan: false
+    subscribe_scan_cloud: false
+
+    # The OAK-D does not stamp its RGB and depth frames identically, and
+    # neither does Isaac. Exact sync drops nearly everything.
+    approx_sync: true
+    approx_sync_max_interval: 0.02
+    queue_size: 30
+
+    # Wait for TF rather than dropping frames the moment a transform is a few
+    # milliseconds late. Under sim time this matters more, because /clock
+    # arrives in discrete jumps.
+    wait_for_transform: 0.2
+
+    # Rebuild the map on every start. Set false, rtabmap resumes from its
+    # database, which during development means yesterday's map silently
+    # merging into today's run.
+    Mem/IncrementalMemory: 'true'
+    Mem/InitWMWithAllNodes: 'false'
+
+    # ==================== Planar rover ====================
+    # Force 3-DoF registration. The rover cannot roll, pitch or change
+    # altitude in any way the estimator should believe, and letting the
+    # optimiser use those degrees of freedom lets visual noise tilt the whole
+    # map.
+    Reg/Force3DoF: 'true'
+    Optimizer/Slam2D: 'true'
+
+    # Fuse the IMU's gravity direction. 0.3 rad sigma is a loose constraint --
+    # enough to stop the map tilting, not so tight that a bumpy traverse
+    # fights it. This is why the URDF's oak_d_imu_frame rotation has to be
+    # right: a wrong IMU orientation tilts the map with full confidence.
+    Optimizer/GravitySigma: '0.3'
+
+    # ==================== Occupancy grid ====================
+    # 2D grid out, for Nav2. Grid/3D true gives an octomap, which Nav2's
+    # costmap does not consume.
+    Grid/3D: 'false'
+    Grid/CellSize: '0.05'
+    Grid/RangeMax: '2.0'         # matches the camera's depth clip
+    Grid/RayTracing: 'true'      # clears free space rather than only marking obstacles
+    Grid/FromDepth: 'true'
+    Grid/MaxGroundHeight: '0.05'
+    Grid/MaxObstacleHeight: '1.0'
+    # Slope beyond which a surface counts as an obstacle rather than
+    # traversable ground. PLACEHOLDER -- depends entirely on what the 2027
+    # drivetrain can actually climb.
+    Grid/MaxGroundAngle: '35'
+
+    # ==================== Loop closure ====================
+    # Lunar regolith is a low-texture, self-similar surface. Visual loop
+    # closure will be unreliable, and a FALSE loop closure is far worse than
+    # none -- it folds the map. Hence a high similarity threshold.
+    Rtabmap/LoopThr: '0.15'
+    RGBD/OptimizeFromGraphEnd: 'false'
+    RGBD/ProximityBySpace: 'true'
+    RGBD/AngularUpdate: '0.05'
+    RGBD/LinearUpdate: '0.05'
+    Rtabmap/DetectionRate: '2.0'
+
+    # Require more inliers than default before accepting a transform. Same
+    # reasoning: on a low-texture surface, weak matches are common and wrong.
+    Vis/MinInliers: '20'
+    Vis/InlierDistance: '0.1'
+
+    # ==================== Publishing ====================
+    # rtabmap owns map -> odom. Exactly one node may.
+    publish_tf: true
+    publish_null_when_lost: false
+    # Set true to publish the map cloud as well. Off by default: it is a lot
+    # of bandwidth for something only RViz looks at.
+    publish_map_cloud: false
+
+
+# Visual odometry. Only started with odom_source:=visual; with the default
+# wheel odometry this node does not run at all.
+rgbd_odometry:
+  ros__parameters:
+    frame_id: base_link
+    odom_frame_id: odom
+    publish_tf: true
+    approx_sync: true
+    queue_size: 30
+    wait_for_transform: 0.2
+
+    Reg/Force3DoF: 'true'
+    Odom/Strategy: '0'          # 0 = frame-to-map
+    Odom/ResetCountdown: '5'    # auto-recover after 5 consecutive lost frames
+    Odom/GuessMotion: 'true'
+    Vis/MinInliers: '15'
+    Vis/MaxFeatures: '1000'

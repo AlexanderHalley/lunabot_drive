@@ -20,6 +20,12 @@ if(BUILD_TESTING)
   # which is most of what actually breaks in launch files.
   ament_add_pytest_test(test_launch_descriptions test/test_launch_descriptions.py)
 
+  # Structural checks on the YAML: covariance matrix shapes, the wheel-name
+  # contract with the URDF, and the YAML 1.1 exponent trap that makes `1.0e6`
+  # parse as a string. Both ekf.yaml and controllers.yaml shipped with that
+  # bug before this test existed.
+  ament_add_pytest_test(test_config_files test/test_config_files.py)
+
   # Brings the whole stack up on mock hardware and drives it. No hardware, no
   # GPU, no network. This is the highest-value test in the workspace: if
   # /odom moves, the URDF parsed, the plugin loaded, the interfaces were

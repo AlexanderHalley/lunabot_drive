@@ -128,18 +128,24 @@ def test_camera_profiles_match_the_config_files():
         assert (config_dir / filename).is_file(), f'missing config {filename}'
 
 
-@pytest.mark.parametrize(
-    ('odom_source', 'expected'),
-    [('wheel', 'true'), ('visual', 'false'), ('ekf', 'false')],
-)
-def test_odom_tf_ownership_is_exclusive(odom_source, expected):
-    """diff_drive_controller must publish odom -> base_link only for
-    odom_source:=wheel.
+@pytest.mark.parametrize('odom_source', ['wheel', 'visual', 'ekf'])
+def test_exactly_one_node_owns_odom_to_base_link(odom_source):
+    """The single most important invariant in the launch layer.
 
-    Two publishers on one transform gives a TF tree that looks correct in
-    view_frames and behaves nondeterministically, so this is worth a test
-    rather than a comment.
+    Three nodes are capable of publishing odom -> base_link:
+    diff_drive_controller, the SLAM backend, and the EKF. Exactly one may, for
+    any value of odom_source. Two publishers on one transform gives a TF tree
+    that looks correct in view_frames and behaves nondeterministically, which
+    is very hard to diagnose from the symptom.
     """
     module = load('robot.launch.py')
     context = LaunchContext()
-    assert module._odom_tf_from(odom_source).perform(context) == expected
+
+    owners = {
+        'diff_drive_controller': module._equals(odom_source, 'wheel').perform(context),
+        'slam_backend': module._equals(odom_source, 'visual').perform(context),
+        'ekf': module._equals(odom_source, 'ekf').perform(context),
+    }
+
+    claiming = [name for name, value in owners.items() if value == 'true']
+    assert len(claiming) == 1, f'odom_source:={odom_source} gives publishers {claiming}'

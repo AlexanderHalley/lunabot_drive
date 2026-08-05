@@ -1,0 +1,125 @@
+# robot_localization EKF: fuses wheel odometry with the OAK-D's IMU into
+# odom -> base_link.
+#
+# ==================== DISABLED BY DEFAULT ====================
+# Runs only with odom_source:=ekf. It ships in the skeleton, unused, for a
+# specific reason:
+#
+# The drivetrain has no encoders, so diff_drive_controller's odometry is the
+# commanded velocity echoed back (see docs/HARDWARE_CAN.md). It is known-bad
+# BEFORE the first field test -- not "might need improving later", but wrong
+# under any wheel slip, which on regolith is continuous.
+#
+# Having the fusion path wired and exercised in simulation from day one turns
+# a scary integration task into a config flip. Discovering in February that
+# the rover needs sensor fusion, and only then starting to wire it, is how
+# seasons get lost.
+# =============================================================
+#
+# What this actually buys with no encoders: the IMU's yaw rate is a REAL
+# measurement, and it is the one thing that can catch a skid-steer scrubbing
+# through a turn. Fusing it against a fabricated wheel yaw rate is strictly
+# better than trusting the fabrication alone. It cannot fix translation --
+# nothing here measures distance travelled. Only visual odometry or SLAM can.
+
+ekf_node:
+  ros__parameters:
+    frequency: 50.0
+    sensor_timeout: 0.2
+    two_d_mode: true          # planar rover; pins z, roll and pitch to zero
+
+    publish_tf: true          # owns odom -> base_link when odom_source:=ekf
+    publish_acceleration: false
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom         # local estimate only. SLAM owns map -> odom.
+
+    # ==================== Wheel odometry ====================
+    odom0: /odom
+    # Matrix layout: x, y, z / roll, pitch, yaw / vx, vy, vz / vroll, vpitch,
+    # vyaw / ax, ay, az.
+    #
+    # Only vx and vyaw are taken. Absolute pose is deliberately NOT fused:
+    # this odometry integrates its own velocity, so fusing its pose would
+    # feed the filter the same information twice and make it overconfident in
+    # a number that is fabricated.
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, true,
+                   false, false, false]
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 10
+
+    # ==================== IMU ====================
+    imu0: /oak_d/imu/data
+    # Yaw rate only.
+    #
+    # Absolute yaw is excluded because the BNO086's orientation estimate is
+    # magnetometer-influenced, and a regolith bin full of steel structure and
+    # four brushless motors is a bad magnetic environment. A slowly wandering
+    # absolute heading is worse than no absolute heading.
+    #
+    # Linear acceleration is excluded because double-integrating accelerometer
+    # noise to get position is a well-known way to produce confident nonsense,
+    # and with two_d_mode there is no vertical channel to constrain it.
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 30
+    imu0_remove_gravitational_acceleration: true
+
+    # ==================== Noise ====================
+    # PLACEHOLDERS, hand-tuned rather than derived.
+    #
+    # These are FLATTENED 15x15 matrices -- 225 values each, row-major, in the
+    # order x y z roll pitch yaw vx vy vz vroll vpitch vyaw ax ay az. Passing
+    # only the 15 diagonal entries is a very easy mistake and robot_localization
+    # rejects it at startup, so if the EKF refuses to launch, count the values
+    # here first.
+    #
+    # Process noise on yaw and vyaw is deliberately high: it tells the filter
+    # that the motion model is a poor description of a slipping skid-steer,
+    # which is true.
+    process_noise_covariance: [
+      0.05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # x
+      0.0, 0.05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # y
+      0.0, 0.0, 0.06, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # z
+      0.0, 0.0, 0.0, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # roll
+      0.0, 0.0, 0.0, 0.0, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # pitch
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # yaw
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.025, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # vx
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.025, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # vy
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # vz
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0,  # vroll
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0,  # vpitch
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.02, 0.0, 0.0, 0.0,  # vyaw
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0,  # ax
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0,  # ay
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.015]  # az
+
+    # Near-zero initial pose uncertainty (the rover starts where it starts),
+    # high initial velocity uncertainty.
+    initial_estimate_covariance: [
+      1.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # x
+      0.0, 1.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # y
+      0.0, 0.0, 1.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # z
+      0.0, 0.0, 0.0, 1.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # roll
+      0.0, 0.0, 0.0, 0.0, 1.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # pitch
+      0.0, 0.0, 0.0, 0.0, 0.0, 1.0e-9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # yaw
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # vx
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # vy
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # vz
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # vroll
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,  # vpitch
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,  # vyaw
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,  # ax
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,  # ay
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]  # az

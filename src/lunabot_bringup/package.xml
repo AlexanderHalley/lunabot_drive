@@ -36,6 +36,10 @@
   <exec_depend>depthai_ros_driver</exec_depend>
   <exec_depend>depth_image_proc</exec_depend>
 
+  <!-- SLAM and sensor fusion -->
+  <exec_depend>lunabot_slam</exec_depend>
+  <exec_depend>robot_localization</exec_depend>
+
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
