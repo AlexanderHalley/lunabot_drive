@@ -92,7 +92,7 @@ def test_nav2_never_publishes_to_cmd_vel(module):
     for node in module.NAV2_NODES:
         targets = [target for _, target in node['remappings']]
         assert BUS_TOPIC not in targets, (
-            f'{node["name"]} remaps onto {BUS_TOPIC}, which is twist_mux\'s output'
+            f"{node['name']} remaps onto {BUS_TOPIC}, which is twist_mux's output"
         )
 
 
@@ -106,7 +106,9 @@ def test_only_the_smoother_publishes_the_nav_topic(module):
     should never make.
     """
     publishers = [
-        node['name'] for node in module.NAV2_NODES if NAV_TOPIC in [t for _, t in node['remappings']]
+        node['name']
+        for node in module.NAV2_NODES
+        if NAV_TOPIC in [t for _, t in node['remappings']]
     ]
     assert publishers == ['velocity_smoother']
 

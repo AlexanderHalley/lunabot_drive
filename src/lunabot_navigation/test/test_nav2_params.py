@@ -188,8 +188,7 @@ def test_footprint_matches_the_chassis():
     for name in ['local_costmap', 'global_costmap']:
         footprint = yaml.safe_load(config[name][name]['ros__parameters']['footprint'])
         message = (
-            f'{name} footprint does not match the {length} x {width} chassis in '
-            f'properties.xacro'
+            f'{name} footprint does not match the {length} x {width} chassis in properties.xacro'
         )
         assert len(footprint) == len(expected), message
         # Corner by corner: pytest.approx does not descend into nested lists.
