@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """The ros2_control bridge: /isaac/joint_states and /isaac/joint_commands.
 
 This graph is what makes sim a real test of the robot's control stack rather

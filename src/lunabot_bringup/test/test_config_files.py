@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Structural checks on the config files.
 
 The headline one is the YAML 1.1 exponent trap. `1.0e6` and `1e-09` both
@@ -79,8 +81,10 @@ def test_no_numbers_hiding_as_strings(path):
 
 
 def test_ekf_covariances_are_full_matrices():
-    """robot_localization wants flattened 15x15 matrices, not 15 diagonal
-    entries. Passing 15 is an easy mistake and stops the EKF from starting."""
+    """robot_localization wants flattened 15x15 matrices, not 15 diagonal entries.
+
+    Passing 15 is an easy mistake and stops the EKF from starting.
+    """
     params = yaml.safe_load((CONFIG_DIR / 'ekf.yaml').read_text())['ekf_node']['ros__parameters']
 
     for key in ('process_noise_covariance', 'initial_estimate_covariance'):
@@ -94,8 +98,11 @@ def test_ekf_covariances_are_full_matrices():
 
 
 def test_ekf_does_not_fuse_absolute_pose_from_wheel_odometry():
-    """Fusing odom's pose as well as its velocity feeds the filter the same
-    information twice and makes it overconfident in a fabricated number."""
+    """Wheel odometry contributes velocity only, never absolute pose.
+
+    Fusing odom's pose as well as its velocity feeds the filter the same information twice and
+    makes it overconfident in a fabricated number.
+    """
     params = yaml.safe_load((CONFIG_DIR / 'ekf.yaml').read_text())['ekf_node']['ros__parameters']
     x, y, z, roll, pitch, yaw = params['odom0_config'][:6]
     assert not any([x, y, z, roll, pitch, yaw]), 'wheel odometry pose must not be fused'
@@ -105,8 +112,10 @@ def test_ekf_does_not_fuse_absolute_pose_from_wheel_odometry():
 
 
 def test_controller_wheel_names_match_the_urdf():
-    """These strings are the contract with lunabot_description. A rename on
-    either side gives a controller that cannot claim its interfaces."""
+    """These strings are the contract with lunabot_description.
+
+    A rename on either side gives a controller that cannot claim its interfaces.
+    """
     params = yaml.safe_load((CONFIG_DIR / 'controllers.yaml').read_text())
     diff_drive = params['diff_drive_controller']['ros__parameters']
 
@@ -176,8 +185,11 @@ def test_controller_update_rate_sustains_the_can_heartbeat():
 
 
 def test_camera_profiles_agree_on_the_tf_prefix():
-    """Every profile must name the same prefix and must not let the driver
-    publish its own TF -- robot_state_publisher owns the tree."""
+    """Every camera profile uses the same TF prefix and publishes no TF itself.
+
+    Every profile must name the same prefix and must not let the driver publish its own TF --
+    robot_state_publisher owns the tree.
+    """
     for path in CONFIG_DIR.glob('oak_d_s2*.yaml'):
         camera = yaml.safe_load(path.read_text())['/**']['ros__parameters']['camera']
         assert camera['i_tf_tf_prefix'] == 'oak_d', path.name
@@ -185,8 +197,10 @@ def test_camera_profiles_agree_on_the_tf_prefix():
 
 
 def test_twist_mux_prefers_teleop_over_navigation():
-    """A human reaching for the controller wants the rover to stop doing what
-    it is doing."""
+    """Teleop outranks navigation.
+
+    A human reaching for the controller wants the rover to stop doing what it is doing.
+    """
     topics = yaml.safe_load((CONFIG_DIR / 'twist_mux.yaml').read_text())['twist_mux'][
         'ros__parameters'
     ]['topics']
@@ -194,8 +208,12 @@ def test_twist_mux_prefers_teleop_over_navigation():
 
 
 def test_teleop_deadman_is_required():
-    """The 2026 launch file set require_enable_button false, so the rover drove
-    whenever the stick moved. On 25 kg with brake-mode motors that is a safety
-    property, not a preference."""
+    """The joystick deadman is mandatory.
+
+    The 2026 launch file set require_enable_button false, so the rover drove whenever the stick
+    moved.
+
+    On 25 kg with brake-mode motors that is a safety property, not a preference.
+    """
     params = yaml.safe_load((CONFIG_DIR / 'teleop_switch_pro.yaml').read_text())
     assert params['teleop_twist_joy_node']['ros__parameters']['require_enable_button'] is True

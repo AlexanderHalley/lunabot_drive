@@ -29,6 +29,42 @@ writing `if sim:`, stop and ask what the hardware plugin should be doing instead
 **Nothing goes in `lunabot_msgs` that exists upstream.** See
 [`src/lunabot_msgs/README.md`](src/lunabot_msgs/README.md).
 
+**One linter per language.** `ruff` owns Python — configured in `ruff.toml`, enforced by
+`pre-commit` and the CI lint job. `clang-format` owns C++, via `.clang-format`. Nothing else may
+lint the same files.
+
+This is not a preference. The workspace briefly ran `ruff` *and* `ament_flake8` + `ament_pep257`,
+plus `ament_uncrustify` alongside `clang-format`, and the two systems disagree — roughly **400
+style failures out of 617 tests, and zero functional ones**, each linter undoing the other's work.
+
+Those three are switched off in every `CMakeLists.txt` with:
+
+```cmake
+set(ament_cmake_flake8_FOUND TRUE)
+set(ament_cmake_pep257_FOUND TRUE)
+set(ament_cmake_uncrustify_FOUND TRUE)
+```
+
+before `ament_lint_auto_find_test_dependencies()` — ament's documented skip mechanism. **Everything
+else in `ament_lint_common` still runs**: copyright, cpplint, cppcheck, lint_cmake, xmllint.
+
+Two consequences worth knowing:
+
+- **`ruff.toml` has to carry what those linters provided**, or coverage is lost rather than
+  deduplicated. That is why it selects `I` (isort, replacing `flake8-import-order`) and `D`
+  (pydocstyle, replacing `ament_pep257`) rather than running on ruff's defaults.
+- **`flake8-quotes` settings must match `format.quote-style`.** Ruff's `Q` rules default to double
+  quotes regardless of the formatter, so leaving them unset reproduces the exact linter-versus-
+  formatter loop inside a single tool.
+
+If you re-add `ament_flake8`, you are signing up to reconcile two style systems. Don't.
+
+**Every source file carries a copyright header.** `ament_copyright` still runs and will tell you.
+
+```
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+```
+
 **Kinematic constants live in two files and must agree.** `wheel_radius` and `wheel_separation` are
 in both `properties.xacro` and `controllers.yaml`, because xacro cannot reach into a controller
 YAML. Change one, change the other, same commit. If they disagree, odometry is wrong and nothing

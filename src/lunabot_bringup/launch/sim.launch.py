@@ -1,4 +1,6 @@
-"""Convenience wrapper for the ROS side of a simulation run.
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
+r"""Convenience wrapper for the ROS side of a simulation run.
 
     ros2 launch lunabot_bringup sim.launch.py
 

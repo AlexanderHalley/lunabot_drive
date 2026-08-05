@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 from glob import glob
 
 from setuptools import find_packages, setup

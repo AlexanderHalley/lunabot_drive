@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """RViz2 with one of the configs from lunabot_description.
 
 Split into its own file for one reason: use_sim_time. RViz is the node people

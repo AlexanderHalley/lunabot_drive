@@ -1,14 +1,20 @@
 # Ruff configuration for the workspace.
 #
-# Ruff's defaults are not ROS defaults, and without this file the pre-commit
-# lint job rewrites every Python file in the tree: 88 columns instead of 99,
-# and double quotes instead of single. Both disagree with `ament_flake8` and
-# `ament_pep257`, which are what `colcon test` actually runs -- so the two
-# linters would have spent the rest of the project undoing each other.
+# ==================== ONE LINTER PER LANGUAGE ====================
+# ruff owns Python. clang-format owns C++. Nothing else may.
 #
-# These values are chosen to match ament, not to express a preference.
+# This workspace previously ran BOTH ruff (via pre-commit) and ament_flake8 +
+# ament_pep257 (via colcon test), which disagree, so the two spent their time
+# undoing each other -- roughly 400 style failures out of 617 tests, and zero
+# functional ones. The ament linters that duplicate ruff are now switched off
+# in each package's CMakeLists; see CONTRIBUTING.md.
+#
+# The consequence for this file: it has to carry what those linters were
+# providing, or coverage is silently lost rather than deduplicated. That is
+# what the rule selection below is for -- it is not a style preference.
+# =================================================================
 
-# ament_flake8's limit. Not ruff's default of 88.
+# ament_flake8's limit, not ruff's default of 88.
 line-length = 99
 
 # Generated and vendored trees. src/*/ third-party checkouts are covered by
@@ -20,6 +26,64 @@ exclude = [
     "src/sparkcan",
     "src/topic_based_ros2_control",
 ]
+
+[lint]
+select = [
+    "E",  # pycodestyle errors      } flake8 core, which is what
+    "W",  # pycodestyle warnings    } ament_flake8 wrapped
+    "F",  # pyflakes                }
+    "I",  # isort -- replaces flake8-import-order, which ament_flake8 bundles.
+          # This is a real gap, not a hypothetical one: camera.launch.py had
+          # pathlib last and ament_index_python after launch_ros.
+    "D",  # pydocstyle -- replaces ament_pep257
+    "B",  # bugbear: mutable default args, loop-variable capture, and similar
+          # things that are bugs rather than style
+    "Q",  # quote consistency, matching the format setting below
+    "UP", # pyupgrade
+]
+
+ignore = [
+    # Missing-docstring rules. ament_pep257 does not require a docstring on
+    # every module, class and function either, and turning these on would
+    # demand prose for things like `def config():` in a test fixture.
+    # Docstrings here are for explaining WHY, and a mandate produces the
+    # opposite.
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+
+    # Conflicts with the pep257 convention selected below; ruff warns if both
+    # are active.
+    "D203",  # blank line before class docstring
+    "D212",  # summary on the first physical line
+]
+
+[lint.pydocstyle]
+convention = "pep257"
+
+[lint.flake8-quotes]
+# Must agree with format.quote-style below. Ruff's Q rules default to double
+# quotes regardless of the formatter setting, so leaving this out puts the
+# linter and the formatter in a loop -- the exact failure this whole config
+# exists to end, reproduced inside one tool.
+inline-quotes = "single"
+docstring-quotes = "double"
+multiline-quotes = "double"
+
+[lint.per-file-ignores]
+# SimulationApp MUST be constructed before any omni.* import, so the imports
+# in this file are inside functions on purpose and the module says so at
+# length. E402 and the import-placement rules would "fix" it into something
+# that fails at runtime.
+"src/lunabot_sim/lunabot_sim/run_sim.py" = ["E402", "PLC0415"]
+
+# Isaac and ROS modules are imported lazily inside build() for the same
+# reason: they do not exist until the simulator or the ROS environment is up.
+"src/lunabot_sim/lunabot_sim/scene/*.py" = ["PLC0415"]
+"src/lunabot_sim/lunabot_sim/graphs/*.py" = ["PLC0415"]
+"src/lunabot_sim/lunabot_sim/robot/*.py" = ["PLC0415"]
+
+# Launch files are declarative: a module-level ARGUMENTS list plus a
+# generate_launch_description() is the ROS 2 convention, not a code smell.
+"src/*/launch/*.launch.py" = ["D103"]
 
 [format]
 # The entire workspace is single-quoted, as is most ROS 2 code upstream.

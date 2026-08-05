@@ -30,9 +30,14 @@
   <exec_depend>xacro</exec_depend>
   <exec_depend>lunabot_description</exec_depend>
 
+  <!-- ament_copyright only. Style is ruff's job, via pre-commit and the CI
+       lint job; ament_flake8 and ament_pep257 disagree with it and running
+       both means each undoes the other. See CONTRIBUTING.md.
+
+       This is an ament_python package, so its linters run as pytest files
+       rather than through ament_lint_auto; test/test_copyright.py is what
+       actually invokes this one. -->
   <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
 
   <export>

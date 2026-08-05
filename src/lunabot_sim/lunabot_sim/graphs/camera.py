@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Publish the OAK-D's streams from Isaac.
 
 Topic names are the SAME ones the real depthai driver publishes -- that is the

@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Assembles terrain, boulders and lighting into a scene.
 
 Also spawns the boulder prims. The placement arithmetic lives in boulders.py
@@ -26,8 +28,10 @@ class SceneConfig:
 
 
 def build(world, config: SceneConfig, ground_truth_path: Path | None = None):
-    """Build the whole scene. Returns the boulder list for the ground-truth
-    publisher."""
+    """Build the whole scene.
+
+    Returns the boulder list for the ground-truth publisher.
+    """
     terrain.build(world, config.terrain)
     lighting.build(config.lighting)
 

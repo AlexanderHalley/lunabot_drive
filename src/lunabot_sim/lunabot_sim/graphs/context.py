@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Shared OmniGraph helpers.
 
 Each concern gets its OWN graph rather than all of them sharing one. That is
@@ -67,12 +69,12 @@ def ros2_context_node(domain_id: int = DEFAULT_DOMAIN_ID):
 
 
 def playback_tick_node():
-    """The tick source. Fires each simulation step while playing."""
+    """Return the tick source, which fires each simulation step while playing."""
     return ('OnTick', 'omni.graph.action.OnPlaybackTick')
 
 
 def simulation_time_node():
-    """Reads the simulated clock.
+    """Return the node that reads the simulated clock.
 
     Feeds every publisher's timestamp. Using the wall clock instead would
     stamp messages with a time unrelated to /clock, and every downstream

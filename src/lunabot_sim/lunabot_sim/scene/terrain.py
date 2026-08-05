@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Lunar terrain.
 
 Phase 1 is a flat ground plane with a regolith physics material. That is
@@ -69,8 +71,10 @@ class TerrainConfig:
 
 
 def build(world, config: TerrainConfig, prim_path: str = '/World/Terrain'):
-    """Create the ground plane. Imports Isaac lazily so this module stays
-    importable in CI."""
+    """Create the ground plane.
+
+    Imports Isaac lazily so this module stays importable in CI.
+    """
     import numpy as np
     from isaacsim.core.api.materials import PhysicsMaterial, PreviewSurface
     from isaacsim.core.api.objects import GroundPlane

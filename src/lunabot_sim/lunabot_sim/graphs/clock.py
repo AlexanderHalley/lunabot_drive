@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Publish /clock.
 
 The most important graph in the package, and the one to check first when the

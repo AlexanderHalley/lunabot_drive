@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Seeded boulder scattering.
 
 Deliberately free of any Isaac import. Everything here is numpy and dataclasses,
@@ -134,7 +136,7 @@ def scatter(config: ArenaConfig, seed: int) -> list[Boulder]:
 
 
 def to_ground_truth(boulders: list[Boulder], seed: int, config: ArenaConfig) -> dict:
-    """Serialisable ground truth for scoring the detector.
+    """Build serialisable ground truth for scoring the detector.
 
     Written next to each run and published on /sim/ground_truth/boulders in
     the SAME vision_msgs/Detection3DArray type the detector emits, so scoring

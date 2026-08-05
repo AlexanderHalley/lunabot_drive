@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Structural checks on nav2_params.yaml, and on what it claims about others.
 
 Nav2's parameter file restates values that are owned elsewhere: the footprint
@@ -58,13 +60,13 @@ def node_params(name):
 
 
 def launch_constant(name):
-    """Read a module-level constant out of navigation.launch.py without
-    importing it.
+    """Read a module-level constant without importing the launch file.
 
-    Importing would pull in nav2_common and launch_ros, neither of which is
-    installed in the standalone CI job this file also runs in. NAV2_NODES is
-    written as a literal so that the AST is enough -- test_navigation_launch.py
-    does the same checks against the real imported module.
+    Read a module-level constant out of navigation.launch.py without importing it.
+
+    Importing would pull in nav2_common and launch_ros, neither of which is installed in the
+    standalone CI job this file also runs in. NAV2_NODES is written as a literal so that the AST is
+    enough -- test_navigation_launch.py does the same checks against the real imported module.
     """
     tree = ast.parse((PKG / 'launch' / 'navigation.launch.py').read_text())
     for statement in tree.body:
@@ -133,20 +135,23 @@ def test_parses_and_every_node_has_parameters():
 
 
 def test_every_block_states_use_sim_time():
-    """navigation.launch.py rewrites use_sim_time with nav2_common's
-    RewrittenYaml, which REPLACES existing keys and does not add missing ones.
+    """Every parameter block sets use_sim_time explicitly.
 
-    A block without the key keeps the wall clock under hw:=sim. For a costmap
-    that means it stops updating, and Nav2 reports a robot that is not stuck as
-    permanently stuck.
+    navigation.launch.py rewrites use_sim_time with nav2_common's RewrittenYaml, which REPLACES
+    existing keys and does not add missing ones.
+
+    A block without the key keeps the wall clock under hw:=sim. For a costmap that means it stops
+    updating, and Nav2 reports a robot that is not stuck as permanently stuck.
     """
     missing = [path for path, block in blocks() if 'use_sim_time' not in block]
     assert not missing, f'blocks with no use_sim_time key: {missing}'
 
 
 def test_frames_match_the_contract():
-    """docs/TOPIC_FRAME_CONTRACT.md is authoritative. Anything that disagrees
-    with it is a bug, including this file."""
+    """docs/TOPIC_FRAME_CONTRACT.md is authoritative.
+
+    Anything that disagrees with it is a bug, including this file.
+    """
     expected = {
         'global_frame': {'map', 'odom'},  # odom for the local costmap only
         'robot_base_frame': {'base_link'},
@@ -192,17 +197,21 @@ def test_footprint_matches_the_chassis():
         )
         assert len(footprint) == len(expected), message
         # Corner by corner: pytest.approx does not descend into nested lists.
-        for corner, want in zip(footprint, expected):
+        # strict=True is redundant given the length assert above, but it means
+        # a future edit that drops that assert fails loudly rather than
+        # silently comparing only the shorter list.
+        for corner, want in zip(footprint, expected, strict=True):
             assert corner == pytest.approx(want), message
 
 
 def test_velocity_limits_stay_within_the_controller():
-    """Nav2 commanding beyond diff_drive_controller's limits is clamped
-    silently, giving a robot that does not follow its own plan and no message
-    anywhere saying why.
+    """Nav2's velocity limits stay inside diff_drive_controller's.
 
-    Within, not equal: Nav2 is allowed to be more conservative, and currently
-    is -- it plans at half the controller's ceiling.
+    Nav2 commanding beyond diff_drive_controller's limits is clamped silently, giving a robot that
+    does not follow its own plan and no message anywhere saying why.
+
+    Within, not equal: Nav2 is allowed to be more conservative, and currently is -- it plans at
+    half the controller's ceiling.
     """
     limits = load(CONTROLLERS)['diff_drive_controller']['ros__parameters']
     follow = node_params('controller_server')['FollowPath']
@@ -217,10 +226,14 @@ def test_velocity_limits_stay_within_the_controller():
 
 
 def test_the_smoother_agrees_with_the_controller():
-    """velocity_smoother is the last thing to touch a command, so its limits
-    are the ones that actually apply. Set above the controller's they do
-    nothing; set below they quietly become the real limits and the tuning
-    happens in the wrong file."""
+    """velocity_smoother's limits must not exceed the controller's.
+
+    velocity_smoother is the last thing to touch a command, so its limits are the ones that
+    actually apply.
+
+    Set above the controller's they do nothing; set below they quietly become the real limits and
+    the tuning happens in the wrong file.
+    """
     follow = node_params('controller_server')['FollowPath']
     smoother = node_params('velocity_smoother')
 
@@ -232,9 +245,11 @@ def test_the_smoother_agrees_with_the_controller():
 
 
 def test_nothing_asks_the_skid_steer_to_move_sideways():
-    """y is the strafe axis. A differential drive has no such axis, and a
-    non-zero limit invites a planner to produce paths the robot cannot
-    follow."""
+    """Y is the strafe axis.
+
+    A differential drive has no such axis, and a non-zero limit invites a planner to produce
+    paths the robot cannot follow.
+    """
     follow = node_params('controller_server')['FollowPath']
     smoother = node_params('velocity_smoother')
 
@@ -281,7 +296,7 @@ def test_observation_ranges_do_not_exceed_the_camera():
 
 
 def test_amcl_is_configured_but_never_started():
-    """rtabmap owns map -> odom. AMCL is in this file for completeness only.
+    """Rtabmap owns map -> odom. AMCL is in this file for completeness only.
 
     Starting it would put a second publisher on map -> odom and give a robot
     that teleports between two beliefs about where it is -- so the managed
@@ -292,8 +307,11 @@ def test_amcl_is_configured_but_never_started():
 
 
 def test_every_managed_node_is_configured():
-    """A lifecycle node with no parameter block starts on Nav2's defaults --
-    wrong frames, wrong limits -- and reports nothing unusual while doing it.
+    """Every lifecycle-managed node has a parameter block.
+
+    A lifecycle node with no parameter block starts on Nav2's defaults -- wrong frames, wrong
+    limits -- and reports nothing unusual while doing it.
+
     The reverse is fine: amcl is configured and deliberately not managed.
     """
     configured = set(params())

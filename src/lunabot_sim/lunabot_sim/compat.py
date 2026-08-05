@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Isaac Sim version shims.
 
 Isaac Sim 4.5 renamed essentially every namespace and every OmniGraph node

@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Isaac Sim entry point.
 
 Launched by scripts/run_isaac_sim.sh, which expands the xacro inside the ROS
@@ -159,8 +161,8 @@ def _find_camera_prim(articulation_path: str) -> str:
     cost. The frame_id published on the image topics comes from the graph
     configuration, not from this prim's name, so the pose is what matters.
     """
-    from pxr import Usd, UsdGeom
     import omni.usd
+    from pxr import Usd, UsdGeom
 
     stage = omni.usd.get_context().get_stage()
     root = stage.GetPrimAtPath(articulation_path)

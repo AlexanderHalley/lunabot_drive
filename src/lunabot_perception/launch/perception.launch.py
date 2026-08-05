@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Boulder detection, and depth normalisation on real hardware.
 
 The detector consumes /oak_d/points and publishes /perception/boulders in

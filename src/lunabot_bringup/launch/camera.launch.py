@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """OAK-D S2 driver, plus host-side point cloud generation.
 
 Runs on the robot. In simulation this file is not used at all -- Isaac's
@@ -10,12 +12,13 @@ wants RGB plus depth registered into the RGB frame, cuVSLAM wants a rectified
 stereo pair and no depth at all.
 """
 
+from pathlib import Path
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
-from pathlib import Path
 
 ARGUMENTS = [
     DeclareLaunchArgument(
@@ -67,7 +70,7 @@ PROFILES_WITH_DEPTH = {'default', 'pointcloud'}
 
 
 def _nodes(context, *args, **kwargs):
-    """Resolved at launch time, because the profile decides which nodes exist.
+    """Build the node list, at launch time, because the profile decides which nodes exist.
 
     An OpaqueFunction rather than IfCondition gymnastics: choosing a filename
     from a dict and deciding whether a node runs are both trivial in Python

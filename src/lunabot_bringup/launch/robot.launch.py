@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """The one launch file you type.
 
     ros2 launch lunabot_bringup robot.launch.py hw:=mock rviz:=true
@@ -224,7 +226,7 @@ def generate_launch_description():
 
 
 def _equals(configuration, value):
-    """'true' when the launch configuration equals value, else 'false'.
+    """Return 'true' when the launch configuration equals value, else 'false'.
 
     PythonExpression rather than a plain Python comparison: LaunchConfiguration
     values are not resolved until launch time, so `configuration == value` here

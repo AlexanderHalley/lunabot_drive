@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Configure the rover's articulation for VELOCITY control.
 
 This is the module most likely to need a debugging session, and it is worth
@@ -48,8 +50,8 @@ def configure(articulation_path: str, max_effort: float = 40.0, damping: float =
     drive that tracks the commanded velocity so sluggishly that the control
     loop looks broken. Stiffness stays at zero -- see the module docstring.
     """
-    from pxr import UsdPhysics
     import omni.usd
+    from pxr import UsdPhysics
 
     stage = omni.usd.get_context().get_stage()
     configured = []
@@ -114,8 +116,8 @@ def set_solver_iterations(articulation_path: str, position: int = 32, velocity: 
     that sink into the ground, jitter at rest, or slide under braking -- all
     of which read as a physics-material problem and are not one.
     """
-    from pxr import PhysxSchema
     import omni.usd
+    from pxr import PhysxSchema
 
     stage = omni.usd.get_context().get_stage()
     prim = stage.GetPrimAtPath(articulation_path)

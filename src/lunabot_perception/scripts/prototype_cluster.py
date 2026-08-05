@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Offline sandbox for trying segmentation ideas against a recorded cloud.
 
     ros2 run lunabot_perception prototype_cluster.py cloud.npy --plot
@@ -42,8 +44,10 @@ def split_by_ground(points, ground_z, threshold):
 
 
 def cluster(points, tolerance, min_points):
-    """Single-link clustering via a KD-tree, standing in for PCL's Euclidean
-    extraction. Same idea, far slower, fine for a few thousand points."""
+    """Single-link clustering via a KD-tree, standing in for PCL's Euclidean extraction.
+
+    Same idea, far slower, fine for a few thousand points.
+    """
     if len(points) == 0:
         return []
 

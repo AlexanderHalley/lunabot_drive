@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Publish /oak_d/imu/data.
 
 Both SLAM backends use the IMU: rtabmap for its gravity constraint, cuVSLAM

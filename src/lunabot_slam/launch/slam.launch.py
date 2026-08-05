@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """SLAM, with a swappable backend.
 
     ros2 launch lunabot_slam slam.launch.py backend:=rtabmap

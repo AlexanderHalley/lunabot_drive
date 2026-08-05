@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Isaac Sim scene builder and ROS 2 bridge for the Lunabot rover.
 
 Deliberately imports NOTHING at package level. Isaac modules can only be

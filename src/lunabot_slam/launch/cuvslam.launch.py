@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """cuVSLAM backend: GPU stereo visual-inertial SLAM.
 
 SCAFFOLDING. This is not known to run -- see docs/SLAM.md and the header of

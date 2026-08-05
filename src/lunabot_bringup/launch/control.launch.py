@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Start controller_manager and spawn the controllers.
 
 Identical for mock, sim and real hardware. The hardware plugin is chosen by

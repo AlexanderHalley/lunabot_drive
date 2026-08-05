@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Scene layout tests.
 
 These run in ORDINARY CI -- no GPU, no Omniverse, no Isaac install -- because
@@ -13,7 +15,6 @@ is not a nicety, it is what makes the sim useful for evaluation at all.
 import math
 
 import pytest
-
 from lunabot_sim.scene.boulders import ArenaConfig, Boulder, scatter, to_ground_truth
 
 
@@ -53,16 +54,21 @@ def test_all_boulders_are_inside_the_arena(config):
 
 
 def test_nothing_spawns_in_the_start_zone(config):
-    """The rover spawns there. A boulder inside it means the rover starts
-    intersecting a collider, which in PhysX is an explosion, not a collision."""
+    """The rover spawns there.
+
+    A boulder inside it means the rover starts intersecting a collider, which in PhysX is an
+    explosion, not a collision.
+    """
     for boulder in scatter(config, seed=5):
         assert boulder.position[0] >= config.start_zone_x, boulder
 
 
 def test_minimum_separation_holds(config):
-    """Rocks closer than the detector's cluster tolerance merge into one
-    detection, which makes the detector look broken when it is behaving
-    exactly as documented."""
+    """Boulders are never closer together than the configured separation.
+
+    Rocks closer than the detector's cluster tolerance merge into one detection, which makes the
+    detector look broken when it is behaving exactly as documented.
+    """
     placed = scatter(config, seed=11)
     for i, a in enumerate(placed):
         for b in placed[i + 1 :]:
@@ -71,7 +77,7 @@ def test_minimum_separation_holds(config):
 
 
 def test_boulders_rest_on_the_ground(config):
-    """z must be half the height, or rocks float or are half buried.
+    """Z must be half the height, or rocks float or are half buried.
 
     A half-buried rock still produces a detection, just a smaller one, so this
     is exactly the kind of error that quietly biases every size measurement.
@@ -95,8 +101,11 @@ def test_boulders_are_not_all_the_same_shape(config):
 
 
 def test_large_boulders_are_static_and_small_ones_are_not(config):
-    """A rover shoving a 40 kg boulder across the arena is not the behaviour
-    under test; a rover nudging a small rock is."""
+    """Whether a boulder is static follows from its size.
+
+    A rover shoving a 40 kg boulder across the arena is not the behaviour under test; a rover
+    nudging a small rock is.
+    """
     for boulder in scatter(config, seed=8):
         largest = max(boulder.dimensions)
         smallest = min(boulder.dimensions)
@@ -118,9 +127,12 @@ def test_yaw_is_a_real_rotation(config):
 
 
 def test_ground_truth_round_trips(config):
-    """Serialised ground truth is what the detector gets scored against, so it
-    has to carry the seed and the arena that produced it -- a scoring run
-    against the wrong scene is worse than no scoring run."""
+    """Ground truth carries the seed and arena that produced it.
+
+    Serialised ground truth is what the detector gets scored against, so it has to carry the seed
+    and the arena that produced it -- a scoring run against the wrong scene is worse than no
+    scoring run.
+    """
     placed = scatter(config, seed=13)
     truth = to_ground_truth(placed, seed=13, config=config)
 
@@ -138,6 +150,9 @@ def test_ground_truth_round_trips(config):
 
 
 def test_zero_count_is_a_valid_scene(config):
-    """An empty arena is the right control case for "does the detector report
-    anything when there is nothing there"."""
+    """An empty arena is a valid scene.
+
+    An empty arena is the right control case for "does the detector report anything when there is
+    nothing there".
+    """
     assert scatter(ArenaConfig(count=0), seed=0) == []

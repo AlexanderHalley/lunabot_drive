@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Every SLAM backend must at least produce a valid launch description.
 
 This is the only automated coverage the cuVSLAM path can have: the node needs
@@ -117,7 +119,7 @@ def test_config_files_parse(name):
 
 
 def test_both_backends_agree_on_frame_names():
-    """rtabmap and cuVSLAM use different parameter names for the same frames.
+    """Rtabmap and cuVSLAM use different parameter names for the same frames.
 
     Getting one of them wrong produces a second, disconnected TF tree rooted
     at a frame nobody else uses, which looks like SLAM not working rather
@@ -134,8 +136,10 @@ def test_both_backends_agree_on_frame_names():
 
 
 def test_both_backends_claim_map_to_odom():
-    """Whichever backend runs must own map -> odom, or nothing does and the
-    map frame never appears."""
+    """Both SLAM backends claim map -> odom.
+
+    Whichever backend runs must own map -> odom, or nothing does and the map frame never appears.
+    """
     rtabmap = yaml.safe_load(open(CONFIG_DIR / 'rtabmap.yaml'))['rtabmap']['ros__parameters']
     cuvslam = yaml.safe_load(open(CONFIG_DIR / 'cuvslam.yaml'))['visual_slam_node'][
         'ros__parameters'
@@ -148,9 +152,10 @@ def test_both_backends_claim_map_to_odom():
 
 
 def test_rtabmap_is_configured_for_a_planar_rover():
-    """Force3DoF is what stops visual noise tilting the whole map. The rover
-    cannot roll, pitch or change altitude in any way the estimator should
-    believe."""
+    """Force3DoF is what stops visual noise tilting the whole map.
+
+    The rover cannot roll, pitch or change altitude in any way the estimator should believe.
+    """
     params = yaml.safe_load(open(CONFIG_DIR / 'rtabmap.yaml'))['rtabmap']['ros__parameters']
     assert params['Reg/Force3DoF'] == 'true'
     assert params['Optimizer/Slam2D'] == 'true'

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Construct the Nav2 launch description without running any of it.
 
 Launch files fail at construction far more often than at runtime -- a renamed
@@ -62,9 +64,11 @@ def test_generates_a_launch_description(description):
 
 
 def test_arguments_are_documented_and_resolve(description):
-    """A DeclareLaunchArgument with no description is invisible in
-    --show-args, and a default that does not evaluate surfaces at launch time
-    as a stack trace."""
+    """Every launch argument is documented and its default evaluates.
+
+    A DeclareLaunchArgument with no description is invisible in --show-args, and a default that
+    does not evaluate surfaces at launch time as a stack trace.
+    """
     context = LaunchContext()
     for entity in description.entities:
         if isinstance(entity, DeclareLaunchArgument):
@@ -97,13 +101,13 @@ def test_nav2_never_publishes_to_cmd_vel(module):
 
 
 def test_only_the_smoother_publishes_the_nav_topic(module):
-    """Exactly one publisher on /cmd_vel_nav, and it is the last node in the
-    chain.
+    """Only velocity_smoother publishes /cmd_vel_nav.
 
-    The controller and the recovery behaviours both feed the smoother instead.
-    A recovery that skipped it would step around the acceleration limits and
-    spin the wheels on regolith -- which is the one manoeuvre this rover
-    should never make.
+    Exactly one publisher on /cmd_vel_nav, and it is the last node in the chain.
+
+    The controller and the recovery behaviours both feed the smoother instead. A recovery that
+    skipped it would step around the acceleration limits and spin the wheels on regolith -- which
+    is the one manoeuvre this rover should never make.
     """
     publishers = [
         node['name']
@@ -114,8 +118,11 @@ def test_only_the_smoother_publishes_the_nav_topic(module):
 
 
 def test_the_smoother_consumes_what_the_others_produce(module):
-    """The internal hop has to match at both ends or the chain is two
-    disconnected halves, each of which looks healthy on its own."""
+    """The smoother's input topic matches what the controller publishes.
+
+    The internal hop has to match at both ends or the chain is two disconnected halves, each of
+    which looks healthy on its own.
+    """
     by_name = {node['name']: node for node in module.NAV2_NODES}
     smoother_input = dict(by_name['velocity_smoother']['remappings'])[BUS_TOPIC]
 
@@ -124,24 +131,31 @@ def test_the_smoother_consumes_what_the_others_produce(module):
 
 
 def test_every_node_is_managed(module):
-    """A lifecycle node nobody manages stays in `unconfigured` forever,
-    publishing nothing and reporting nothing."""
+    """Every Nav2 node appears in the lifecycle manager's list.
+
+    A lifecycle node nobody manages stays in `unconfigured` forever, publishing nothing and
+    reporting nothing.
+    """
     assert module.LIFECYCLE_NODES == [node['name'] for node in module.NAV2_NODES]
 
 
 def test_the_controller_activates_before_the_navigator(module):
-    """bt_navigator starts sending goals as soon as it is active. Bringing it
-    up before the servers it commands produces failures on the first goal that
-    read as planning problems."""
+    """bt_navigator starts sending goals as soon as it is active.
+
+    Bringing it up before the servers it commands produces failures on the first goal that read
+    as planning problems.
+    """
     order = module.LIFECYCLE_NODES
     assert order.index('controller_server') < order.index('bt_navigator')
     assert order.index('planner_server') < order.index('bt_navigator')
 
 
 def test_amcl_and_map_server_are_not_started(module):
-    """rtabmap owns map -> odom and publishes /map. Starting Nav2's
-    localisation stack too gives two publishers on map -> odom and a robot
-    that teleports between two beliefs about where it is."""
+    """Rtabmap owns map -> odom and publishes /map.
+
+    Starting Nav2's localisation stack too gives two publishers on map -> odom and a robot that
+    teleports between two beliefs about where it is.
+    """
     started = {node['executable'] for node in module.NAV2_NODES}
     assert 'amcl' not in started
     assert 'map_server' not in started

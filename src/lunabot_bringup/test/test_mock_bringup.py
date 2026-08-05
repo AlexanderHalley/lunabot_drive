@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Bring the whole stack up on mock hardware and drive it.
 
 The highest-value test in the workspace, and the one CI leans on. No hardware,
@@ -155,8 +157,11 @@ class TestMockBringup(unittest.TestCase):
     # ------------------------------------------------------------------
 
     def test_01_robot_description_is_published(self):
-        """robot_state_publisher latches it, so a late subscriber must still
-        receive it -- hence transient local."""
+        """/robot_description is latched.
+
+        robot_state_publisher latches it, so a late subscriber must still receive it -- hence
+        transient local.
+        """
         from std_msgs.msg import String
 
         qos = QoSProfile(
@@ -243,8 +248,11 @@ class TestMockBringup(unittest.TestCase):
         self.assertEqual(messages[-1].child_frame_id, 'base_link')
 
     def test_06_exactly_one_publisher_owns_odom_to_base_link(self):
-        """With odom_source:=wheel that is diff_drive_controller, and nothing
-        else may be publishing it."""
+        """Exactly one node publishes odom -> base_link.
+
+        With odom_source:=wheel that is diff_drive_controller, and nothing else may be publishing
+        it.
+        """
         tf = []
         sub = self.node.create_subscription(TFMessage, '/tf', tf.append, 100)
         self.addCleanup(self.node.destroy_subscription, sub)
@@ -267,6 +275,9 @@ class TestMockBringup(unittest.TestCase):
 @launch_testing.post_shutdown_test()
 class TestShutdown(unittest.TestCase):
     def test_everything_exited_cleanly(self, proc_info):
-        """A non-zero exit from any process usually means a plugin failed to
-        load, which the runtime tests above can mistake for a slow start."""
+        """Every process exited zero.
+
+        A non-zero exit from any process usually means a plugin failed to load, which the runtime
+        tests above can mistake for a slow start.
+        """
         launch_testing.asserts.assertExitCodes(proc_info)

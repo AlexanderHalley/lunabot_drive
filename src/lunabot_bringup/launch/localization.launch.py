@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """robot_localization EKF, for odom_source:=ekf.
 
 Fuses wheel odometry with the IMU into odom -> base_link. Started only when

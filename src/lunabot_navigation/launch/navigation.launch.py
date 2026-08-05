@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Nav2, configured for the Lunabot rover.
 
     ros2 launch lunabot_bringup robot.launch.py hw:=mock slam:=rtabmap nav:=true

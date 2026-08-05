@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Import the rover's URDF into the stage.
 
 The URDF handed to this function is ALREADY EXPANDED. scripts/run_isaac_sim.sh

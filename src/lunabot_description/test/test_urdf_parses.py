@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Check that lunabot.urdf.xacro expands correctly for every hardware target.
 
 This is the cheapest test in the workspace and it catches the most annoying
@@ -150,7 +152,7 @@ def test_exactly_one_hardware_block(hardware):
 
 
 def test_every_wheel_exports_the_interfaces_diff_drive_needs(hardware):
-    """velocity command, plus position and velocity state, on all four wheels.
+    """Velocity command, plus position and velocity state, on all four wheels.
 
     position state is what allows position_feedback: true in
     controllers.yaml; without it the controller integrates velocity and

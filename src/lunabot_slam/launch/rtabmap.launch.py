@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """rtabmap backend: RGB-D SLAM on CPU.
 
 The default, and the one that actually runs today. Works on a Pi, works on a

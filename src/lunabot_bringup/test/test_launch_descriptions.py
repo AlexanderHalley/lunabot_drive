@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Construct every launch description in this package without running it.
 
 Launch files fail at construction far more often than they fail at runtime --
@@ -72,8 +74,10 @@ def test_arguments_resolve_with_their_defaults(name):
 
 
 def test_robot_launch_exposes_the_documented_arguments():
-    """These names appear in the README and in docs/. Renaming one silently
-    breaks copy-pasted commands, so pin them here."""
+    """These names appear in the README and in docs/.
+
+    Renaming one silently breaks copy-pasted commands, so pin them here.
+    """
     description = load('robot.launch.py').generate_launch_description()
     names = {e.name for e in description.entities if isinstance(e, DeclareLaunchArgument)}
     assert {'hw', 'use_sim_time', 'odom_source', 'slam', 'nav', 'rviz'} <= names
@@ -109,8 +113,11 @@ def test_camera_auto_resolves_against_hardware(camera, hw, expected):
 
 
 def test_camera_profiles_match_the_config_files():
-    """Every profile robot.launch.py offers must exist in camera.launch.py's
-    map, and every file that map names must be installed."""
+    """Every advertised camera profile resolves to a config file that exists.
+
+    Every profile robot.launch.py offers must exist in camera.launch.py's map, and every file that
+    map names must be installed.
+    """
     config_dir = LAUNCH_DIR.parent / 'config'
     camera = load('camera.launch.py')
 

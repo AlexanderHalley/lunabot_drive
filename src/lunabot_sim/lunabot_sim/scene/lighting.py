@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Lunar lighting.
 
 The visually important part of the sim, and the part that actually breaks
@@ -53,8 +55,8 @@ class LightingConfig:
 
 def build(config: LightingConfig, prim_path: str = '/World/Lighting'):
     """Create the sun and a minimal ambient fill."""
-    from pxr import Gf, UsdLux
     import omni.usd
+    from pxr import Gf, UsdLux
 
     stage = omni.usd.get_context().get_stage()
 

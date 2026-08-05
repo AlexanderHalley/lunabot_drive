@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Ground truth: the rover's true pose, on its own topic.
 
 ==================== NEVER GOES INTO /tf ====================

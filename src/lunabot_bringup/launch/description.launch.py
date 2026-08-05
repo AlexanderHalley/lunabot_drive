@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Publish the robot description and its TF tree.
 
 Runs `robot_state_publisher`, which expands the xacro, publishes it on

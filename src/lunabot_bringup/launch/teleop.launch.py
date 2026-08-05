@@ -1,3 +1,5 @@
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Joystick teleoperation and velocity arbitration.
 
     joy_node -> /joy -> teleop_twist_joy -> /cmd_vel_joy ---.

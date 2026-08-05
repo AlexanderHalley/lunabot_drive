@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2027 Lunabot. Licensed under the MIT License.
+
 """Publish a fake point cloud so the detector can be exercised with no camera.
 
     ros2 run lunabot_perception publish_synthetic_cloud.py --boulders 3
