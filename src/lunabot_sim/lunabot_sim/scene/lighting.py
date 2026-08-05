@@ -53,16 +53,10 @@ class LightingConfig:
 
 def build(config: LightingConfig, prim_path: str = '/World/Lighting'):
     """Create the sun and a minimal ambient fill."""
-    import numpy as np
     from pxr import Gf, UsdLux
     import omni.usd
 
     stage = omni.usd.get_context().get_stage()
-
-    # Elevation and azimuth to a direction vector. A DistantLight points down
-    # -Z by default, so the rotation carries it to the sun's position.
-    elevation = np.radians(config.sun_elevation_deg)
-    azimuth = np.radians(config.sun_azimuth_deg)
 
     sun = UsdLux.DistantLight.Define(stage, f'{prim_path}/Sun')
     sun.CreateIntensityAttr(config.sun_intensity)
@@ -71,9 +65,17 @@ def build(config: LightingConfig, prim_path: str = '/World/Lighting'):
     # reads as synthetic to a human eye judging the scene.
     sun.CreateColorAttr(Gf.Vec3f(1.0, 0.98, 0.95))
 
-    # Rotate: pitch down to the elevation, then yaw to the azimuth.
+    # A DistantLight points down -Z by default. Pitch up from straight down to
+    # the sun's elevation, then yaw to its azimuth. USD rotation ops take
+    # degrees, so the config values go in unconverted.
     xform = sun.AddRotateXYZOp()
-    xform.Set(Gf.Vec3f(float(-(90.0 - config.sun_elevation_deg)), 0.0, float(config.sun_azimuth_deg)))
+    xform.Set(
+        Gf.Vec3f(
+            float(-(90.0 - config.sun_elevation_deg)),
+            0.0,
+            float(config.sun_azimuth_deg),
+        )
+    )
 
     dome = UsdLux.DomeLight.Define(stage, f'{prim_path}/Ambient')
     dome.CreateIntensityAttr(config.ambient_intensity)

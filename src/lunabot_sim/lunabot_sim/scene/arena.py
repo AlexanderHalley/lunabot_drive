@@ -47,9 +47,7 @@ def build(world, config: SceneConfig, ground_truth_path: Path | None = None):
     _spawn(placed)
 
     if ground_truth_path is not None:
-        boulders_module.write_ground_truth(
-            placed, config.seed, config.arena, ground_truth_path
-        )
+        boulders_module.write_ground_truth(placed, config.seed, config.arena, ground_truth_path)
         logger.info('ground truth written to %s', ground_truth_path)
 
     return placed

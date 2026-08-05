@@ -20,8 +20,11 @@ repos:
       - id: clang-format
         types_or: [c++, c]
 
+  # Configured by ruff.toml at the repo root -- 99 columns and single quotes,
+  # to match ament_flake8 rather than ruff's own defaults. Without that file
+  # this hook and `colcon test` disagree about every Python file in the tree.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.15.8
     hooks:
       - id: ruff
         args: [--fix]
@@ -31,4 +34,11 @@ repos:
     rev: v2.3.0
     hooks:
       - id: codespell
-        args: [--ignore-words-list=ist,inout,nd,te]
+        # QUOTED, and it matters: a YAML flow sequence splits on commas, so
+        # the unquoted form passed --ignore-words-list=ist and then handed
+        # `inout`, `nd` and `te` to codespell as filenames. Only the first
+        # word in the list was ever ignored.
+        #
+        # assertin: the unittest method assertIn, not a typo.
+        # tread: what a wheel has. Not "thread".
+        args: ['--ignore-words-list=ist,inout,nd,te,assertin,tread']

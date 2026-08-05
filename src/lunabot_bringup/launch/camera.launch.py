@@ -77,7 +77,9 @@ def _nodes(context, *args, **kwargs):
     use_sim_time = LaunchConfiguration('use_sim_time').perform(context) == 'true'
 
     config = str(
-        Path(get_package_share_directory('lunabot_bringup')) / 'config' / CONFIG_FOR_PROFILE[profile]
+        Path(get_package_share_directory('lunabot_bringup'))
+        / 'config'
+        / CONFIG_FOR_PROFILE[profile]
     )
 
     # Node name must be `oak_d`: the driver derives published frame_ids from

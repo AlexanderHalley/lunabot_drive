@@ -51,8 +51,7 @@ BoulderDetectorNode::BoulderDetectorNode(const rclcpp::NodeOptions & options)
     create_publisher<vision_msgs::msg::Detection3DArray>("/perception/boulders", 10);
 
   if (publish_debug_clouds_) {
-    ground_pub_ =
-      create_publisher<sensor_msgs::msg::PointCloud2>("/perception/debug/ground", 1);
+    ground_pub_ = create_publisher<sensor_msgs::msg::PointCloud2>("/perception/debug/ground", 1);
     obstacles_pub_ =
       create_publisher<sensor_msgs::msg::PointCloud2>("/perception/debug/obstacles", 1);
     markers_pub_ =
@@ -84,8 +83,7 @@ void BoulderDetectorNode::read_parameters()
   roi_max_ = Eigen::Vector3f(roi_max[0], roi_max[1], roi_max[2]);
 
   ground_.ground_z = get_parameter("ground_z").as_double();
-  ground_.plane_distance_threshold =
-    get_parameter("ground_plane_distance_threshold").as_double();
+  ground_.plane_distance_threshold = get_parameter("ground_plane_distance_threshold").as_double();
 
   clustering_.tolerance = get_parameter("cluster_tolerance").as_double();
   clustering_.min_points = get_parameter("min_cluster_size").as_int();

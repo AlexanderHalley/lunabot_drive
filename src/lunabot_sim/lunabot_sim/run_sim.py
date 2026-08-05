@@ -44,9 +44,7 @@ def parse_args(argv=None):
         '--seed', type=int, default=0, help='Boulder layout seed. Same seed, same scene.'
     )
     parser.add_argument('--headless', action='store_true', help='No viewport.')
-    parser.add_argument(
-        '--domain-id', type=int, default=42, help='ROS_DOMAIN_ID for the bridge.'
-    )
+    parser.add_argument('--domain-id', type=int, default=42, help='ROS_DOMAIN_ID for the bridge.')
     parser.add_argument(
         '--ground-truth',
         default=None,

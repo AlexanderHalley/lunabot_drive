@@ -83,9 +83,7 @@ def test_hardware_choices_match_the_urdf():
     """The three values here must be exactly the three the xacro branches on."""
     description = load('robot.launch.py').generate_launch_description()
     hw = next(
-        e
-        for e in description.entities
-        if isinstance(e, DeclareLaunchArgument) and e.name == 'hw'
+        e for e in description.entities if isinstance(e, DeclareLaunchArgument) and e.name == 'hw'
     )
     assert set(hw.choices) == {'mock', 'sim', 'real'}
 

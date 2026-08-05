@@ -136,14 +136,12 @@ def generate_launch_description():
             # that misses use_sim_time under sim does not error, it just
             # behaves strangely, and RViz is the usual casualty.
             SetParameter(name='use_sim_time', value=use_sim_time),
-
             include(
                 bringup,
                 'description.launch.py',
                 hardware=LaunchConfiguration('hw'),
                 can_interface=LaunchConfiguration('can_interface'),
             ),
-
             include(
                 bringup,
                 'control.launch.py',
@@ -151,7 +149,6 @@ def generate_launch_description():
                 # the odom source. Exactly one node may publish it.
                 enable_odom_tf=_equals(odom_source, 'wheel'),
             ),
-
             include(
                 bringup,
                 'camera.launch.py',
@@ -160,21 +157,18 @@ def generate_launch_description():
                 ),
                 profile=LaunchConfiguration('camera_profile'),
             ),
-
             include(
                 bringup,
                 'teleop.launch.py',
                 condition=IfCondition(LaunchConfiguration('teleop')),
                 joy=LaunchConfiguration('joy'),
             ),
-
             # EKF, only when it is the odom source.
             include(
                 bringup,
                 'localization.launch.py',
                 condition=IfCondition(_equals(odom_source, 'ekf')),
             ),
-
             # SLAM lives in its own package, so it does not go through
             # include()'s bringup-relative path.
             include(
@@ -187,7 +181,6 @@ def generate_launch_description():
                 # odom source. Otherwise it owns map -> odom and nothing else.
                 publish_odom_tf=_equals(odom_source, 'visual'),
             ),
-
             include(
                 FindPackageShare('lunabot_perception'),
                 'perception.launch.py',
@@ -198,7 +191,6 @@ def generate_launch_description():
                 # already correct.
                 normalize_depth=_equals(LaunchConfiguration('hw'), 'real'),
             ),
-
             include(
                 bringup,
                 'rviz.launch.py',

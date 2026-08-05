@@ -40,7 +40,9 @@ ARGUMENTS = [
         description='Intrinsics for rgb_topic.',
     ),
     DeclareLaunchArgument(
-        'imu_topic', default_value='/oak_d/imu/data', description='IMU, for the gravity constraint.'
+        'imu_topic',
+        default_value='/oak_d/imu/data',
+        description='IMU, for the gravity constraint.',
     ),
     DeclareLaunchArgument('odom_topic', default_value='/odom', description='Wheel odometry.'),
     DeclareLaunchArgument(

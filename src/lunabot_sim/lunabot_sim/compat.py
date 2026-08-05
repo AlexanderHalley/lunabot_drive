@@ -85,9 +85,7 @@ def import_first(candidates: tuple[str, ...], attribute: str | None = None):
 
 def get_simulation_app_class():
     """SimulationApp. Must be constructed BEFORE any other omni import."""
-    return import_first(
-        ('isaacsim', 'isaacsim.simulation_app', 'omni.isaac.kit'), 'SimulationApp'
-    )
+    return import_first(('isaacsim', 'isaacsim.simulation_app', 'omni.isaac.kit'), 'SimulationApp')
 
 
 def get_world_class():
@@ -113,9 +111,7 @@ def enable_extension(name_candidates: tuple[str, ...]) -> str:
             return name
         tried.append(f'{name}: enable returned but extension is not active')
 
-    raise IsaacCompatError(
-        'could not enable any of these extensions:\n  ' + '\n  '.join(tried)
-    )
+    raise IsaacCompatError('could not enable any of these extensions:\n  ' + '\n  '.join(tried))
 
 
 def og_node_type(name: str, prefixes: tuple[str, ...] = OG_PREFIXES) -> str:

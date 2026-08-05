@@ -14,7 +14,9 @@
 namespace lunabot_hardware
 {
 
-SparkFlexMotor::SparkFlexMotor(Config config) : config_(std::move(config)) {}
+SparkFlexMotor::SparkFlexMotor(Config config) : config_(std::move(config))
+{
+}
 
 SparkFlexMotor::~SparkFlexMotor() = default;
 SparkFlexMotor::SparkFlexMotor(SparkFlexMotor &&) noexcept = default;

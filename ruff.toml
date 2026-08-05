@@ -1,0 +1,26 @@
+# Ruff configuration for the workspace.
+#
+# Ruff's defaults are not ROS defaults, and without this file the pre-commit
+# lint job rewrites every Python file in the tree: 88 columns instead of 99,
+# and double quotes instead of single. Both disagree with `ament_flake8` and
+# `ament_pep257`, which are what `colcon test` actually runs -- so the two
+# linters would have spent the rest of the project undoing each other.
+#
+# These values are chosen to match ament, not to express a preference.
+
+# ament_flake8's limit. Not ruff's default of 88.
+line-length = 99
+
+# Generated and vendored trees. src/*/ third-party checkouts are covered by
+# .gitignore, but ruff does not read that for excludes.
+exclude = [
+    "build",
+    "install",
+    "log",
+    "src/sparkcan",
+    "src/topic_based_ros2_control",
+]
+
+[format]
+# The entire workspace is single-quoted, as is most ROS 2 code upstream.
+quote-style = "single"

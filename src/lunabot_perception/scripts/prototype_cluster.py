@@ -112,8 +112,10 @@ def main():
         for c in clusters:
             ax.add_patch(
                 plt.Rectangle(
-                    (c['centroid'][0] - c['dimensions'][0] / 2,
-                     c['centroid'][1] - c['dimensions'][1] / 2),
+                    (
+                        c['centroid'][0] - c['dimensions'][0] / 2,
+                        c['centroid'][1] - c['dimensions'][1] / 2,
+                    ),
                     c['dimensions'][0],
                     c['dimensions'][1],
                     fill=False,

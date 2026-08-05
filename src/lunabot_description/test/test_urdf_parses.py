@@ -112,7 +112,7 @@ def test_optical_frames_have_the_rep103_rotation(hardware):
     for joint in optical_joints:
         rpy = [float(v) for v in joint.find('origin').get('rpy').split()]
         assert rpy == pytest.approx([-1.5707963, 0.0, -1.5707963], abs=1e-5), (
-            f"{joint.get('name')} has rpy {rpy}"
+            f'{joint.get("name")} has rpy {rpy}'
         )
 
 
@@ -182,7 +182,7 @@ def test_can_ids_are_unique_and_match_the_2026_wiring(hardware):
     ids = {}
     for joint in control.findall('joint'):
         can_id = joint.find("param[@name='can_id']")
-        assert can_id is not None, f"{joint.get('name')} has no can_id"
+        assert can_id is not None, f'{joint.get("name")} has no can_id'
         ids[joint.get('name')] = int(can_id.text)
 
     assert len(set(ids.values())) == 4, f'duplicate CAN IDs: {ids}'
@@ -197,7 +197,7 @@ def test_right_side_is_inverted(hardware):
     for joint in control.findall('joint'):
         invert = joint.find("param[@name='invert']").text.strip().lower() == 'true'
         expected = 'right' in joint.get('name')
-        assert invert == expected, f"{joint.get('name')} invert={invert}"
+        assert invert == expected, f'{joint.get("name")} invert={invert}'
 
 
 def test_use_ros2_control_false_drops_the_control_block():
@@ -227,12 +227,16 @@ def test_sim_topics_are_wired_to_the_contract_names():
 
 def test_real_hardware_defaults_to_can0_and_is_overridable():
     default = expand(hardware='real')
-    params = {p.get('name'): p.text.strip() for p in default.findall('ros2_control/hardware/param')}
+    params = {
+        p.get('name'): p.text.strip() for p in default.findall('ros2_control/hardware/param')
+    }
     assert params['can_interface'] == 'can0'
 
     # vcan0 is how the plugin gets exercised with no motors attached.
     virtual = expand(hardware='real', can_interface='vcan0')
-    params = {p.get('name'): p.text.strip() for p in virtual.findall('ros2_control/hardware/param')}
+    params = {
+        p.get('name'): p.text.strip() for p in virtual.findall('ros2_control/hardware/param')
+    }
     assert params['can_interface'] == 'vcan0'
 
 
@@ -257,7 +261,7 @@ def test_all_links_have_inertia_except_pure_frames(hardware):
     for link in root.findall('link'):
         has_inertial = link.find('inertial') is not None
         assert has_inertial == (link.get('name') in bodies), (
-            f"{link.get('name')}: inertial={has_inertial}"
+            f'{link.get("name")}: inertial={has_inertial}'
         )
 
 
@@ -271,4 +275,4 @@ def test_positive_definite_inertia(hardware):
         assert float(inertial.find('mass').get('value')) > 0.0, link.get('name')
         inertia = inertial.find('inertia')
         for axis in ('ixx', 'iyy', 'izz'):
-            assert float(inertia.get(axis)) > 0.0, f"{link.get('name')}.{axis}"
+            assert float(inertia.get(axis)) > 0.0, f'{link.get("name")}.{axis}'

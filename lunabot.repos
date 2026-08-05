@@ -11,14 +11,17 @@
 repositories:
   # REV SparkMax/SparkFlex SocketCAN library. Not in the rosdep index.
   #
-  # VERIFY: confirm this is the upstream you actually build against before
-  # trusting the pin -- the 2026 robot built it from a local checkout, so the
-  # provenance was never recorded. Check `SparkFlex.hpp` in your working
-  # install against this repo's headers.
+  # The provenance was never recorded when the 2026 robot built this from a
+  # local checkout, and the first URL guessed here did not exist -- CI died at
+  # `vcs import` before it built anything. This one is confirmed to exist, to
+  # ship SparkFlex.cpp/.hpp, and to export the `sparkcan::sparkcan` target that
+  # lunabot_hardware/CMakeLists.txt links against.
+  #
+  # Note the branch is `master`, not `main`.
   sparkcan:
     type: git
-    url: https://github.com/DorsalX/sparkcan.git
-    version: main
+    url: https://github.com/grayson-arendt/sparkcan.git
+    version: master
 
   # Hardware interface that bridges ros2_control to a simulator over topics.
   # VERIFY: check for a binary first --

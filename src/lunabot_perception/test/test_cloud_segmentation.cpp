@@ -100,10 +100,10 @@ TEST(Downsample, a_non_positive_leaf_passes_the_cloud_through)
 TEST(Crop, discards_points_outside_the_region_of_interest)
 {
   auto cloud = std::make_shared<Cloud>();
-  cloud->points.emplace_back(1.0f, 0.0f, 0.0f);   // inside
-  cloud->points.emplace_back(5.0f, 0.0f, 0.0f);   // too far
-  cloud->points.emplace_back(0.0f, 0.0f, 0.0f);   // too near
-  cloud->points.emplace_back(1.0f, 3.0f, 0.0f);   // too far left
+  cloud->points.emplace_back(1.0f, 0.0f, 0.0f);  // inside
+  cloud->points.emplace_back(5.0f, 0.0f, 0.0f);  // too far
+  cloud->points.emplace_back(0.0f, 0.0f, 0.0f);  // too near
+  cloud->points.emplace_back(1.0f, 3.0f, 0.0f);  // too far left
   finish(cloud);
 
   const auto cropped =
@@ -187,13 +187,15 @@ TEST(ExtractClusters, finds_two_separated_boulders_at_the_right_places)
   bool found_small = false;
   bool found_large = false;
   for (const auto & cluster : clusters) {
-    if (std::abs(cluster.centroid.x() - 1.0f) < 0.15f &&
-        std::abs(cluster.centroid.y() + 0.5f) < 0.15f) {
+    if (
+      std::abs(cluster.centroid.x() - 1.0f) < 0.15f &&
+      std::abs(cluster.centroid.y() + 0.5f) < 0.15f) {
       found_small = true;
       EXPECT_NEAR(cluster.dimensions.x(), 0.20f, 0.06f);
     }
-    if (std::abs(cluster.centroid.x() - 1.5f) < 0.15f &&
-        std::abs(cluster.centroid.y() - 0.6f) < 0.15f) {
+    if (
+      std::abs(cluster.centroid.x() - 1.5f) < 0.15f &&
+      std::abs(cluster.centroid.y() - 0.6f) < 0.15f) {
       found_large = true;
       EXPECT_NEAR(cluster.dimensions.x(), 0.30f, 0.06f);
     }
@@ -235,8 +237,8 @@ TEST(ExtractClusters, reports_the_box_centre_not_the_visible_surface)
   auto cloud = std::make_shared<Cloud>();
   for (float y = -0.1f; y <= 0.1f; y += 0.02f) {
     for (float z = 0.0f; z <= 0.2f; z += 0.02f) {
-      cloud->points.emplace_back(1.0f, y, z);           // dense near face
-      cloud->points.emplace_back(1.2f, y, z);           // sparse far face
+      cloud->points.emplace_back(1.0f, y, z);  // dense near face
+      cloud->points.emplace_back(1.2f, y, z);  // sparse far face
     }
   }
   finish(cloud);
@@ -249,7 +251,7 @@ TEST(ExtractClusters, reports_the_box_centre_not_the_visible_surface)
 TEST(FilterByDimensions, drops_specks_and_walls_and_keeps_boulders)
 {
   std::vector<Cluster> clusters;
-  clusters.push_back({{1.0f, 0.0f, 0.0f}, {0.02f, 0.02f, 0.02f}, 30});  // speck
+  clusters.push_back({{1.0f, 0.0f, 0.0f}, {0.02f, 0.02f, 0.02f}, 30});   // speck
   clusters.push_back({{1.0f, 0.0f, 0.0f}, {0.30f, 0.30f, 0.25f}, 500});  // boulder
   clusters.push_back({{1.0f, 0.0f, 0.0f}, {3.00f, 0.10f, 1.00f}, 900});  // wall
 

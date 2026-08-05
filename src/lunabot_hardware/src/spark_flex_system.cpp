@@ -64,8 +64,9 @@ bool SparkFlexSystem::get_hardware_parameter(const std::string & name, bool fall
 hardware_interface::CallbackReturn SparkFlexSystem::on_init(
   const hardware_interface::HardwareInfo & info)
 {
-  if (hardware_interface::SystemInterface::on_init(info) !=
-      hardware_interface::CallbackReturn::SUCCESS) {
+  if (
+    hardware_interface::SystemInterface::on_init(info) !=
+    hardware_interface::CallbackReturn::SUCCESS) {
     return hardware_interface::CallbackReturn::ERROR;
   }
 
@@ -100,8 +101,9 @@ hardware_interface::CallbackReturn SparkFlexSystem::on_init(
     // Validate against what diff_drive_controller will ask for. Failing here
     // produces one clear message; failing later produces a controller that
     // refuses to activate for reasons that read as a controller bug.
-    if (joint.command_interfaces.size() != 1 ||
-        joint.command_interfaces[0].name != hardware_interface::HW_IF_VELOCITY) {
+    if (
+      joint.command_interfaces.size() != 1 ||
+      joint.command_interfaces[0].name != hardware_interface::HW_IF_VELOCITY) {
       RCLCPP_FATAL(
         rclcpp::get_logger(kLogger),
         "joint '%s' must have exactly one command interface, 'velocity'", joint.name.c_str());
@@ -135,8 +137,8 @@ hardware_interface::CallbackReturn SparkFlexSystem::on_init(
       config.can_id = std::stoi(can_id_it->second);
     } catch (const std::exception &) {
       RCLCPP_FATAL(
-        rclcpp::get_logger(kLogger), "joint '%s' has a non-integer can_id '%s'",
-        joint.name.c_str(), can_id_it->second.c_str());
+        rclcpp::get_logger(kLogger), "joint '%s' has a non-integer can_id '%s'", joint.name.c_str(),
+        can_id_it->second.c_str());
       return hardware_interface::CallbackReturn::ERROR;
     }
 
@@ -144,16 +146,15 @@ hardware_interface::CallbackReturn SparkFlexSystem::on_init(
     // wheel not responding, which looks like a dead motor.
     if (std::find(seen_can_ids.begin(), seen_can_ids.end(), config.can_id) != seen_can_ids.end()) {
       RCLCPP_FATAL(
-        rclcpp::get_logger(kLogger), "CAN id %d is assigned to more than one joint",
-        config.can_id);
+        rclcpp::get_logger(kLogger), "CAN id %d is assigned to more than one joint", config.can_id);
       return hardware_interface::CallbackReturn::ERROR;
     }
     seen_can_ids.push_back(config.can_id);
 
     const auto invert_it = joint.parameters.find("invert");
-    config.invert = invert_it != joint.parameters.end() &&
-                    (invert_it->second == "true" || invert_it->second == "True" ||
-                     invert_it->second == "1");
+    config.invert =
+      invert_it != joint.parameters.end() &&
+      (invert_it->second == "true" || invert_it->second == "True" || invert_it->second == "1");
 
     config.max_wheel_rad_s = params_.max_wheel_rad_s;
     config.max_duty_cycle = params_.max_duty_cycle;
@@ -312,8 +313,8 @@ hardware_interface::return_type SparkFlexSystem::read(
       // argument for the EKF and for visual odometry, not a reason to
       // pretend the number is better than it is.
       // =======================================================
-      const double command = std::isfinite(hw_commands_velocity_[i]) ? hw_commands_velocity_[i]
-                                                                     : 0.0;
+      const double command =
+        std::isfinite(hw_commands_velocity_[i]) ? hw_commands_velocity_[i] : 0.0;
       hw_states_velocity_[i] = command;
     }
 

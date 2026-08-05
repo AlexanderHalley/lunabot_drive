@@ -124,9 +124,7 @@ class TestMockBringup(unittest.TestCase):
         you have run this.
         """
         self.wait_for(
-            lambda: any(
-                name == '/cmd_vel' for name, _ in self.node.get_topic_names_and_types()
-            ),
+            lambda: any(name == '/cmd_vel' for name, _ in self.node.get_topic_names_and_types()),
             30.0,
             '/cmd_vel to appear in the graph',
         )

@@ -59,8 +59,8 @@ private:
 
     if (msg->encoding != sensor_msgs::image_encodings::TYPE_16UC1) {
       RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 5000,
-        "unhandled depth encoding '%s'; expected 16UC1 or 32FC1", msg->encoding.c_str());
+        get_logger(), *get_clock(), 5000, "unhandled depth encoding '%s'; expected 16UC1 or 32FC1",
+        msg->encoding.c_str());
       return;
     }
 
@@ -78,8 +78,8 @@ private:
     for (uint32_t row = 0; row < msg->height; ++row) {
       // Read row by row using the source step. Depth images are frequently
       // padded, so assuming step == width * 2 gives a sheared image.
-      const auto * src =
-        reinterpret_cast<const uint16_t *>(msg->data.data() + static_cast<std::size_t>(row) * msg->step);
+      const auto * src = reinterpret_cast<const uint16_t *>(
+        msg->data.data() + static_cast<std::size_t>(row) * msg->step);
 
       for (uint32_t col = 0; col < msg->width; ++col) {
         const uint16_t millimetres = src[col];

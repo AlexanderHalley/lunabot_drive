@@ -13,7 +13,7 @@ change evaluated against a different random scene tells you nothing.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
@@ -149,7 +149,9 @@ def to_ground_truth(boulders: list[Boulder], seed: int, config: ArenaConfig) -> 
     }
 
 
-def write_ground_truth(boulders: list[Boulder], seed: int, config: ArenaConfig, path: Path) -> None:
+def write_ground_truth(
+    boulders: list[Boulder], seed: int, config: ArenaConfig, path: Path
+) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(to_ground_truth(boulders, seed, config), indent=2))

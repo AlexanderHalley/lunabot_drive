@@ -55,8 +55,7 @@ def test_no_numbers_hiding_as_strings(path):
     ]
     assert not offenders, (
         f'{path.name}: these parsed as strings, not numbers -- YAML 1.1 needs a '
-        f'decimal point and a signed exponent (1.0e+6, not 1.0e6):\n  '
-        + '\n  '.join(offenders)
+        f'decimal point and a signed exponent (1.0e+6, not 1.0e6):\n  ' + '\n  '.join(offenders)
     )
 
 

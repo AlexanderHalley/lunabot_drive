@@ -58,18 +58,29 @@ jobs:
         shell: bash
         run: |
           source /opt/ros/jazzy/setup.bash
+
+          # lunabot.urdf.xacro pulls in six files via $(find
+          # lunabot_description), which resolves through the ament index --
+          # so the package has to be ON that index or xacro fails before it
+          # parses a single tag. Rather than build the workspace for what is a
+          # syntax check, fake the smallest prefix ament will accept: a marker
+          # file and a symlink to the source tree.
+          #
+          # Setting AMENT_PREFIX_PATH in the job's env: block does not work.
+          # setup.bash above overwrites it, so the export has to come after.
+          shim=/tmp/ament_shim
+          mkdir -p "$shim/share/ament_index/resource_index/packages"
+          touch "$shim/share/ament_index/resource_index/packages/lunabot_description"
+          ln -sfn "$PWD/src/lunabot_description" "$shim/share/lunabot_description"
+          export AMENT_PREFIX_PATH="$shim:$AMENT_PREFIX_PATH"
+
           for hw in real mock sim; do
             echo "::group::hardware:=$hw"
-            # The xacro uses $(find lunabot_description), which needs the
-            # package on the ament index. Point at the source tree directly
-            # instead of building the whole workspace for a syntax check.
             xacro src/lunabot_description/urdf/lunabot.urdf.xacro \
               hardware:=$hw > /tmp/lunabot_$hw.urdf
             check_urdf /tmp/lunabot_$hw.urdf
             echo "::endgroup::"
           done
-        env:
-          AMENT_PREFIX_PATH: /opt/ros/jazzy
 
   # ---------------------------------------------------------------------------
   # The main job. Builds every package -- including lunabot_hardware against

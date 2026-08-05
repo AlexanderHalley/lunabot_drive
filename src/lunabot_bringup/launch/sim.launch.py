@@ -43,7 +43,7 @@ ARGUMENTS = [
     DeclareLaunchArgument(
         'perception',
         default_value='true',
-        description='Start boulder detection against Isaac\'s point cloud.',
+        description="Start boulder detection against Isaac's point cloud.",
     ),
     DeclareLaunchArgument(
         'rviz',
@@ -124,8 +124,6 @@ def generate_launch_description():
                 )
             ),
             wait_for_clock,
-            RegisterEventHandler(
-                OnProcessExit(target_action=wait_for_clock, on_exit=[robot])
-            ),
+            RegisterEventHandler(OnProcessExit(target_action=wait_for_clock, on_exit=[robot])),
         ]
     )

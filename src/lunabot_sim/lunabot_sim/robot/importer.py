@@ -63,9 +63,7 @@ def import_urdf(urdf_path: Path, prim_path: str = '/World/Lunabot') -> str:
 
     # Older API: acquire the interface, parse, then import.
     try:
-        urdf = compat.import_first(
-            ('isaacsim.asset.importer.urdf', 'omni.importer.urdf'), '_urdf'
-        )
+        urdf = compat.import_first(('isaacsim.asset.importer.urdf', 'omni.importer.urdf'), '_urdf')
         interface = urdf.acquire_urdf_interface()
         robot_model = interface.parse_urdf(str(urdf_path.parent), urdf_path.name, config)
         prim = interface.import_robot(
@@ -76,9 +74,7 @@ def import_urdf(urdf_path: Path, prim_path: str = '/World/Lunabot') -> str:
     except Exception as exc:  # noqa: BLE001
         errors.append(f'acquire_urdf_interface: {exc}')
 
-    raise compat.IsaacCompatError(
-        'could not import the URDF. Tried:\n  ' + '\n  '.join(errors)
-    )
+    raise compat.IsaacCompatError('could not import the URDF. Tried:\n  ' + '\n  '.join(errors))
 
 
 def _import_config():
