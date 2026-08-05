@@ -1,0 +1,72 @@
+# Default scene. Mirrors the dataclass defaults in scene/boulders.py,
+# scene/terrain.py and scene/lighting.py.
+#
+# Not currently loaded -- run_sim.py constructs SceneConfig from its defaults
+# and the --seed argument. This file exists so that adding a second scene is
+# a matter of copying it and wiring a loader, rather than of first inventing
+# a scene format under time pressure.
+#
+# The values worth varying between runs are marked.
+
+seed: 0
+
+arena:
+  # PLACEHOLDER dimensions, roughly Lunabotics-scale. Replace with the real
+  # competition spec when published.
+  x_min: 1.0
+  x_max: 6.0
+  y_min: -2.0
+  y_max: 2.0
+
+  # The rover spawns here, so nothing is scattered inside it. A boulder
+  # overlapping the spawn is an intersecting collider, which in PhysX is an
+  # explosion rather than a collision.
+  start_zone_x: 1.5
+
+  # Must stay comfortably above the detector's cluster_tolerance (0.10 m).
+  # Rocks closer than that merge into one detection.
+  min_separation: 0.6
+
+  count: 12                # VARY: 0 is the useful control case
+  diameter_min: 0.10
+  diameter_max: 0.45
+
+  density: 1500.0
+  static_above_diameter: 0.30
+  max_placement_attempts: 200
+
+terrain:
+  size: 20.0
+
+  # The most consequential numbers in the sim. Skid-steer turning IS
+  # controlled friction failure, so these determine whether a
+  # wheel_separation_multiplier tuned in sim means anything on regolith.
+  # Calibrate against measured turning on the real rover.
+  static_friction: 0.7
+  dynamic_friction: 0.6
+  restitution: 0.01
+
+  albedo: [0.35, 0.34, 0.33]
+  roughness: 0.95
+  metallic: 0.0
+
+  # Craters. Empty and unimplemented -- terrain.build() raises rather than
+  # silently ignoring a non-empty list.
+  features: []
+
+lighting:
+  # VARY BOTH between runs. A detector that only works with the sun behind
+  # the rover is not a detector, and low-angle light is what makes the lunar
+  # case hard.
+  sun_elevation_deg: 8.0
+  sun_azimuth_deg: 135.0
+
+  sun_intensity: 3000.0
+  # The sun's true angular size from the Moon. Small means SHARP shadows;
+  # raising it softens them and quietly makes the scene easier.
+  sun_angular_diameter_deg: 0.53
+
+  # Near zero, not zero: on an airless body shadows are genuinely black, and
+  # this is a small concession to a human trying to read the viewport.
+  ambient_intensity: 5.0
+  ambient_colour: [0.05, 0.05, 0.06]

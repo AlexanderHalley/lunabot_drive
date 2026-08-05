@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>lunabot_sim</name>
+  <version>0.1.0</version>
+  <description>
+    Isaac Sim scene builder and ROS 2 bridge graphs for the Lunabot rover.
+    Builds the lunar scene programmatically at startup: terrain, seeded
+    boulders, low-angle lighting, and OmniGraph publishers matching the topic
+    contract.
+  </description>
+  <maintainer email="alexhalley@outlook.fr">Alexander Halley</maintainer>
+  <license>MIT</license>
+
+  <!-- ament_python, and the ONLY package in the workspace that is. The
+       deliverable here is an importable Python module with real logic in it,
+       which is where setup.py earns its keep; everywhere else a bare
+       install(DIRECTORY) in CMake is one line and never drifts. -->
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <!-- NO ROS RUNTIME DEPENDENCIES, deliberately.
+       This package is executed by Isaac Sim's embedded Python, which is not
+       the ROS distro's Python. It must never import rclpy; all ROS traffic
+       goes through the bridge extension, which links its own DDS.
+       That restraint is also what lets its layout tests run in ordinary CI. -->
+  <exec_depend>python3-numpy</exec_depend>
+
+  <!-- Used by scripts/run_isaac_sim.sh, which runs in the ROS environment to
+       expand the xacro before handing off to Isaac. -->
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>lunabot_description</exec_depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
