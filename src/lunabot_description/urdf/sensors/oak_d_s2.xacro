@@ -1,0 +1,140 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    OAK-D S2 stereo depth camera, front-mounted.
+
+    This macro replaces the four static_transform_publisher calls that the
+    2026 launch/oak_d_rviz.launch.py used to fake the camera TF tree. Those
+    were rooted at a frame called "world", which is not a REP-105 frame,
+    and they were only published when that one RViz launch file ran - so
+    the transforms existed for visualisation and did not exist for anything
+    else. The frame names and optical rotations below are taken from that
+    file; the tree structure is not.
+
+    Frames produced (see docs/TOPIC_FRAME_CONTRACT.md):
+
+      oak_d_link                        body frame, REP-103 (X fwd, Y left, Z up)
+      +- oak_d_rgb_camera_frame
+      |  +- oak_d_rgb_camera_optical_frame     REP-103 optical (Z fwd, X right, Y down)
+      +- oak_d_left_camera_frame
+      |  +- oak_d_left_camera_optical_frame
+      +- oak_d_right_camera_frame
+      |  +- oak_d_right_camera_optical_frame
+      +- oak_d_imu_frame
+
+    The two-frame-per-sensor pattern (body + optical) is REP-103 and is not
+    optional: image topics carry the OPTICAL frame in header.frame_id, while
+    anything reasoning about the robot wants the body frame. Collapsing them
+    puts a 90-degree error into every point cloud.
+
+    NOTE on depthai_descriptions: upstream ships its own OAK-D macros. They
+    are not used here because they bring their own frame naming and their own
+    mount conventions, and reconciling those with this contract is more work
+    than the 40 lines below. If you do switch to them, the contract document
+    is what has to stay true, not this file.
+  -->
+
+  <xacro:macro name="oak_d_s2" params="prefix parent *origin">
+
+    <!--
+      Optical-frame rotation: body (X fwd, Y left, Z up) to optical
+      (Z fwd, X right, Y down). This exact rpy triple is REP-103.
+
+      Written out at each of the three joints rather than hoisted into a
+      property. A property holding "${-pi/2} 0 ${-pi/2}" is a string with
+      embedded substitutions, and whether it survives a second ${} round
+      trip depends on xacro's evaluation order. Three literal copies of a
+      constant that must never change beats one clever copy that might
+      expand to a syntax error.
+    -->
+
+    <link name="${prefix}oak_d_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${oak_d_length} ${oak_d_width} ${oak_d_height}"/>
+        </geometry>
+        <material name="lunabot_sensor"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${oak_d_length} ${oak_d_width} ${oak_d_height}"/>
+        </geometry>
+      </collision>
+
+      <xacro:box_inertia mass="${oak_d_mass}"
+                         x="${oak_d_length}" y="${oak_d_width}" z="${oak_d_height}">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </xacro:box_inertia>
+    </link>
+
+    <joint name="${prefix}oak_d_mount_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child  link="${prefix}oak_d_link"/>
+      <xacro:insert_block name="origin"/>
+    </joint>
+
+    <!-- ==================== Sensor frames ==================== -->
+
+    <!-- RGB -->
+    <link name="${prefix}oak_d_rgb_camera_frame"/>
+    <joint name="${prefix}oak_d_rgb_camera_joint" type="fixed">
+      <parent link="${prefix}oak_d_link"/>
+      <child  link="${prefix}oak_d_rgb_camera_frame"/>
+      <origin xyz="0 ${oak_d_rgb_offset_y} 0" rpy="0 0 0"/>
+    </joint>
+
+    <link name="${prefix}oak_d_rgb_camera_optical_frame"/>
+    <joint name="${prefix}oak_d_rgb_camera_optical_joint" type="fixed">
+      <parent link="${prefix}oak_d_rgb_camera_frame"/>
+      <child  link="${prefix}oak_d_rgb_camera_optical_frame"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+
+    <!-- Left mono. The stereo baseline is measured between these two, and
+         depth is computed in the LEFT camera's frame by the OAK-D. -->
+    <link name="${prefix}oak_d_left_camera_frame"/>
+    <joint name="${prefix}oak_d_left_camera_joint" type="fixed">
+      <parent link="${prefix}oak_d_link"/>
+      <child  link="${prefix}oak_d_left_camera_frame"/>
+      <origin xyz="0 ${oak_d_baseline / 2.0} 0" rpy="0 0 0"/>
+    </joint>
+
+    <link name="${prefix}oak_d_left_camera_optical_frame"/>
+    <joint name="${prefix}oak_d_left_camera_optical_joint" type="fixed">
+      <parent link="${prefix}oak_d_left_camera_frame"/>
+      <child  link="${prefix}oak_d_left_camera_optical_frame"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+
+    <!-- Right mono -->
+    <link name="${prefix}oak_d_right_camera_frame"/>
+    <joint name="${prefix}oak_d_right_camera_joint" type="fixed">
+      <parent link="${prefix}oak_d_link"/>
+      <child  link="${prefix}oak_d_right_camera_frame"/>
+      <origin xyz="0 ${-oak_d_baseline / 2.0} 0" rpy="0 0 0"/>
+    </joint>
+
+    <link name="${prefix}oak_d_right_camera_optical_frame"/>
+    <joint name="${prefix}oak_d_right_camera_optical_joint" type="fixed">
+      <parent link="${prefix}oak_d_right_camera_frame"/>
+      <child  link="${prefix}oak_d_right_camera_optical_frame"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+
+    <!-- On-board BNO086 IMU. Body frame, not optical: sensor_msgs/Imu is
+         expressed in a REP-103 body frame. rtabmap's gravity constraint and
+         the EKF both read this, so a wrong rotation here tilts the map. -->
+    <link name="${prefix}oak_d_imu_frame"/>
+    <joint name="${prefix}oak_d_imu_joint" type="fixed">
+      <parent link="${prefix}oak_d_link"/>
+      <child  link="${prefix}oak_d_imu_frame"/>
+      <origin xyz="0 ${oak_d_imu_offset_y} 0" rpy="0 0 0"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

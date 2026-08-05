@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Visual materials for RViz.
+
+    Isaac Sim does NOT use these - it applies its own PBR materials in
+    lunabot_sim/scene, because URDF materials have no roughness, no
+    metallic, and no response to the low-angle lighting that makes the
+    lunar scene look lunar. These are for RViz only.
+  -->
+
+  <material name="lunabot_chassis">
+    <color rgba="0.85 0.85 0.87 1.0"/>
+  </material>
+
+  <material name="lunabot_wheel">
+    <color rgba="0.15 0.15 0.15 1.0"/>
+  </material>
+
+  <material name="lunabot_sensor">
+    <color rgba="0.20 0.35 0.55 1.0"/>
+  </material>
+
+</robot>

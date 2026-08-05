@@ -1,0 +1,143 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    The ros2_control block. This is the ONLY part of the robot description
+    that differs between the real rover, Isaac Sim, and mock hardware.
+
+    Everything else - geometry, inertia, sensor frames, joint limits - is
+    byte-identical across all three. That is the whole design: if a bug
+    reproduces in sim it is a real bug, because sim runs the same
+    diff_drive_controller with the same YAML and the same kinematics.
+
+        hardware:=mock   mock_components/GenericSystem
+        hardware:=sim    topic_based_ros2_control/TopicBasedSystem
+        hardware:=real   lunabot_hardware/SparkFlexSystem
+  -->
+
+  <!--
+    One driven wheel joint.
+
+    can_id and invert are per-joint PARAMETERS rather than C++ constants.
+    On the 2026 rover, inversion lived in drive_node.cpp as
+    right_front_->SetInverted(true) and the CAN IDs were launch arguments
+    that disagreed with the node's own defaults and with the README. Here
+    the wiring of the robot is described in one place, in the file that
+    describes the robot.
+
+    The interface set is fixed by the contract with diff_drive_controller:
+    it commands velocity and reads back position and velocity. Position is
+    what makes closed-loop odometry possible (position_feedback: true);
+    without it the controller integrates velocity and drifts faster.
+  -->
+  <xacro:macro name="lunabot_wheel_joint" params="name can_id invert">
+    <joint name="${name}">
+      <command_interface name="velocity">
+        <param name="min">${-max_wheel_rad_s}</param>
+        <param name="max">${max_wheel_rad_s}</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+
+      <!-- Read by SparkFlexSystem. mock_components and TopicBasedSystem
+           ignore unknown joint params, so these are harmless in sim. -->
+      <param name="can_id">${can_id}</param>
+      <param name="invert">${invert}</param>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="lunabot_ros2_control"
+               params="name hardware can_interface
+                       sim_joint_states_topic sim_joint_commands_topic">
+
+    <ros2_control name="${name}" type="system">
+
+      <!-- ==================== real ==================== -->
+      <xacro:if value="${hardware == 'real'}">
+        <hardware>
+          <plugin>lunabot_hardware/SparkFlexSystem</plugin>
+          <param name="can_interface">${can_interface}</param>
+
+          <!--
+            FALSE because the 2026 drivetrain has no encoders.
+
+            With this false, read() echoes the commanded velocity back as
+            though it were measured, so /odom is dead reckoning from
+            command: right frames, right units, and wrong under any wheel
+            slip - which on regolith is always.
+
+            This is why robot_localization ships in the skeleton disabled
+            rather than deferred. Flip to true once hall telemetry is
+            confirmed working; it is a one-line change.
+            See docs/HARDWARE_CAN.md.
+          -->
+          <param name="use_motor_feedback">false</param>
+
+          <param name="max_wheel_rad_s">${max_wheel_rad_s}</param>
+          <param name="max_duty_cycle">${max_duty_cycle}</param>
+          <param name="gear_ratio">${gear_ratio}</param>
+          <param name="ramp_rate">${ramp_rate}</param>
+        </hardware>
+      </xacro:if>
+
+      <!-- ==================== mock ==================== -->
+      <xacro:if value="${hardware == 'mock'}">
+        <hardware>
+          <plugin>mock_components/GenericSystem</plugin>
+          <!--
+            calculate_dynamics integrates position from the velocity
+            command instead of mirroring commands straight back. That is
+            what makes diff_drive_controller produce a non-degenerate
+            /odom on mock hardware, which is what makes the whole CI smoke
+            test possible: /odom moving proves the URDF parsed, the plugin
+            loaded, the interfaces were claimed, the kinematics ran and TF
+            is connected.
+          -->
+          <param name="calculate_dynamics">true</param>
+        </hardware>
+      </xacro:if>
+
+      <!-- ==================== sim ==================== -->
+      <xacro:if value="${hardware == 'sim'}">
+        <hardware>
+          <!--
+            Bridges ros2_control to Isaac over two JointState topics,
+            mapping directly onto Isaac's native ROS2PublishJointState and
+            ROS2SubscribeJointState OmniGraph nodes. No custom bridge code,
+            and the identical controller stack runs.
+
+            The alternative - letting Isaac subscribe to /cmd_vel and run
+            its own differential controller - is far easier to stand up
+            and quietly worthless: kinematics get computed twice from two
+            sets of constants and /odom comes from a different place in sim
+            than on the robot, so sim stops testing anything.
+
+            VERIFY: this plugin may need building from source. Check
+              apt-cache policy ros-jazzy-topic-based-ros2-control
+            and delete the lunabot.repos entry if a binary exists.
+          -->
+          <plugin>topic_based_ros2_control/TopicBasedSystem</plugin>
+          <param name="joint_states_topic">${sim_joint_states_topic}</param>
+          <param name="joint_commands_topic">${sim_joint_commands_topic}</param>
+          <param name="sum_wrapped_joint_states">true</param>
+        </hardware>
+      </xacro:if>
+
+      <!--
+        CAN IDs preserved from the 2026 launch/pi_drive.launch.py, NOT from
+        drive_node.cpp's defaults - the two disagreed. The launch file won
+        because it is what actually drove the robot after the commit
+        "Updated pi wheel allocation for proper turning": left front is 2,
+        right front is 1.
+
+        Right side inverted, matching the 2026 configure_motors().
+      -->
+      <xacro:lunabot_wheel_joint name="front_left_wheel_joint"  can_id="2" invert="false"/>
+      <xacro:lunabot_wheel_joint name="front_right_wheel_joint" can_id="1" invert="true"/>
+      <xacro:lunabot_wheel_joint name="rear_left_wheel_joint"   can_id="3" invert="false"/>
+      <xacro:lunabot_wheel_joint name="rear_right_wheel_joint"  can_id="4" invert="true"/>
+
+    </ros2_control>
+  </xacro:macro>
+
+</robot>

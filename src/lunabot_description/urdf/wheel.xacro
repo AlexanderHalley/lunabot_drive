@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    One driven wheel.
+
+    side is "left" or "right" and only sets which way along Y the wheel
+    goes. It does NOT set motor inversion: that lives in the ros2_control
+    block as a per-joint parameter, because inversion is a wiring fact
+    about the physical robot, not a geometric one. On the 2026 rover it
+    was hardcoded in C++ (right_front_->SetInverted(true)), which meant
+    rewiring the robot required recompiling it.
+
+    All four wheels rotate about their local Y axis. The cylinder is
+    modelled along Z and rotated into place, which is why the inertia
+    macro takes an origin block.
+  -->
+  <xacro:macro name="lunabot_wheel" params="prefix name side x_offset">
+
+    <xacro:property name="y_sign" value="${1 if side == 'left' else -1}"/>
+    <xacro:property name="y_offset" value="${y_sign * wheel_separation / 2.0}"/>
+
+    <link name="${prefix}${name}_wheel_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="lunabot_wheel"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry>
+          <!--
+            A cylinder, not a mesh. Grousers and treads belong in the
+            visual mesh if anywhere; giving the collider real tread
+            geometry costs an enormous amount of contact-solver time in
+            Isaac and buys nothing, because skid-steer traction on
+            regolith is a friction-coefficient question, not a geometry
+            one. Tune the physics material in lunabot_sim instead.
+          -->
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+
+      <xacro:cylinder_inertia mass="${wheel_mass}"
+                              radius="${wheel_radius}" length="${wheel_width}">
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      </xacro:cylinder_inertia>
+    </link>
+
+    <!--
+      continuous, not revolute: these wheels spin without limit, and a
+      revolute joint with fake limits would make diff_drive_controller's
+      position feedback wrap strangely after a few metres.
+    -->
+    <joint name="${prefix}${name}_wheel_joint" type="continuous">
+      <parent link="${prefix}base_link"/>
+      <child  link="${prefix}${name}_wheel_link"/>
+      <origin xyz="${x_offset} ${y_offset} 0" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <dynamics damping="0.05" friction="0.1"/>
+      <limit effort="${max_wheel_effort}" velocity="${max_wheel_rad_s}"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

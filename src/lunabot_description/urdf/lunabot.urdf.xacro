@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+<!--
+  Lunabot 2027 - 4WD skid-steer lunar rover.
+
+  THE entry point. One file describes the robot for all three targets:
+
+    xacro lunabot.urdf.xacro hardware:=mock    # desk, no hardware, no GPU
+    xacro lunabot.urdf.xacro hardware:=sim     # Isaac Sim
+    xacro lunabot.urdf.xacro hardware:=real    # SocketCAN + SparkFlex
+
+  Geometry, inertia, sensor frames and joint limits are identical in all
+  three expansions. Only the <ros2_control> block branches.
+
+  Deliberately absent:
+
+    <gazebo> tags       we do not use Gazebo.
+
+    Isaac-specific tags  Isaac reads links, joints, inertia and collision
+                         from URDF and nothing else useful. Physics
+                         materials, drive gains and sensor annotators are
+                         configured in lunabot_sim/scene, which keeps this
+                         file free of simulator lock-in and means switching
+                         simulators would not touch the robot description.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="lunabot">
+
+  <!-- Which hardware_interface plugin to instantiate: real | mock | sim.
+       Defaults to mock so that a bare `xacro lunabot.urdf.xacro` produces
+       something that runs anywhere, including CI. -->
+  <xacro:arg name="hardware" default="mock"/>
+
+  <!-- SocketCAN device. Use vcan0 to exercise the real plugin without
+       motors attached - see docs/HARDWARE_CAN.md. -->
+  <xacro:arg name="can_interface" default="can0"/>
+
+  <!-- Frame/joint name prefix, for multi-robot or namespaced setups.
+       Empty in every current configuration. -->
+  <xacro:arg name="prefix" default=""/>
+
+  <!-- Set false to get geometry and TF only, with no controller stack.
+       Useful for `ros2 launch ... description.launch.py` when you just
+       want to look at the model. -->
+  <xacro:arg name="use_ros2_control" default="true"/>
+
+  <!-- Topics bridging ros2_control to Isaac. Must match the OmniGraph
+       nodes built in lunabot_sim/graphs/joints.py. -->
+  <xacro:arg name="sim_joint_states_topic"   default="/isaac/joint_states"/>
+  <xacro:arg name="sim_joint_commands_topic" default="/isaac/joint_commands"/>
+
+  <xacro:include filename="$(find lunabot_description)/urdf/common/properties.xacro"/>
+  <xacro:include filename="$(find lunabot_description)/urdf/common/inertials.xacro"/>
+  <xacro:include filename="$(find lunabot_description)/urdf/common/materials.xacro"/>
+  <xacro:include filename="$(find lunabot_description)/urdf/chassis.xacro"/>
+  <xacro:include filename="$(find lunabot_description)/urdf/wheel.xacro"/>
+  <xacro:include filename="$(find lunabot_description)/urdf/sensors/oak_d_s2.xacro"/>
+  <xacro:include filename="$(find lunabot_description)/urdf/ros2_control/lunabot.ros2_control.xacro"/>
+
+  <xacro:property name="prefix" value="$(arg prefix)"/>
+
+  <!-- ==================== Body ==================== -->
+  <xacro:lunabot_chassis prefix="${prefix}"/>
+
+  <!-- ==================== Wheels ====================
+       Names here are the contract with controllers.yaml: the strings
+       front_left_wheel_joint etc. appear verbatim in
+       lunabot_bringup/config/controllers.yaml under left_wheel_names and
+       right_wheel_names. Renaming a wheel means editing both. -->
+  <xacro:lunabot_wheel prefix="${prefix}" name="front_left"  side="left"
+                       x_offset="${wheel_base / 2.0}"/>
+  <xacro:lunabot_wheel prefix="${prefix}" name="front_right" side="right"
+                       x_offset="${wheel_base / 2.0}"/>
+  <xacro:lunabot_wheel prefix="${prefix}" name="rear_left"   side="left"
+                       x_offset="${-wheel_base / 2.0}"/>
+  <xacro:lunabot_wheel prefix="${prefix}" name="rear_right"  side="right"
+                       x_offset="${-wheel_base / 2.0}"/>
+
+  <!-- ==================== Perception ====================
+       The only sensor on the robot. Its built-in BNO086 supplies the IMU,
+       so there is no separate chassis IMU link: adding one would create a
+       frame nothing publishes to, which is worse than not having it. -->
+  <xacro:oak_d_s2 prefix="${prefix}" parent="${prefix}base_link">
+    <origin xyz="${oak_d_mount_x} ${oak_d_mount_y} ${oak_d_mount_z}"
+            rpy="0 ${oak_d_mount_pitch} 0"/>
+  </xacro:oak_d_s2>
+
+  <!-- ==================== Control ==================== -->
+  <xacro:if value="$(arg use_ros2_control)">
+    <xacro:lunabot_ros2_control
+      name="LunabotSystem"
+      hardware="$(arg hardware)"
+      can_interface="$(arg can_interface)"
+      sim_joint_states_topic="$(arg sim_joint_states_topic)"
+      sim_joint_commands_topic="$(arg sim_joint_commands_topic)"/>
+  </xacro:if>
+
+</robot>

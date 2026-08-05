@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Inertia macros for primitive solids of uniform density.
+
+    These matter more than they look like they do. Isaac Sim reads inertia
+    straight out of the URDF, and a link with a wildly wrong inertia tensor
+    produces an articulation that jitters, sinks through the floor, or
+    launches itself. If the rover misbehaves in sim before it has done
+    anything, suspect these numbers first.
+
+    Real parts are not uniform-density primitives, so treat every value
+    here as an order-of-magnitude estimate. Replace with CAD-exported
+    tensors when the 2027 chassis exists.
+  -->
+
+  <xacro:macro name="box_inertia" params="mass x y z *origin">
+    <inertial>
+      <xacro:insert_block name="origin"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${mass * (y*y + z*z) / 12.0}" ixy="0.0" ixz="0.0"
+        iyy="${mass * (x*x + z*z) / 12.0}" iyz="0.0"
+        izz="${mass * (x*x + y*y) / 12.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- Solid cylinder about its own axis of symmetry (local Z).
+       Wheels rotate about Y, so callers must pass an origin that rotates
+       the cylinder into place; the tensor below is expressed in the
+       cylinder's own frame and the rotation in the origin block carries it. -->
+  <xacro:macro name="cylinder_inertia" params="mass radius length *origin">
+    <inertial>
+      <xacro:insert_block name="origin"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${mass * (3.0*radius*radius + length*length) / 12.0}" ixy="0.0" ixz="0.0"
+        iyy="${mass * (3.0*radius*radius + length*length) / 12.0}" iyz="0.0"
+        izz="${mass * radius * radius / 2.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="sphere_inertia" params="mass radius *origin">
+    <inertial>
+      <xacro:insert_block name="origin"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${2.0 * mass * radius * radius / 5.0}" ixy="0.0" ixz="0.0"
+        iyy="${2.0 * mass * radius * radius / 5.0}" iyz="0.0"
+        izz="${2.0 * mass * radius * radius / 5.0}"/>
+    </inertial>
+  </xacro:macro>
+
+</robot>

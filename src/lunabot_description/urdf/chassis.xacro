@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="lunabot_chassis" params="prefix">
+
+    <!--
+      base_link is the TF ROOT. It sits at the chassis geometric centre,
+      at wheel-axle height.
+
+      base_footprint is its CHILD, at z = -wheel_radius. That is inverted
+      from the usual convention (footprint as root) and it is deliberate:
+      it means exactly one node publishes odom -> base_link and nobody has
+      to decide who owns base_footprint. Nav2's robot_base_frame stays
+      base_link. See docs/TOPIC_FRAME_CONTRACT.md.
+    -->
+    <link name="${prefix}base_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+        </geometry>
+        <material name="lunabot_chassis"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+        </geometry>
+      </collision>
+
+      <xacro:box_inertia mass="${chassis_mass}"
+                         x="${chassis_length}" y="${chassis_width}" z="${chassis_height}">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </xacro:box_inertia>
+    </link>
+
+    <!-- Ground projection. Massless and geometry-free on purpose: it is a
+         coordinate frame, not a body. Giving it inertia would add a phantom
+         link to the articulation in sim. -->
+    <link name="${prefix}base_footprint"/>
+
+    <joint name="${prefix}base_footprint_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child  link="${prefix}base_footprint"/>
+      <origin xyz="0 0 ${-wheel_radius}" rpy="0 0 0"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

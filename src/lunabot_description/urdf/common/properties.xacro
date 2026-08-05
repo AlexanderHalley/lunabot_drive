@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Every dimension in the robot, in one file.
+
+    ============================ READ THIS ============================
+    All of these are PLACEHOLDERS until the 2027 chassis is measured.
+    They are dimensionally sane for a Lunabotics-class rover, and they
+    are not the robot.
+
+    Two of them are load-bearing beyond visualisation:
+
+      wheel_radius      \  read by diff_drive_controller for odometry
+      wheel_separation  /  via lunabot_bringup/config/controllers.yaml
+
+    Those two values appear in TWO places - here (geometry) and in
+    controllers.yaml (kinematics). If they ever disagree, odometry is
+    wrong and NOTHING will tell you: no error, no warning, just a robot
+    that thinks it travelled a different distance than it did.
+
+    xacro cannot reach into a controller YAML, so this duplication
+    cannot be designed away. Change one, change the other, same commit.
+    ===================================================================
+  -->
+
+  <!-- ==================== Chassis ==================== -->
+  <!-- Body box. base_link sits at its geometric centre, at axle height. -->
+  <xacro:property name="chassis_length" value="0.70"/>   <!-- X, fore-aft -->
+  <xacro:property name="chassis_width"  value="0.40"/>   <!-- Y, lateral  -->
+  <xacro:property name="chassis_height" value="0.20"/>   <!-- Z           -->
+  <xacro:property name="chassis_mass"   value="25.0"/>   <!-- kg, everything but wheels -->
+
+  <!-- ==================== Wheels ==================== -->
+  <xacro:property name="wheel_radius"    value="0.10"/>
+  <xacro:property name="wheel_width"     value="0.08"/>
+  <xacro:property name="wheel_mass"      value="1.5"/>
+
+  <!--
+    Lateral distance between the left and right wheel centreplanes.
+    This is the GEOMETRIC track width. diff_drive_controller applies
+    wheel_separation_multiplier on top of it to account for skid-steer
+    slip, because a skid-steer rover's effective track during a turn is
+    wider than its geometric one. Do not pre-bake the fudge factor here.
+  -->
+  <xacro:property name="wheel_separation" value="0.50"/>
+
+  <!-- Fore-aft distance between the front and rear axles. Does not enter
+       the differential kinematics; it sets where the wheels are drawn and
+       how the robot behaves in sim contact. -->
+  <xacro:property name="wheel_base" value="0.44"/>
+
+  <!-- ==================== OAK-D S2 ==================== -->
+  <!-- Enclosure, from the Luxonis datasheet. VERIFY against your unit. -->
+  <xacro:property name="oak_d_length" value="0.0175"/>   <!-- X, depth   -->
+  <xacro:property name="oak_d_width"  value="0.091"/>    <!-- Y, width   -->
+  <xacro:property name="oak_d_height" value="0.028"/>    <!-- Z, height  -->
+  <xacro:property name="oak_d_mass"   value="0.061"/>
+
+  <!-- Stereo baseline: left-to-right mono camera separation, 7.5 cm on the
+       S2. This is a real optical constant, not a placeholder - getting it
+       wrong scales every depth measurement. -->
+  <xacro:property name="oak_d_baseline" value="0.075"/>
+
+  <!-- Mount pose of oak_d_link relative to base_link. Front face of the
+       chassis, tilted down so the near ground is in view. PLACEHOLDER:
+       the tilt in particular wants tuning once the arena geometry and the
+       2 m depth clip are settled. -->
+  <xacro:property name="oak_d_mount_x"     value="${chassis_length / 2.0}"/>
+  <xacro:property name="oak_d_mount_y"     value="0.0"/>
+  <xacro:property name="oak_d_mount_z"     value="${chassis_height / 2.0}"/>
+  <xacro:property name="oak_d_mount_pitch" value="0.2618"/>   <!-- 15 deg down -->
+
+  <!-- Offsets of the optical centres within the enclosure. The RGB sensor
+       sits between the two mono sensors, slightly right of centre on the S2.
+       VERIFY against the calibration your device reports:
+         python3 -c "import depthai; ..."  # getCameraIntrinsics / getExtrinsics -->
+  <xacro:property name="oak_d_rgb_offset_y" value="0.0"/>
+  <xacro:property name="oak_d_imu_offset_y" value="-0.030"/>
+
+  <!-- ==================== Drivetrain limits ==================== -->
+  <!--
+    Wheel angular velocity at full duty cycle. Used by the hardware
+    interface to turn a rad/s command into a duty cycle, so it sets the
+    scale of the whole velocity command path.
+
+    PLACEHOLDER: derive it as
+        motor_free_speed_rpm / gear_ratio * 2*pi / 60
+    and then measure, because free speed under load is not free speed.
+    16.0 rad/s at r=0.10 m is about 1.6 m/s, which is plausible and unverified.
+  -->
+  <xacro:property name="max_wheel_rad_s" value="16.0"/>
+  <xacro:property name="gear_ratio"      value="20.0"/>
+
+  <!-- Peak wheel torque, N*m. Joint limit only - the hardware interface
+       commands duty cycle and cannot enforce torque. Isaac uses it as the
+       articulation drive's max force, so too low means the rover cannot
+       climb and too high means it can wheelie. PLACEHOLDER. -->
+  <xacro:property name="max_wheel_effort" value="40.0"/>
+
+  <!-- Duty cycle ceiling. Carried over from the 2026 robot, where it was
+       max_duty_cycle:=0.8. Headroom for the controller and mercy for the
+       gearboxes. -->
+  <xacro:property name="max_duty_cycle" value="0.8"/>
+
+  <!-- Motor output ramp, seconds from 0 to full. Carried over from the 2026
+       drive node (SetRampRate(0.1)); it is what stopped the rover from
+       shock-loading its gearboxes on a step command. -->
+  <xacro:property name="ramp_rate" value="0.1"/>
+
+</robot>

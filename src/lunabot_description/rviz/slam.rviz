@@ -1,0 +1,150 @@
+# Full SLAM view: map, robot, point cloud, boulder detections.
+#
+# Fixed frame is `map`, so this config shows nothing until a SLAM backend is
+# running and publishing map -> odom. If the robot is missing, check that
+# first -- it is almost never an RViz problem.
+#
+# NOTE: RViz rewrites this file wholesale when you hit Save, stripping every
+# comment. Save to a scratch file and port the diff by hand.
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /RobotModel1
+        - /PointCloud1
+        - /Boulders1
+      Splitter Ratio: 0.5
+    Tree Height: 640
+  - Class: rviz_common/Views
+    Name: Views
+
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Background Color: 30; 30; 34
+    Fixed Frame: map
+    Frame Rate: 30
+  Displays:
+    - Class: rviz_default_plugins/Map
+      Name: Map
+      Enabled: true
+      Topic:
+        Value: /map
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.7
+      Color Scheme: map
+
+    - Class: rviz_default_plugins/RobotModel
+      Name: RobotModel
+      Enabled: true
+      Description Topic:
+        Value: /robot_description
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 1
+      Visual Enabled: true
+      Collision Enabled: false
+
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: true
+      Show Axes: true
+      Show Arrows: false
+      Marker Scale: 0.4
+      # Only the frames worth looking at while driving. The full tree is
+      # 14 frames and turns the view into spaghetti.
+      Frames:
+        All Enabled: false
+        map:
+          Value: true
+        odom:
+          Value: true
+        base_link:
+          Value: true
+        oak_d_rgb_camera_optical_frame:
+          Value: true
+
+    - Class: rviz_default_plugins/Odometry
+      Name: Odometry
+      Enabled: false
+      Topic:
+        Value: /odom
+        Reliability Policy: Reliable
+      Keep: 200
+      Shape:
+        Alpha: 0.6
+        Shaft Length: 0.15
+        Head Length: 0.08
+
+    # Ground truth, sim only. Enable alongside Odometry to see drift
+    # directly: the gap between the two trails IS the odometry error.
+    - Class: rviz_default_plugins/Odometry
+      Name: GroundTruth
+      Enabled: false
+      Topic:
+        Value: /sim/ground_truth/odom
+        Reliability Policy: Reliable
+      Keep: 200
+      Shape:
+        Alpha: 0.6
+        Color: 0; 200; 90
+
+    - Class: rviz_default_plugins/PointCloud2
+      Name: PointCloud
+      Enabled: true
+      Topic:
+        Value: /oak_d/points
+        Reliability Policy: Best Effort
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: AxisColor
+      Axis: Z
+      Decay Time: 0
+
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Boulders
+      Enabled: true
+      Topic:
+        Value: /perception/debug/markers
+        Reliability Policy: Reliable
+
+    - Class: rviz_default_plugins/Image
+      Name: Camera
+      Enabled: false
+      Topic:
+        Value: /oak_d/rgb/image_rect
+        Reliability Policy: Best Effort
+
+  Global Status:
+    Enabled: true
+
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
+
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 8
+      Pitch: 0.7
+      Yaw: 2.4
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Target Frame: base_link
+    Saved: ~
+
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 900
+  Width: 1600
