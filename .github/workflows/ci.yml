@@ -129,18 +129,6 @@ jobs:
           ls /opt/ros/jazzy/share/ament_index/resource_index/rosidl_typesupport_c/
           echo "::endgroup::"
 
-          # ros2_control's ResourceManager API has moved more than once inside
-          # Jazzy -- load_urdf and is_urdf_already_loaded are both gone, and
-          # the constructor gained a clock and a logger. The test in
-          # lunabot_hardware is written against whatever this image ships, so
-          # print it: a compile error names the member that vanished but never
-          # the one that replaced it.
-          echo "::group::ResourceManager public API"
-          grep -n 'load\|initialize\|urdf\|explicit ResourceManager' \
-            /opt/ros/jazzy/include/hardware_interface/hardware_interface/resource_manager.hpp \
-            | head -60
-          echo "::endgroup::"
-
       - uses: ros-tooling/action-ros-ci@v0.3
         with:
           target-ros2-distro: jazzy
@@ -163,6 +151,28 @@ jobs:
             }
         env:
           ROSDEP_SKIP_KEYS: ${{ env.ROSDEP_SKIP_KEYS }}
+
+      # ros2_control is NOT in the base image -- rosdep installs it during the
+      # step above -- so this has to come after it. Putting it first killed a
+      # whole run: the header did not exist yet, and under `bash -e` the failed
+      # grep took the job down before it compiled anything.
+      #
+      # ResourceManager's API has moved twice inside Jazzy now. A compile error
+      # names the member that vanished but never the one that replaced it, so
+      # when lunabot_hardware fails to build this is what says why. Nothing
+      # here may fail the job.
+      - name: ResourceManager API this image ships
+        if: always()
+        shell: bash
+        run: |
+          header=/opt/ros/jazzy/include/hardware_interface/hardware_interface/resource_manager.hpp
+          if [ -f "$header" ]; then
+            echo "::group::$header"
+            grep -n 'load\|initialize\|urdf\|explicit ResourceManager' "$header" | head -60 || true
+            echo "::endgroup::"
+          else
+            echo "$header is not installed"
+          fi
 
       - name: Upload test results
         if: always()
