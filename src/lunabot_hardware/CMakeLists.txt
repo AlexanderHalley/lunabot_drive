@@ -68,6 +68,8 @@ if(BUILD_TESTING)
   ament_target_dependencies(test_load_spark_flex_system
     hardware_interface
     pluginlib
+    # The fixture builds a node to hand ResourceManager a clock and a logger.
+    rclcpp
     ros2_control_test_assets
   )
 endif()
