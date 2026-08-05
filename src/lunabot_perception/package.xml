@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>lunabot_perception</name>
+  <version>0.1.0</version>
+  <description>
+    Boulder detection from the OAK-D point cloud, and depth encoding
+    normalisation. Craters use the same pipeline and the same message type
+    when they arrive.
+  </description>
+  <maintainer email="alexhalley@outlook.fr">Alexander Halley</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
+
+  <!-- Detections use vision_msgs, NOT a custom type. class_id is a string,
+       so adding craters later needs no message change and no downstream
+       rebuild. See lunabot_msgs/README.md. -->
+  <depend>vision_msgs</depend>
+
+  <depend>pcl_conversions</depend>
+  <depend>pcl_ros</depend>
+  <depend>libpcl-all-dev</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>eigen</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

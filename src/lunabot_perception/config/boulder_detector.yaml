@@ -1,0 +1,71 @@
+boulder_detector:
+  ros__parameters:
+    # Everything is reasoned about in base_link: X forward, Y left, Z up.
+    # The cloud arrives in the camera's optical frame and is transformed
+    # before anything else happens, which is the only way the numbers below
+    # are comprehensible.
+    output_frame: base_link
+
+    # 3 cm voxels. Everything after this is O(n), so this is the single
+    # biggest lever on CPU cost. Too coarse and small rocks vanish; the
+    # smallest boulder we claim to detect is 5 cm, so 3 cm is about the
+    # largest leaf that still leaves a few points on one.
+    voxel_leaf_size: 0.03
+
+    # ==================== Region of interest ====================
+    # [x, y, z] in base_link, metres.
+    #
+    # x starts at 0.2 to exclude the rover's own front face. It ends at 2.5
+    # because the camera clips depth at 2 m -- anything past that is stereo
+    # noise, not measurement.
+    #
+    # z starts at -0.5 rather than at the ground, so that below-ground points
+    # survive into the crater cloud once craters exist.
+    roi_min: [0.2, -1.5, -0.5]
+    roi_max: [2.5, 1.5, 1.0]
+
+    # ==================== Ground ====================
+    # Height of the ground plane in base_link. base_link sits one wheel
+    # radius above the ground by construction, so this is -wheel_radius.
+    #
+    # KEEP IN SYNC with wheel_radius in properties.xacro and controllers.yaml.
+    # A third copy of the same number, and the only one that is a plain
+    # threshold rather than a kinematic constant.
+    ground_z: -0.10
+
+    # Points within 5 cm of that plane are ground.
+    #
+    # This is the stub's weakest assumption: a flat, level ground plane at a
+    # known height. It does not survive a slope, a suspension deflection, or
+    # a berm. Replacing it with a RANSAC plane fit is the first real upgrade.
+    ground_plane_distance_threshold: 0.05
+
+    # ==================== Clustering ====================
+    # Points more than 10 cm apart are different objects. At 2 m the stereo
+    # point spacing is already several centimetres, so going much below this
+    # splits single boulders into several.
+    cluster_tolerance: 0.10
+
+    # 20 points minimum. Below that it is stereo speckle. This interacts with
+    # voxel_leaf_size and with range: a 10 cm rock at 2 m may only be a
+    # couple of dozen points before downsampling.
+    min_cluster_size: 20
+    max_cluster_size: 25000
+
+    # ==================== Size filter ====================
+    # PLACEHOLDERS until the competition's obstacle spec is known.
+    min_boulder_dimension: 0.05
+    max_boulder_dimension: 1.50
+
+    # A patch that is wide but flat is a texture change, not an obstacle.
+    min_boulder_height: 0.03
+
+    # ==================== Output ====================
+    # CONSTANT, and deliberately not called a confidence. Nothing in this
+    # pipeline estimates one. A varying number here would imply a classifier
+    # that does not exist, and downstream code would start trusting it.
+    detection_score: 0.5
+
+    # Debug clouds and markers are published lazily -- only when something is
+    # subscribed -- so leaving this on costs nothing until RViz connects.
+    publish_debug_clouds: true

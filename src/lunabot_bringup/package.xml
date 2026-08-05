@@ -38,6 +38,7 @@
 
   <!-- SLAM and sensor fusion -->
   <exec_depend>lunabot_slam</exec_depend>
+  <exec_depend>lunabot_perception</exec_depend>
   <exec_depend>robot_localization</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>

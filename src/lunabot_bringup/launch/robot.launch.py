@@ -92,6 +92,14 @@ ARGUMENTS = [
         description='Start the joystick nodes. False runs twist_mux alone, for Nav2-only driving.',
     ),
     DeclareLaunchArgument(
+        'perception',
+        default_value='false',
+        description=(
+            'Start boulder detection. Consumes /oak_d/points, so it needs either '
+            'the camera or Isaac publishing.'
+        ),
+    ),
+    DeclareLaunchArgument(
         'rviz',
         default_value='false',
         description='Start RViz2.',
@@ -178,6 +186,17 @@ def generate_launch_description():
                 # The backend publishes odom -> base_link only when it is the
                 # odom source. Otherwise it owns map -> odom and nothing else.
                 publish_odom_tf=_equals(odom_source, 'visual'),
+            ),
+
+            include(
+                FindPackageShare('lunabot_perception'),
+                'perception.launch.py',
+                condition=IfCondition(LaunchConfiguration('perception')),
+                # Depth normalisation is a real-hardware concern only: the
+                # OAK-D publishes 16UC1 millimetres, Isaac publishes 32FC1
+                # metres. Converting in sim would be converting data that is
+                # already correct.
+                normalize_depth=_equals(LaunchConfiguration('hw'), 'real'),
             ),
 
             include(
