@@ -94,12 +94,40 @@ jobs:
   build-test:
     name: build and test
     runs-on: ubuntu-24.04
+    # The official image rather than setup-ros on a bare runner. setup-ros
+    # produced an install where find_package(rclcpp) succeeded but the ament
+    # RESOURCE INDEX had no typesupport registered, so every C++ package died
+    # at configure time with "No 'rosidl_typesupport_c' found". Those two
+    # lookups read different variables -- CMAKE_PREFIX_PATH and
+    # AMENT_PREFIX_PATH -- which is why the failure looked like a code problem
+    # and was not one.
+    #
+    # The urdf job above already builds against this image, so it is a known
+    # quantity here. It is also minutes faster, because ROS is baked in rather
+    # than apt-installed on every run.
+    container: ros:jazzy-ros-base
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ros-tooling/setup-ros@v0.7
-        with:
-          required-ros-distributions: jazzy
+      # The image is deliberately lean. action-ros-ci shells out to all of
+      # these, and runs `sudo` even as root, which the image does not ship.
+      - name: Tools action-ros-ci expects
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            sudo python3-colcon-common-extensions python3-rosdep python3-vcstool
+
+      # Cheap, and it makes the next failure self-explanatory rather than
+      # another round of guessing. If the resource index below is empty, the
+      # ROS install is incomplete and nothing in this repository can fix it.
+      - name: Sanity-check the ROS install
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          echo "AMENT_PREFIX_PATH=$AMENT_PREFIX_PATH"
+          echo "::group::rosidl_typesupport_c providers"
+          ls /opt/ros/jazzy/share/ament_index/resource_index/rosidl_typesupport_c/
+          echo "::endgroup::"
 
       - uses: ros-tooling/action-ros-ci@v0.3
         with:
