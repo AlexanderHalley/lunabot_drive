@@ -1,0 +1,101 @@
+# OAK-D S2, default profile: RGB + stereo depth + IMU.
+#
+# Ported from the 2026 config/oak_d_camera.yaml. Every value that looks
+# arbitrary was tuned against a Raspberry Pi 5's USB bandwidth and memory, and
+# the comments explaining which constraint each one serves are the reason this
+# file is worth porting rather than rewriting.
+#
+# ONE FUNCTIONAL CHANGE from 2026: i_align_depth is now true. rtabmap needs
+# depth registered to the RGB frame; unaligned depth produces geometry that is
+# subtly and silently wrong. See docs/SLAM.md.
+#
+# Node name must be `oak_d` so that published frame_ids match the URDF's
+# oak_d_* frames. See docs/TOPIC_FRAME_CONTRACT.md.
+
+/**:
+  ros__parameters:
+    i_mx_id: ''
+    i_usb_speed: 'SUPER'
+
+    camera:
+      # No on-device neural network. Frees the VPU and a chunk of USB
+      # bandwidth; boulder detection runs on the host from the point cloud.
+      i_nn_type: 'none'
+      i_enable_imu: true
+      i_enable_ir: false
+
+      # ======================= TF OWNERSHIP =======================
+      # robot_state_publisher owns the TF tree, built from the URDF. Left
+      # true, the driver injects its own camera transforms and fights it --
+      # two publishers on the same transforms, nondeterministic result.
+      #
+      # VERIFY both keys against your installed depthai-ros; they have moved
+      # between releases.
+      i_tf_tf_prefix: 'oak_d'
+      i_publish_tf_from_calibration: false
+      # ============================================================
+
+    imu:
+      # 400 Hz on both. rtabmap's gravity constraint and the EKF both want
+      # the IMU faster than the camera, and the BNO086 supplies it cheaply.
+      i_acc_freq: 400
+      i_gyro_freq: 400
+      i_batch_report_threshold: 1
+      i_max_batch_reports: 10
+
+    rgb:
+      i_publish_topic: true
+      i_resolution: '1080P'
+      i_fps: 15.0
+      i_interleaved: false
+      i_keep_preview_aspect_ratio: true
+
+    stereo:
+      i_publish_topic: true
+
+      # Only produce frames when something is subscribed. On a Pi this is the
+      # difference between an idle camera and an idle camera saturating USB.
+      i_enable_lazy_publisher: true
+
+      # Register depth into the RGB frame. Required by rtabmap.
+      i_align_depth: true
+
+      # 400P at 10 fps. Both are bandwidth decisions, not quality ones -- the
+      # Pi cannot move 720P stereo at 30 fps over USB and DDS at the same
+      # time as everything else.
+      i_resolution: '400P'
+      i_fps: 10.0
+
+      i_lr_check: true
+      i_extended_disparity: false
+      i_subpixel: false
+      i_depth_filter_size: 3
+
+      # 2 m clip. The stereo baseline is 7.5 cm, so depth beyond a couple of
+      # metres is mostly noise anyway; clipping it early saves bandwidth
+      # rather than throwing away useful range.
+      i_max_range: 2000
+
+      # ============ FILTER SETTINGS: DO NOT ENABLE CASUALLY ============
+      # Each of these was turned off for a specific observed failure on the
+      # 2026 hardware, not on principle:
+      #
+      #   decimation  memory warnings on the Pi
+      #   temporal    visible lag, which matters when teleoperating
+      #   speckle     memory constraints on the S2 itself
+      #
+      # Spatial filtering stays on because it is what makes the point cloud
+      # usable for clustering rather than a noise field.
+      i_enable_decimation_filter: false
+      i_enable_spatial_filter: true
+      i_spatial_filter_iterations: 1
+      i_spatial_filter_hole_filling_radius: 2
+      i_enable_temporal_filter: false
+      i_enable_speckle_filter: false
+      # ================================================================
+
+    # Point cloud is generated on the host by depth_image_proc rather than
+    # on-device, so the decimation and range limits live in camera.launch.py.
+    # Keeping it off here avoids paying for it twice.
+    pointcloud:
+      i_enable: false

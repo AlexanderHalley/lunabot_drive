@@ -25,6 +25,17 @@
        Without this the default launch configuration does not work. -->
   <exec_depend>hardware_interface</exec_depend>
 
+  <!-- Teleop and velocity arbitration -->
+  <exec_depend>joy</exec_depend>
+  <exec_depend>teleop_twist_joy</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
+
+  <!-- Camera. depthai_ros_driver may need building from source depending on
+       the distro; it is exec-only, so a missing binary does not block the
+       build, only hw:=real with the camera enabled. -->
+  <exec_depend>depthai_ros_driver</exec_depend>
+  <exec_depend>depth_image_proc</exec_depend>
+
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>

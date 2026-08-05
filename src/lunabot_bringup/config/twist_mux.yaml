@@ -1,0 +1,37 @@
+# Arbitrates between velocity command sources.
+#
+# There was no mux on the 2026 robot: teleop published straight to /cmd_vel,
+# which is fine right up to the moment a second source exists. With Nav2
+# arriving, something has to decide who wins, and "whoever published last"
+# is not a decision.
+#
+# Higher priority wins. A source is considered active only while it is
+# publishing within its timeout, so a stalled node releases the bus.
+
+twist_mux:
+  ros__parameters:
+    # VERIFY on first bring-up: if diff_drive_controller subscribes to
+    # TwistStamped (Jazzy does), twist_mux must publish the same type or the
+    # topic connects with zero subscribers and the rover silently does not
+    # move. See docs/TOPIC_FRAME_CONTRACT.md.
+    use_stamped: true
+
+    topics:
+      # Teleop outranks navigation, always. A human reaching for the
+      # controller is a human who wants the rover to stop doing what it is
+      # doing, and the deadman means teleop only holds the bus while the
+      # button is held.
+      joystick:
+        topic: cmd_vel_joy
+        timeout: 0.5
+        priority: 100
+
+      navigation:
+        topic: cmd_vel_nav
+        timeout: 0.5
+        priority: 10
+
+    # Locks would go here -- an e-stop topic that blocks all output above a
+    # given priority. Not configured yet because there is no e-stop node to
+    # publish one; adding the lock without the publisher would give a false
+    # sense of having one.

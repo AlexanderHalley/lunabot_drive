@@ -1,0 +1,58 @@
+# OAK-D S2, depth only. RGB stream disabled.
+#
+# The bandwidth-starved profile: use it when the link cannot carry RGB and
+# depth together, or when only the point cloud matters (boulder detection
+# without visual SLAM).
+#
+# Note that rtabmap will NOT work against this profile -- it needs RGB for
+# feature extraction. Perception will.
+
+/**:
+  ros__parameters:
+    i_mx_id: ''
+    i_usb_speed: 'SUPER'
+
+    camera:
+      i_nn_type: 'none'
+      i_enable_imu: true
+      i_enable_ir: false
+      i_tf_tf_prefix: 'oak_d'
+      i_publish_tf_from_calibration: false
+
+    imu:
+      i_acc_freq: 400
+      i_gyro_freq: 400
+      i_batch_report_threshold: 1
+      i_max_batch_reports: 10
+
+    rgb:
+      i_publish_topic: false
+
+    stereo:
+      i_publish_topic: true
+      i_enable_lazy_publisher: true
+
+      # No RGB stream, so there is no RGB frame to register into. Leaving
+      # this true with rgb disabled is a configuration that does not mean
+      # anything.
+      i_align_depth: false
+
+      # The freed RGB bandwidth buys resolution and frame rate here.
+      i_resolution: '400P'
+      i_fps: 15.0
+
+      i_lr_check: true
+      i_extended_disparity: false
+      i_subpixel: false
+      i_depth_filter_size: 3
+      i_max_range: 2000
+
+      i_enable_decimation_filter: false
+      i_enable_spatial_filter: true
+      i_spatial_filter_iterations: 1
+      i_spatial_filter_hole_filling_radius: 2
+      i_enable_temporal_filter: false
+      i_enable_speckle_filter: false
+
+    pointcloud:
+      i_enable: false

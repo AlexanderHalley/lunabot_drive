@@ -1,0 +1,52 @@
+# Nintendo Switch Pro controller mapping for teleop_twist_joy.
+#
+# Ported from the 2026 config/switch_pro.yaml, which no launch file ever
+# loaded -- pc_teleop.launch.py inlined its own parameters instead. The
+# mapping was therefore correct, unused, and quietly rotting.
+#
+# ONE DELIBERATE CHANGE: require_enable_button is TRUE. The 2026 launch file
+# set it false, which means the rover drove whenever the stick moved, with no
+# deadman. On a machine with 25 kg of mass and brake-mode motors that is a
+# safety problem, not a convenience one.
+
+teleop_twist_joy_node:
+  ros__parameters:
+    # ==================== Axes ====================
+    # Left stick vertical drives forward/back, right stick horizontal turns.
+    # Verify indices against your controller and driver version:
+    #   ros2 topic echo /joy
+    # They differ between the hid-nintendo kernel driver and userspace
+    # drivers, and between wired and Bluetooth connections.
+    axis_linear:
+      x: 1
+    axis_angular:
+      yaw: 0
+
+    # ==================== Speed ====================
+    # Half scale on the normal profile. These are m/s and rad/s and feed
+    # straight into diff_drive_controller, so they are real units now -- on
+    # the 2026 robot the equivalent numbers were duty cycle wearing a
+    # velocity costume.
+    scale_linear:
+      x: 0.5
+    scale_angular:
+      yaw: 0.5
+
+    # Turbo profile, engaged with the turbo button.
+    scale_linear_turbo:
+      x: 1.0
+    scale_angular_turbo:
+      yaw: 1.0
+
+    # ==================== Deadman ====================
+    # Hold to drive. Release and diff_drive_controller's cmd_vel_timeout
+    # (0.5 s) stops the rover.
+    require_enable_button: true
+    enable_button: 5
+    enable_turbo_button: 4
+
+    # Publish only while the enable button is held, rather than streaming
+    # zeros. twist_mux then sees the teleop input drop out entirely, which is
+    # what lets navigation take over cleanly instead of being continuously
+    # overridden by a zero command at higher priority.
+    publish_stamped_twist: true

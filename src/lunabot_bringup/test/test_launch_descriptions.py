@@ -91,6 +91,44 @@ def test_hardware_choices_match_the_urdf():
 
 
 @pytest.mark.parametrize(
+    ('camera', 'hw', 'expected'),
+    [
+        # auto means real hardware only: under sim, Isaac already publishes
+        # the camera topics, and a second publisher on each is worse than
+        # none.
+        ('auto', 'real', 'true'),
+        ('auto', 'sim', 'false'),
+        ('auto', 'mock', 'false'),
+        # Explicit settings override the inference either way.
+        ('true', 'mock', 'true'),
+        ('false', 'real', 'false'),
+    ],
+)
+def test_camera_auto_resolves_against_hardware(camera, hw, expected):
+    module = load('robot.launch.py')
+    context = LaunchContext()
+    assert module._camera_enabled(camera, hw).perform(context) == expected
+
+
+def test_camera_profiles_match_the_config_files():
+    """Every profile robot.launch.py offers must exist in camera.launch.py's
+    map, and every file that map names must be installed."""
+    config_dir = LAUNCH_DIR.parent / 'config'
+    camera = load('camera.launch.py')
+
+    robot = load('robot.launch.py').generate_launch_description()
+    profile_arg = next(
+        e
+        for e in robot.entities
+        if isinstance(e, DeclareLaunchArgument) and e.name == 'camera_profile'
+    )
+
+    assert set(profile_arg.choices) == set(camera.CONFIG_FOR_PROFILE)
+    for filename in camera.CONFIG_FOR_PROFILE.values():
+        assert (config_dir / filename).is_file(), f'missing config {filename}'
+
+
+@pytest.mark.parametrize(
     ('odom_source', 'expected'),
     [('wheel', 'true'), ('visual', 'false'), ('ekf', 'false')],
 )

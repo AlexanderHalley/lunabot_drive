@@ -50,7 +50,17 @@ def generate_test_description():
                 [FindPackageShare('lunabot_bringup'), 'launch', 'robot.launch.py']
             )
         ),
-        launch_arguments={'hw': 'mock', 'rviz': 'false'}.items(),
+        launch_arguments={
+            'hw': 'mock',
+            'rviz': 'false',
+            # teleop off: joy_node opens /dev/input/js0, which does not exist
+            # on a CI runner, and the test publishes to /cmd_vel directly
+            # anyway. twist_mux comes with teleop, so with it off this test
+            # talks to diff_drive_controller through the same remapping the
+            # mux would use.
+            'teleop': 'false',
+            'camera': 'false',
+        }.items(),
     )
 
     return LaunchDescription(

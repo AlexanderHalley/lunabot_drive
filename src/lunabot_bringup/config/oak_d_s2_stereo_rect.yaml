@@ -1,0 +1,71 @@
+# OAK-D S2, rectified stereo pair. For the cuVSLAM backend.
+#
+# cuVSLAM consumes a RECTIFIED STEREO PAIR, not RGB + depth. That is a
+# different camera configuration, not just different remappings -- which is
+# why this is a separate profile rather than a set of launch arguments on top
+# of oak_d_s2.yaml, and why slam.launch.py selects the profile rather than
+# assuming one.
+#
+# Publishes:
+#   /oak_d/left/image_rect   /oak_d/left/camera_info
+#   /oak_d/right/image_rect  /oak_d/right/camera_info
+#
+# ================== VERIFY BEFORE RELYING ON THIS ==================
+# The parameter names below are the ones that make sense for depthai-ros's
+# mono camera streams, and they have NOT been checked against a running
+# driver -- the 2026 robot never published a rectified pair. Confirm with
+#   ros2 param list /oak_d
+# and check the published topics with
+#   ros2 topic list | grep oak_d
+# before concluding cuVSLAM is broken.
+#
+# See docs/SLAM.md: the cuVSLAM path is scaffolding until an Isaac ROS
+# release supporting Jazzy is confirmed to exist.
+# ===================================================================
+
+/**:
+  ros__parameters:
+    i_mx_id: ''
+    i_usb_speed: 'SUPER'
+
+    camera:
+      i_nn_type: 'none'
+      i_enable_imu: true
+      i_enable_ir: false
+      i_tf_tf_prefix: 'oak_d'
+      i_publish_tf_from_calibration: false
+
+    imu:
+      # cuVSLAM's IMU fusion wants a high rate; this matches the default
+      # profile so the two backends see the same IMU stream.
+      i_acc_freq: 400
+      i_gyro_freq: 400
+      i_batch_report_threshold: 1
+      i_max_batch_reports: 10
+
+    # RGB off: cuVSLAM does not use it, and leaving it on would compete for
+    # the bandwidth the stereo pair needs.
+    rgb:
+      i_publish_topic: false
+
+    left:
+      i_publish_topic: true
+      i_resolution: '400P'
+      i_fps: 20.0
+      # Rectification is not optional -- cuVSLAM is configured with
+      # rectified_images: true and will produce nonsense from raw frames.
+      i_publish_rectified: true
+
+    right:
+      i_publish_topic: true
+      i_resolution: '400P'
+      i_fps: 20.0
+      i_publish_rectified: true
+
+    # No depth: cuVSLAM computes its own from the stereo pair. Running the
+    # on-device stereo matcher as well would burn VPU time for nothing.
+    stereo:
+      i_publish_topic: false
+
+    pointcloud:
+      i_enable: false

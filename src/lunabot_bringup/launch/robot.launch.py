@@ -52,6 +52,32 @@ ARGUMENTS = [
         ),
     ),
     DeclareLaunchArgument(
+        'camera',
+        default_value='auto',
+        choices=['auto', 'true', 'false'],
+        description=(
+            'Start the OAK-D driver. auto means "only when hw is real" -- under '
+            'hw:=sim Isaac publishes the camera topics itself, and starting the '
+            'driver too would put two publishers on every camera topic.'
+        ),
+    ),
+    DeclareLaunchArgument(
+        'camera_profile',
+        default_value='default',
+        choices=['default', 'rgb_only', 'pointcloud', 'stereo_rect'],
+        description='Camera configuration. stereo_rect is required by the cuVSLAM backend.',
+    ),
+    DeclareLaunchArgument(
+        'teleop',
+        default_value='true',
+        description='Start joy, teleop_twist_joy and twist_mux.',
+    ),
+    DeclareLaunchArgument(
+        'joy',
+        default_value='true',
+        description='Start the joystick nodes. False runs twist_mux alone, for Nav2-only driving.',
+    ),
+    DeclareLaunchArgument(
         'rviz',
         default_value='false',
         description='Start RViz2.',
@@ -100,10 +126,47 @@ def generate_launch_description():
                 enable_odom_tf=_odom_tf_from(LaunchConfiguration('odom_source')),
             ),
             include(
+                'camera.launch.py',
+                condition=IfCondition(
+                    _camera_enabled(
+                        LaunchConfiguration('camera'), LaunchConfiguration('hw')
+                    )
+                ),
+                profile=LaunchConfiguration('camera_profile'),
+            ),
+            include(
+                'teleop.launch.py',
+                condition=IfCondition(LaunchConfiguration('teleop')),
+                joy=LaunchConfiguration('joy'),
+            ),
+            include(
                 'rviz.launch.py',
                 condition=IfCondition(LaunchConfiguration('rviz')),
                 rviz_config=LaunchConfiguration('rviz_config'),
             ),
+        ]
+    )
+
+
+def _camera_enabled(camera, hw):
+    """Resolve camera:=auto against the hardware backend.
+
+    auto means "real hardware only". Under hw:=sim, Isaac's ROS2CameraHelper
+    graphs already publish the camera topics, so also starting the driver
+    would put two publishers on each of them -- and the driver would fail
+    anyway, because there is no camera plugged in.
+    """
+    from launch.substitutions import PythonExpression
+
+    return PythonExpression(
+        [
+            "'true' if ('",
+            camera,
+            "' == 'true' or ('",
+            camera,
+            "' == 'auto' and '",
+            hw,
+            "' == 'real')) else 'false'",
         ]
     )
 
