@@ -1,0 +1,13 @@
+# Workspace-wide colcon defaults. Applied automatically when colcon is run from
+# the workspace root, so `colcon build` and `colcon build --symlink-install` are
+# the same thing here and everyone gets the same flags.
+build:
+  symlink-install: true
+  cmake-args:
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  event-handlers:
+    - console_cohesion+
+test:
+  event-handlers:
+    - console_direct+

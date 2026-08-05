@@ -1,0 +1,19 @@
+# Advisory only -- not wired into colcon test, and CI does not fail on it.
+# Run manually: clang-tidy -p build/ src/lunabot_hardware/src/*.cpp
+#
+# The noisy checks are disabled deliberately: ROS 2 code is full of long
+# type names (hence no readability-identifier-length) and pluginlib requires
+# non-const globals in the export macros.
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity
+
+HeaderFilterRegex: 'lunabot_.*'
+WarningsAsErrors: ''
+FormatStyle: file

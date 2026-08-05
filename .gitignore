@@ -1,1 +1,39 @@
+# Claude scratch
 claude.md
+
+# colcon
+build/
+install/
+log/
+.colcon/
+
+# Third-party sources pulled in by `vcs import src < lunabot.repos`.
+# These are external repos, not ours -- see lunabot.repos for the pinned list.
+/src/sparkcan/
+/src/topic_based_ros2_control/
+/src/isaac_ros_*/
+
+# USD is a build artifact here: the robot is defined by URDF/xacro and converted
+# at sim startup. Never commit a .usd -- it will silently diverge from the xacro.
+*.usd
+*.usda
+*.usdc
+*.usdz
+
+# Isaac Sim / Omniverse caches
+.cache/
+*.ovcache
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+
+# Editor / tooling
+compile_commands.json
+.vscode/
+.idea/
+*.swp
+.DS_Store

@@ -1,0 +1,37 @@
+# Sources that rosdep cannot resolve, imported with:
+#
+#   vcs import src < lunabot.repos
+#
+# Anything listed here must also appear in the rosdep skip-keys list used by CI
+# and the README:
+#
+#   --skip-keys "sparkcan isaac_ros_visual_slam"
+#
+# Keep those two lists in sync. They are the same list wearing different hats.
+repositories:
+  # REV SparkMax/SparkFlex SocketCAN library. Not in the rosdep index.
+  #
+  # VERIFY: confirm this is the upstream you actually build against before
+  # trusting the pin -- the 2026 robot built it from a local checkout, so the
+  # provenance was never recorded. Check `SparkFlex.hpp` in your working
+  # install against this repo's headers.
+  sparkcan:
+    type: git
+    url: https://github.com/DorsalX/sparkcan.git
+    version: main
+
+  # Hardware interface that bridges ros2_control to a simulator over topics.
+  # VERIFY: check for a binary first --
+  #   apt-cache policy ros-jazzy-topic-based-ros2-control
+  # If it exists, delete this entry and let rosdep handle it.
+  topic_based_ros2_control:
+    type: git
+    url: https://github.com/PickNikRobotics/topic_based_ros2_control.git
+    version: main
+
+# NOT listed here on purpose:
+#
+#   isaac_ros_visual_slam -- the cuVSLAM backend is scaffolding until an Isaac
+#   ROS release supporting Jazzy is confirmed (see docs/SLAM.md). It lives in
+#   isaac_ros.repos so the default CI path stays fast and does not fail on a
+#   package that may not build for this distro yet.
