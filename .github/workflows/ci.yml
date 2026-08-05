@@ -129,6 +129,18 @@ jobs:
           ls /opt/ros/jazzy/share/ament_index/resource_index/rosidl_typesupport_c/
           echo "::endgroup::"
 
+          # ros2_control's ResourceManager API has moved more than once inside
+          # Jazzy -- load_urdf and is_urdf_already_loaded are both gone, and
+          # the constructor gained a clock and a logger. The test in
+          # lunabot_hardware is written against whatever this image ships, so
+          # print it: a compile error names the member that vanished but never
+          # the one that replaced it.
+          echo "::group::ResourceManager public API"
+          grep -n 'load\|initialize\|urdf\|explicit ResourceManager' \
+            /opt/ros/jazzy/include/hardware_interface/hardware_interface/resource_manager.hpp \
+            | head -60
+          echo "::endgroup::"
+
       - uses: ros-tooling/action-ros-ci@v0.3
         with:
           target-ros2-distro: jazzy

@@ -54,22 +54,28 @@ protected:
       node_->get_node_clock_interface(), node_->get_node_logging_interface());
   }
 
-  rclcpp::Node::SharedPtr node_;
+  // load_and_initialize_components parses the description and runs on_init on
+  // each component, which is exactly the part of the real hardware path that
+  // can be covered without a CAN bus. It REPORTS failure rather than throwing
+  // it -- see the note on the rejects_* tests below.
+  bool load(const std::string & ros2_control_block)
+  {
+    return rm_->load_and_initialize_components(wrap(ros2_control_block));
+  }
 
-  // load_urdf(..., validate_interfaces=false) so the resource manager parses
-  // and instantiates the component without requiring an activated lifecycle.
+  rclcpp::Node::SharedPtr node_;
   std::unique_ptr<hardware_interface::ResourceManager> rm_;
 };
 
 TEST_F(SparkFlexSystemTest, plugin_loads_from_a_valid_description)
 {
-  EXPECT_NO_THROW(rm_->load_urdf(wrap(kValidSystem), false));
-  EXPECT_TRUE(rm_->is_urdf_already_loaded());
+  EXPECT_TRUE(load(kValidSystem));
+  EXPECT_TRUE(rm_->are_components_initialized());
 }
 
 TEST_F(SparkFlexSystemTest, exports_the_interfaces_diff_drive_controller_claims)
 {
-  ASSERT_NO_THROW(rm_->load_urdf(wrap(kValidSystem), false));
+  ASSERT_TRUE(load(kValidSystem));
 
   // Four wheels: one velocity command each, position and velocity state each.
   for (const auto & joint : {
@@ -89,37 +95,44 @@ TEST_F(SparkFlexSystemTest, exports_the_interfaces_diff_drive_controller_claims)
 
 TEST_F(SparkFlexSystemTest, does_not_export_a_position_command)
 {
-  ASSERT_NO_THROW(rm_->load_urdf(wrap(kValidSystem), false));
+  ASSERT_TRUE(load(kValidSystem));
 
   // A position command interface would let someone activate a position
   // controller against a drivetrain that physically cannot hold a position.
   EXPECT_FALSE(rm_->command_interface_exists("front_left_wheel_joint/position"));
 }
 
+// The four rejects_* tests below assert on a RETURN VALUE, not on an
+// exception. load_and_initialize_components catches whatever on_init raises
+// and reports false, so EXPECT_THROW here would fail even though the
+// component correctly refused the description. What is being pinned is that
+// each bad description is refused at all -- every one of them is a fault that
+// otherwise presents as a wheel that does not turn, with nothing in the log.
+
 TEST_F(SparkFlexSystemTest, rejects_duplicate_can_ids)
 {
   // Two motors on one address presents as one dead wheel on the real robot.
   // Catching it at parse time turns an afternoon of wiring inspection into
   // one log line.
-  EXPECT_THROW(rm_->load_urdf(wrap(kDuplicateCanIds), false), std::exception);
+  EXPECT_FALSE(load(kDuplicateCanIds));
 }
 
 TEST_F(SparkFlexSystemTest, rejects_a_joint_without_a_can_id)
 {
   // Defaulting to 0 would address whichever controller sits at id 0.
-  EXPECT_THROW(rm_->load_urdf(wrap(kMissingCanId), false), std::exception);
+  EXPECT_FALSE(load(kMissingCanId));
 }
 
 TEST_F(SparkFlexSystemTest, rejects_a_non_velocity_command_interface)
 {
-  EXPECT_THROW(rm_->load_urdf(wrap(kWrongCommandInterface), false), std::exception);
+  EXPECT_FALSE(load(kWrongCommandInterface));
 }
 
 TEST_F(SparkFlexSystemTest, rejects_a_joint_without_position_state)
 {
   // Without position state the controller silently falls back to integrating
   // velocity, so odometry degrades with no error anywhere.
-  EXPECT_THROW(rm_->load_urdf(wrap(kMissingPositionState), false), std::exception);
+  EXPECT_FALSE(load(kMissingPositionState));
 }
 
 int main(int argc, char ** argv)
