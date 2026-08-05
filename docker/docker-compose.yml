@@ -1,0 +1,75 @@
+# Two containers that talk over DDS.
+#
+#   docker compose -f docker/docker-compose.yml run --rm ros
+#   docker compose -f docker/docker-compose.yml run --rm isaac
+#
+# network_mode: host and ipc: host are BOTH required. DDS discovery uses
+# multicast, which bridged Docker networking breaks, and CycloneDDS uses
+# shared memory between processes on the same host. Without ipc: host the two
+# containers discover each other and then exchange nothing, which is a
+# genuinely confusing failure.
+
+services:
+  ros:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.jazzy
+    image: lunabot/ros:jazzy
+    network_mode: host
+    ipc: host
+    privileged: true          # SocketCAN and /dev/input for the joystick
+    volumes:
+      - ..:/workspace:cached
+      # Persist the build tree across container restarts. Named volumes, not
+      # bind mounts: build artefacts written from inside the container onto a
+      # bind-mounted host tree collide with host-side builds.
+      - lunabot-build:/workspace/build
+      - lunabot-install:/workspace/install
+      - lunabot-log:/workspace/log
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - ROS_DOMAIN_ID=42
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+  isaac:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.isaac
+    image: lunabot/isaac:latest
+    network_mode: host
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ..:/workspace:cached
+      # Omniverse caches. Without these every start re-downloads shader and
+      # asset caches, which turns a 30-second start into several minutes.
+      - isaac-ov-cache:/root/.cache/ov
+      - isaac-nvidia:/root/.nvidia-omniverse
+      - isaac-kit-cache:/isaac-sim/kit/cache
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - ACCEPT_EULA=Y
+      - PRIVACY_CONSENT=Y
+      - ROS_DOMAIN_ID=42
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+volumes:
+  lunabot-build:
+  lunabot-install:
+  lunabot-log:
+  isaac-ov-cache:
+  isaac-nvidia:
+  isaac-kit-cache:

@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop-2027]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ROS_DISTRO: jazzy
+  # Source-built dependencies, imported by vcs from lunabot.repos. Must match
+  # that file -- they are the same list wearing different hats.
+  #
+  # isaac_ros_visual_slam is skipped for a different reason: the cuVSLAM
+  # backend is scaffolding until an Isaac ROS release for this distro is
+  # confirmed, so requiring it would fail the build to get a node that does
+  # not run. See docs/SLAM.md.
+  ROSDEP_SKIP_KEYS: "sparkcan isaac_ros_visual_slam"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Cheap and fast. Runs first so a formatting mistake does not wait on a
+  # full colcon build.
+  # ---------------------------------------------------------------------------
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: pre-commit/action@v3.0.1
+
+  # ---------------------------------------------------------------------------
+  # No ROS needed: expand the xacro for every hardware target and check the
+  # result is a valid URDF. Catches the most common breakage in the
+  # description package in about thirty seconds.
+  # ---------------------------------------------------------------------------
+  urdf:
+    name: urdf
+    runs-on: ubuntu-24.04
+    container: ros:jazzy-ros-base
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install xacro and liburdfdom-tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ros-jazzy-xacro liburdfdom-tools
+
+      - name: Expand and validate for every hardware target
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          for hw in real mock sim; do
+            echo "::group::hardware:=$hw"
+            # The xacro uses $(find lunabot_description), which needs the
+            # package on the ament index. Point at the source tree directly
+            # instead of building the whole workspace for a syntax check.
+            xacro src/lunabot_description/urdf/lunabot.urdf.xacro \
+              hardware:=$hw > /tmp/lunabot_$hw.urdf
+            check_urdf /tmp/lunabot_$hw.urdf
+            echo "::endgroup::"
+          done
+        env:
+          AMENT_PREFIX_PATH: /opt/ros/jazzy
+
+  # ---------------------------------------------------------------------------
+  # The main job. Builds every package -- including lunabot_hardware against
+  # a source build of sparkcan, so the CAN plugin is genuinely compiled here
+  # rather than only on someone's laptop -- and runs every test.
+  #
+  # That includes test_mock_bringup, which brings the whole stack up on mock
+  # hardware and drives it. Headless, no hardware, no GPU. It is the highest
+  # value thing in this file.
+  # ---------------------------------------------------------------------------
+  build-test:
+    name: build and test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+
+      - uses: ros-tooling/action-ros-ci@v0.3
+        with:
+          target-ros2-distro: jazzy
+          package-name: |
+            lunabot_msgs
+            lunabot_description
+            lunabot_hardware
+            lunabot_bringup
+            lunabot_perception
+            lunabot_slam
+            lunabot_navigation
+            lunabot_sim
+          vcs-repo-file-url: ${{ github.workspace }}/lunabot.repos
+          skip-tests: false
+          colcon-defaults: |
+            {
+              "build": {
+                "cmake-args": ["-DCMAKE_BUILD_TYPE=RelWithDebInfo"]
+              }
+            }
+        env:
+          ROSDEP_SKIP_KEYS: ${{ env.ROSDEP_SKIP_KEYS }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: colcon-test-results
+          path: |
+            ros_ws/log/latest_test/
+            ros_ws/build/*/test_results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------
+  # Isaac Sim is NEVER run in CI -- it needs a GPU and a large licensed image.
+  # What is testable here is the scene layout, which is pure numpy: seeded
+  # determinism, arena bounds, start-zone exclusion, minimum separation. That
+  # separation is exactly why scene/boulders.py imports no Isaac.
+  # ---------------------------------------------------------------------------
+  sim-layout:
+    name: sim scene layout
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip numpy pytest pyyaml
+
+      - name: Scene layout tests
+        working-directory: src/lunabot_sim
+        run: PYTHONPATH=. python -m pytest test/test_scene_layout.py -v
+
+      - name: Config file tests
+        working-directory: src/lunabot_bringup
+        # Runs standalone as well as under colcon: it is pure YAML parsing,
+        # and it guards the trap where 1.0e6 silently becomes a string.
+        run: python -m pytest test/test_config_files.py -v

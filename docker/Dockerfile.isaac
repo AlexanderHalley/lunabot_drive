@@ -1,0 +1,51 @@
+# Isaac Sim, with this workspace's simulation package mounted in.
+#
+# ==================== VERIFY THE TAG ====================
+# The base image tag below is a placeholder. Two things must be checked
+# before relying on it:
+#
+#   1. That the tag exists. Isaac Sim images live at nvcr.io and require
+#      an NGC login:
+#        docker login nvcr.io
+#
+#   2. That the image's Ubuntu version supports a ROS 2 Jazzy bridge. The
+#      bridge extension ships prebuilt internal ROS libraries per distro.
+#      Landing on a 22.04-only build means revisiting the Jazzy decision for
+#      the whole workspace -- see docs/SIM_ISAAC.md.
+# ========================================================
+ARG ISAAC_SIM_VERSION=4.5.0
+FROM nvcr.io/nvidia/isaac-sim:${ISAAC_SIM_VERSION}
+
+# Required by the base image. Accepting these is what makes the container
+# start unattended; without them it waits for an interactive prompt that
+# never comes.
+ENV ACCEPT_EULA=Y \
+    PRIVACY_CONSENT=Y \
+    OMNI_KIT_ACCEPT_EULA=YES
+
+# lunabot_sim is mounted rather than copied, so editing a scene file does not
+# mean rebuilding a very large image. Isaac's Python finds it via PYTHONPATH,
+# not via the colcon install tree -- it knows nothing about ament.
+ENV PYTHONPATH=/workspace/src/lunabot_sim:${PYTHONPATH}
+
+# Must match every other machine on the network, or the bridge publishes into
+# a domain nobody is listening to and the symptom is simply "no topics".
+ENV ROS_DOMAIN_ID=42
+
+# numpy is used by the scene builder. The base image usually has it; install
+# into Isaac's OWN interpreter rather than the system one, because that is
+# what runs run_sim.py.
+RUN /isaac-sim/python.sh -m pip install --no-cache-dir numpy || \
+    echo "numpy already present or pip unavailable; continuing"
+
+WORKDIR /workspace
+
+# The expanded URDF has to come from the ROS side -- xacro does not exist in
+# here and must not. run_isaac_sim.sh writes it to this cache directory, which
+# is shared with the ROS container in docker-compose.yml.
+ENV LUNABOT_SIM_CACHE=/workspace/.cache/lunabot_sim
+
+# Bare shell by default. Launching run_sim.py needs a URDF that has already
+# been expanded, so a CMD that tried to start the sim directly would fail on
+# a fresh checkout.
+CMD ["/bin/bash"]

@@ -1,0 +1,62 @@
+{
+  "name": "Lunabot ROS 2 Jazzy",
+  "build": {
+    "dockerfile": "../docker/Dockerfile.jazzy",
+    "context": ".."
+  },
+
+  // Both required for DDS. Discovery uses multicast, which bridged Docker
+  // networking breaks, and CycloneDDS uses shared memory between processes on
+  // the same host -- without --ipc=host the containers discover each other
+  // and then exchange nothing.
+  //
+  // /dev is mounted for SocketCAN and the joystick. Isaac Sim is NOT in this
+  // image; it runs separately and talks over DDS.
+  "runArgs": [
+    "--network=host",
+    "--ipc=host",
+    "--privileged",
+    "--volume=/dev:/dev"
+  ],
+
+  "remoteUser": "ros",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+  "containerEnv": {
+    "ROS_DOMAIN_ID": "42",
+    "RMW_IMPLEMENTATION": "rmw_cyclonedds_cpp",
+    "COLCON_DEFAULTS_FILE": "/workspace/colcon_defaults.yaml"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-iot.vscode-ros",
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml"
+      ],
+      "settings": {
+        // colcon_defaults.yaml sets CMAKE_EXPORT_COMPILE_COMMANDS, so this
+        // exists after the first build and gives real completion for the
+        // hardware and perception packages.
+        "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+        "python.testing.pytestEnabled": true,
+        "files.associations": {
+          "*.xacro": "xml",
+          "*.urdf": "xml",
+          "*.repos": "yaml"
+        }
+      }
+    }
+  },
+
+  // Dependencies are resolved during the image build, so this only needs to
+  // pull the source-built ones -- which live outside the image because they
+  // are pinned in a file that changes.
+  "postCreateCommand": "vcs import src < lunabot.repos || true"
+}
