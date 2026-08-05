@@ -1,0 +1,11 @@
+<library path="lunabot_hardware">
+  <class name="lunabot_hardware/SparkFlexSystem"
+         type="lunabot_hardware::SparkFlexSystem"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      4WD skid-steer drivetrain driven by four REV SparkFlex controllers over
+      SocketCAN. Exports a velocity command and position/velocity state per
+      wheel joint, for diff_drive_controller.
+    </description>
+  </class>
+</library>
