@@ -21,8 +21,27 @@ import yaml
 CONFIG_DIR = Path(__file__).resolve().parent.parent / 'config'
 CONFIG_FILES = sorted(CONFIG_DIR.glob('*.yaml'))
 
+# The other half of the kinematic contract, in the sibling package.
+PROPERTIES = (
+    CONFIG_DIR.parent.parent / 'lunabot_description' / 'urdf' / 'common' / 'properties.xacro'
+)
+
 # Matches a scalar that a human would read as a number.
 NUMERIC_LOOKING = re.compile(r'^-?\d+(\.\d*)?([eE][-+]?\d+)?$')
+
+
+def xacro_property(name):
+    """Read one <xacro:property> value out of properties.xacro.
+
+    Regex rather than running xacro, so this test keeps working in the CI job
+    that has no ROS installed. The properties in question are literal numbers.
+    """
+    assert PROPERTIES.is_file(), f'{PROPERTIES} not found'
+    match = re.search(
+        rf'<xacro:property\s+name="{name}"\s+value="([-\d.]+)"', PROPERTIES.read_text()
+    )
+    assert match, f'{name} not found in {PROPERTIES.name}'
+    return float(match.group(1))
 
 
 def _walk(node, path=''):
@@ -99,6 +118,49 @@ def test_controller_wheel_names_match_the_urdf():
         'front_right_wheel_joint',
         'rear_right_wheel_joint',
     ]
+
+
+def test_wheel_constants_match_the_urdf():
+    """The rule CONTRIBUTING.md states and nothing enforced until now.
+
+    wheel_radius and wheel_separation exist in properties.xacro AND in
+    controllers.yaml, because xacro cannot reach into a controller YAML. Change
+    one without the other and diff_drive_controller integrates the wrong
+    kinematics: /odom drifts, SLAM fights it, Nav2 plans against a robot that
+    is not where it thinks. Nothing errors, and the symptom is a hundred metres
+    downstream of the cause.
+
+    "Change one, change the other, same commit" is a rule a test can keep, so
+    it keeps it.
+    """
+    diff_drive = yaml.safe_load((CONFIG_DIR / 'controllers.yaml').read_text())[
+        'diff_drive_controller'
+    ]['ros__parameters']
+
+    assert diff_drive['wheel_radius'] == pytest.approx(xacro_property('wheel_radius'))
+    assert diff_drive['wheel_separation'] == pytest.approx(xacro_property('wheel_separation'))
+
+
+def test_the_controller_cannot_command_more_than_the_motors_deliver():
+    """A velocity ceiling above what the drivetrain can reach is a lie.
+
+    The controller clamps to its own limit, the motors saturate below it, and
+    the wheels turn slower than the odometry believes -- which is the same
+    failure as a wrong wheel radius, arriving by a different route.
+
+    Linear only. The angular bound depends on wheel_separation_multiplier,
+    which is a skid-steer fudge factor rather than a measured quantity, so
+    pinning it here would assert against a guess.
+    """
+    limits = yaml.safe_load((CONFIG_DIR / 'controllers.yaml').read_text())[
+        'diff_drive_controller'
+    ]['ros__parameters']
+
+    achievable = xacro_property('max_wheel_rad_s') * xacro_property('wheel_radius')
+    assert limits['linear.x.max_velocity'] <= achievable, (
+        f'{limits["linear.x.max_velocity"]} m/s asks for more than the '
+        f'{achievable} m/s the motors can turn'
+    )
 
 
 def test_controller_update_rate_sustains_the_can_heartbeat():
