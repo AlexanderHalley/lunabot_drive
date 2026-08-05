@@ -41,6 +41,9 @@
   <exec_depend>lunabot_perception</exec_depend>
   <exec_depend>robot_localization</exec_depend>
 
+  <!-- Navigation. Included by robot.launch.py under nav:=true. -->
+  <exec_depend>lunabot_navigation</exec_depend>
+
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>

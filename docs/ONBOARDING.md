@@ -95,6 +95,7 @@ which reads as a TF bug and is not one.
 | CAN wiring, motor settings | `src/lunabot_description/urdf/ros2_control/lunabot.ros2_control.xacro` |
 | Camera tuning | `src/lunabot_bringup/config/oak_d_s2*.yaml` |
 | SLAM tuning | `src/lunabot_slam/config/` |
+| Nav2 tuning | `src/lunabot_navigation/config/nav2_params.yaml` |
 | The lunar scene | `src/lunabot_sim/lunabot_sim/scene/` |
 
 The wheel radius appearing in two files is not an oversight — xacro cannot reach into a controller

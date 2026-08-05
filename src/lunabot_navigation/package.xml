@@ -4,20 +4,44 @@
   <name>lunabot_navigation</name>
   <version>0.1.0</version>
   <description>
-    Nav2 parameters and launch for the Lunabot rover. Skeleton: the frame
-    names, footprint and velocity limits are stated and consistent, but the
-    stack has not been run.
+    Nav2 parameters and launch for the Lunabot rover. Started by
+    `robot.launch.py nav:=true`, and untuned: the frame names, footprint and
+    velocity limits agree with the rest of the workspace and are tested to,
+    but no rover has navigated with them yet. See docs/NAVIGATION.md.
   </description>
   <maintainer email="alexhalley@outlook.fr">Alexander Halley</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <exec_depend>nav2_bringup</exec_depend>
+  <!-- The nodes navigation.launch.py starts, named individually rather than
+       pulled in as all of nav2_bringup. That file starts the Nav2 nodes
+       itself so the /cmd_vel_nav remappings are ours: nav2_bringup's own
+       launch puts velocity_smoother onto /cmd_vel, which belongs to
+       twist_mux. -->
+  <exec_depend>nav2_bt_navigator</exec_depend>
+  <exec_depend>nav2_controller</exec_depend>
+  <exec_depend>nav2_planner</exec_depend>
+  <exec_depend>nav2_behaviors</exec_depend>
+  <exec_depend>nav2_velocity_smoother</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>nav2_costmap_2d</exec_depend>
+
+  <!-- RewrittenYaml, which navigation.launch.py uses to push use_sim_time
+       into the costmaps' own parameter blocks. -->
   <exec_depend>nav2_common</exec_depend>
+
+  <!-- Not launched from here. Kept for map_saver_cli, which maps/README.md
+       tells you to run. -->
+  <exec_depend>nav2_bringup</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>launch</test_depend>
+  <test_depend>launch_ros</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>python3-yaml</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

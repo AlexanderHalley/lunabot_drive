@@ -162,3 +162,11 @@ jobs:
         # Runs standalone as well as under colcon: it is pure YAML parsing,
         # and it guards the trap where 1.0e6 silently becomes a string.
         run: python -m pytest test/test_config_files.py -v
+
+      - name: Nav2 parameter tests
+        working-directory: src/lunabot_navigation
+        # Also standalone-safe, and for the same reason: it reads YAML and one
+        # xacro property with a regex, and never imports Nav2. It checks the
+        # values nav2_params.yaml restates from other packages -- footprint,
+        # velocity limits, observation ranges, stamped commands.
+        run: python -m pytest test/test_nav2_params.py -v

@@ -96,7 +96,8 @@ camera transforms and fights `robot_state_publisher`.
 |---|---|---|---|
 | `/joy` | `sensor_msgs/Joy` | `joy_node` | `teleop_twist_joy` |
 | `/cmd_vel_joy` | `geometry_msgs/TwistStamped` ¹ | `teleop_twist_joy` | `twist_mux` |
-| `/cmd_vel_nav` | `geometry_msgs/TwistStamped` ¹ | Nav2 | `twist_mux` |
+| `/cmd_vel_nav_unsmoothed` | `geometry_msgs/TwistStamped` ¹ | `controller_server`, `behavior_server` | `velocity_smoother` |
+| `/cmd_vel_nav` | `geometry_msgs/TwistStamped` ¹ | `velocity_smoother` | `twist_mux` |
 | `/cmd_vel` | `geometry_msgs/TwistStamped` ¹ | `twist_mux` | `diff_drive_controller` |
 | `/joint_states` | `sensor_msgs/JointState` | `joint_state_broadcaster` | `robot_state_publisher` |
 | `/odom` | `nav_msgs/Odometry` | odom source | rtabmap, Nav2, EKF |
@@ -112,9 +113,15 @@ ros2 topic info /diff_drive_controller/cmd_vel -v
 ros2 param list /diff_drive_controller
 ```
 
-The answer decides whether `teleop_twist_joy` needs `publish_stamped_twist: true` and whether
-`twist_mux` needs `use_stamped: true`. Getting it wrong produces a robot that silently does not
-move, with no error anywhere — budget an afternoon if you skip this check.
+The answer decides whether `teleop_twist_joy` needs `publish_stamped_twist: true`, whether
+`twist_mux` needs `use_stamped: true`, and whether Nav2 needs `enable_stamped_cmd_vel: true` on
+every node that publishes velocity. Getting it wrong produces a robot that silently does not move,
+with no error anywhere — budget an afternoon if you skip this check.
+
+`/cmd_vel_nav_unsmoothed` is internal to Nav2 — the hop from the controller and the recovery
+behaviours into `velocity_smoother`, so that everything Nav2 commands is acceleration-limited and
+`/cmd_vel_nav` has exactly one publisher. Nothing outside `lunabot_navigation` should subscribe to
+it. See [`NAVIGATION.md`](NAVIGATION.md).
 
 ### Camera
 

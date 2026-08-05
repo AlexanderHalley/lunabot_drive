@@ -52,7 +52,7 @@ sim would stop being a test of anything.
 ```
   joy_node ──/joy──▶ teleop_twist_joy ──/cmd_vel_joy──┐
                                                        ├──▶ twist_mux ──/cmd_vel──┐
-  nav2 ────────────────────────────/cmd_vel_nav───────┘                            │
+  nav2 ──▶ velocity_smoother ──────/cmd_vel_nav───────┘                            │
                                                                                    ▼
                                                               ┌──────── controller_manager ────────┐
                                                               │  diff_drive_controller             │
@@ -98,6 +98,26 @@ same transforms and a tree that only works in sim — which defeats the entire p
 
 Ground truth goes to `/sim/ground_truth/odom`, never to `/tf`. It is for scoring, not for
 navigating.
+
+### Nav2's nodes are launched individually, not through `nav2_bringup`
+
+`lunabot_navigation/launch/navigation.launch.py` declares the five Nav2 nodes itself. That is
+about a hundred lines that upstream would otherwise provide, and it is not a stylistic
+preference.
+
+`nav2_bringup`'s `navigation_launch.py` remaps `velocity_smoother`'s output `cmd_vel_smoothed`
+onto **`cmd_vel`** — which in this workspace is `twist_mux`'s *output*. Including it puts Nav2 on
+the wire alongside the mux, so the priority table arbitrates between teleop and nothing while Nav2
+drives the robot regardless. The deadman stops meaning anything. Remappings inside an included
+launch description cannot be cleanly overridden from outside it, so the choice is between owning
+the node list and losing the arbitration.
+
+`bringup_launch.py` is worse for a different reason: it also starts AMCL and `map_server`, and
+`rtabmap` already owns `map → odom`.
+
+The cost is drift from upstream when Nav2 renames an executable. The tests in
+`lunabot_navigation` pin the wiring rather than the names, and the launch file carries a `VERIFY`
+note about it. See [`NAVIGATION.md`](NAVIGATION.md).
 
 ### Boulders and craters share one message type
 

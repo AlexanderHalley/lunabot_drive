@@ -100,6 +100,15 @@ ARGUMENTS = [
         ),
     ),
     DeclareLaunchArgument(
+        'nav',
+        default_value='false',
+        description=(
+            'Start Nav2. Needs the map frame, so pair it with slam:=rtabmap -- '
+            'nav:=true on its own leaves bt_navigator waiting for a transform '
+            'that never arrives. Nav2 drives /cmd_vel_nav; teleop still wins.'
+        ),
+    ),
+    DeclareLaunchArgument(
         'rviz',
         default_value='false',
         description='Start RViz2.',
@@ -190,6 +199,19 @@ def generate_launch_description():
                 # metres. Converting in sim would be converting data that is
                 # already correct.
                 normalize_depth=_equals(LaunchConfiguration('hw'), 'real'),
+            ),
+            # Nav2 last of the functional stack, because it consumes what
+            # everything above produces: /odom from the control stack, map ->
+            # odom from SLAM, /oak_d/points into both costmaps.
+            #
+            # The slam:=none pairing is NOT blocked here. It is a real thing to
+            # want -- bringing Nav2 up against a bag, or against an external
+            # map -> odom publisher -- and this file has always documented the
+            # mutual exclusions rather than policed them.
+            include(
+                FindPackageShare('lunabot_navigation'),
+                'navigation.launch.py',
+                condition=IfCondition(LaunchConfiguration('nav')),
             ),
             include(
                 bringup,

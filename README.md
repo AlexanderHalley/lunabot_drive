@@ -64,6 +64,15 @@ ros2 topic echo /odom --field pose.pose.position
 
 If `/odom` moves, the whole stack is wired correctly.
 
+Add SLAM and navigation on top of the same command — no hardware still required:
+
+```bash
+ros2 launch lunabot_bringup robot.launch.py hw:=mock slam:=rtabmap nav:=true rviz:=true
+```
+
+`nav:=true` needs `slam:=` for the `map` frame, and Nav2 drives `/cmd_vel_nav` rather than
+`/cmd_vel` so that teleop keeps the right of way. See [`docs/NAVIGATION.md`](docs/NAVIGATION.md).
+
 ## Documentation
 
 Start here, in this order:
@@ -74,6 +83,7 @@ Start here, in this order:
 - [`docs/HARDWARE_CAN.md`](docs/HARDWARE_CAN.md) — SparkFlex/SocketCAN bring-up
 - [`docs/SIM_ISAAC.md`](docs/SIM_ISAAC.md) — running Isaac Sim
 - [`docs/SLAM.md`](docs/SLAM.md) — choosing and tuning a SLAM backend
+- [`docs/NAVIGATION.md`](docs/NAVIGATION.md) — Nav2, and why it never publishes `/cmd_vel`
 - [`docs/OAK_D_S2_INTEGRATION.md`](docs/OAK_D_S2_INTEGRATION.md) — camera bring-up and bandwidth
 - [`docs/ONBOARDING.md`](docs/ONBOARDING.md) — new team member setup
 
@@ -81,5 +91,7 @@ Start here, in this order:
 
 Skeleton. Every package builds and the mock stack drives, but the robot dimensions in
 `lunabot_description` are placeholders, the boulder detector is a geometric stub with no
-classifier, and the cuVSLAM backend is scaffolding pending an Isaac ROS release for Jazzy. Search
-the tree for `PLACEHOLDER`, `TODO(2027)` and `VERIFY` — those markers are the work queue.
+classifier, and the cuVSLAM backend is scaffolding pending an Isaac ROS release for Jazzy. Nav2
+now starts and is wired to the contract, but nothing has been tuned and no rover has followed a
+path. Search the tree for `PLACEHOLDER`, `TODO(2027)` and `VERIFY` — those markers are the work
+queue.

@@ -76,7 +76,7 @@ def test_robot_launch_exposes_the_documented_arguments():
     breaks copy-pasted commands, so pin them here."""
     description = load('robot.launch.py').generate_launch_description()
     names = {e.name for e in description.entities if isinstance(e, DeclareLaunchArgument)}
-    assert {'hw', 'use_sim_time', 'odom_source', 'rviz'} <= names
+    assert {'hw', 'use_sim_time', 'odom_source', 'slam', 'nav', 'rviz'} <= names
 
 
 def test_hardware_choices_match_the_urdf():
