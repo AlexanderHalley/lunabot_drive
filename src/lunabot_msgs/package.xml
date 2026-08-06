@@ -16,10 +16,14 @@
   <depend>std_msgs</depend>
 
   <exec_depend>rosidl_default_runtime</exec_depend>
-  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+
+  <!-- After the depends, before the export: package_format3.xsd fixes that
+       order, and ament_xmllint validates against it. With member_of_group
+       above the test_depends the schema rejects the file outright. -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <export>
     <build_type>ament_cmake</build_type>
