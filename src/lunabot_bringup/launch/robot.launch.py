@@ -19,10 +19,17 @@ SLAM, then perception, then navigation.
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetParameter
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
+
+# SetParameter is a launch_ros action, not a launch one: it sets a ROS
+# parameter on Node actions, which plain launch knows nothing about. Importing
+# it from launch.actions raises ImportError at module scope, so every test that
+# merely constructs this description fails, and the mock bringup dies before a
+# single node starts.
+from launch_ros.actions import SetParameter
 from launch_ros.substitutions import FindPackageShare
 
 ARGUMENTS = [
