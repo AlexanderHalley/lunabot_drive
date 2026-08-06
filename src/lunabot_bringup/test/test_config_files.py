@@ -188,16 +188,26 @@ def test_controller_update_rate_sustains_the_can_heartbeat():
     assert rate >= 40, f'update_rate {rate} Hz is too slow to keep the motors alive'
 
 
-def test_camera_profiles_agree_on_the_tf_prefix():
-    """Every camera profile uses the same TF prefix and publishes no TF itself.
+def test_no_camera_profile_lets_the_driver_publish_tf():
+    """robot_state_publisher owns the TF tree. The driver must not fight it.
 
-    Every profile must name the same prefix and must not let the driver publish its own TF --
-    robot_state_publisher owns the tree.
+    This used to also assert `i_tf_tf_prefix == 'oak_d'`, and there is no such
+    parameter in depthai-ros: the test passed because it read the same YAML
+    the config wrote, never the driver. An undeclared parameter is not an
+    error in ROS 2 -- it is kept as an initial value and never applied -- so
+    the prefix came from somewhere else entirely and nothing said so.
+
+    What sets it is the NODE NAME, via sensor_helpers.cpp::tfPrefix(), which
+    returns node->get_name() whenever publishing TF from calibration is off.
+    test_launch_descriptions.py pins that name.
     """
     for path in CONFIG_DIR.glob('oak_d_s2*.yaml'):
         camera = yaml.safe_load(path.read_text())['/**']['ros__parameters']['camera']
-        assert camera['i_tf_tf_prefix'] == 'oak_d', path.name
         assert camera['i_publish_tf_from_calibration'] is False, path.name
+        assert 'i_tf_tf_prefix' not in camera, (
+            f'{path.name} sets i_tf_tf_prefix, which depthai-ros does not declare. '
+            'It is silently ignored; the prefix comes from the node name.'
+        )
 
 
 def test_twist_mux_prefers_teleop_over_navigation():

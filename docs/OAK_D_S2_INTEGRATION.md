@@ -38,13 +38,19 @@ profile rather than assuming one.
 depth does not produce an error; it produces geometry that is subtly and consistently wrong, which
 reads as a SLAM tuning problem for about a day.
 
-**`i_publish_tf_from_calibration: false` and `i_tf_tf_prefix: oak_d`.** `robot_state_publisher`
-owns the TF tree, built from the URDF. Left at the default, the driver publishes its own camera
-transforms and fights it — two publishers on the same transforms, nondeterministic result. This
-replaces the four `static_transform_publisher` calls that used to live in `oak_d_rviz.launch.py`.
+**`i_publish_tf_from_calibration: false`.** `robot_state_publisher` owns the TF tree, built from
+the URDF. Left at the default, the driver publishes its own camera transforms and fights it — two
+publishers on the same transforms, nondeterministic result. This replaces the four
+`static_transform_publisher` calls that used to live in `oak_d_rviz.launch.py`.
 
-> **VERIFY** both parameter names against your installed `depthai-ros`. They have moved between
-> releases, and a silently-ignored parameter here looks exactly like a correctly-applied one.
+**The frame prefix is the node's name, `oak_d`, and not a parameter.** With the line above false,
+`sensor_helpers.cpp::tfPrefix()` returns `node->get_name()`. `camera.launch.py` sets it via
+`DRIVER_NODE_NAME`.
+
+> **RESOLVED** against `depthai-ros` 2.12.2, the version Jazzy ships. This used to also list
+> `i_tf_tf_prefix: oak_d`, which depthai-ros does not declare — exactly the case this note warned
+> about, where a silently-ignored parameter looks like a correctly-applied one. It was ignored for
+> however long it sat there, and the frames came out right for an unrelated reason.
 
 **Point cloud generation moved into the launch file's arguments** rather than being hardcoded.
 Still generated on the robot, still decimation 4 and 2 m clip.

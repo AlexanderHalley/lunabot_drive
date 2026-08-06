@@ -137,6 +137,32 @@ def test_camera_profiles_match_the_config_files():
         assert (config_dir / filename).is_file(), f'missing config {filename}'
 
 
+def test_the_camera_node_name_is_the_urdf_frame_prefix():
+    """The camera node's NAME is what prefixes every published frame_id.
+
+    Not a parameter. depthai_ros_driver's sensor_helpers.cpp::tfPrefix()
+    returns node->get_name() whenever i_publish_tf_from_calibration is false,
+    which is how this workspace runs it. So the driver's frames are
+    oak_d_rgb_camera_optical_frame and so on only because the node is called
+    oak_d -- rename it and every camera topic quietly carries frame_ids
+    nothing in the TF tree has heard of, with no error anywhere.
+
+    Cross-checked against the URDF rather than against a repeated literal:
+    these two files have no other reason to agree, and the whole failure is
+    that they can stop agreeing silently.
+    """
+    camera = load('camera.launch.py')
+    urdf = (
+        LAUNCH_DIR.parent.parent / 'lunabot_description' / 'urdf' / 'sensors' / 'oak_d_s2.xacro'
+    ).read_text()
+
+    prefix = camera.DRIVER_NODE_NAME
+    assert f'{prefix}_rgb_camera_optical_frame' in urdf, (
+        f'the camera node is named {prefix!r}, so the driver publishes '
+        f'{prefix}_* frame_ids, and the URDF does not define them'
+    )
+
+
 @pytest.mark.parametrize('odom_source', ['wheel', 'visual', 'ekf'])
 def test_exactly_one_node_owns_odom_to_base_link(odom_source):
     """The single most important invariant in the launch layer.

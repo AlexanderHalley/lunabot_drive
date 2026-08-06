@@ -71,20 +71,35 @@ one node owns `odom → base_link` and nobody has to decide who owns `base_footp
 
 ### Camera frame prefix
 
-The depthai driver node is named `oak_d`, and it will publish `header.frame_id` values derived from
-its own prefix. Two parameters must be set or the driver's frames will not match the URDF's:
+**The prefix is the driver's NODE NAME, not a parameter.** `depthai_ros_driver` builds every
+published `header.frame_id` in `sensor_helpers.cpp::tfPrefix()`:
+
+```cpp
+if (camera.i_publish_tf_from_calibration)  return camera.i_tf_base_frame;
+return node->get_name();
+```
+
+So exactly one setting is needed, and one name has to match:
 
 ```yaml
 camera:
-  i_tf_tf_prefix: oak_d
   i_publish_tf_from_calibration: false   # we own the TF tree, not the driver
 ```
 
-`i_publish_tf_from_calibration: false` is the important one. Left true, the driver injects its own
-camera transforms and fights `robot_state_publisher`.
+with the node named `oak_d` in `camera.launch.py` (`DRIVER_NODE_NAME`). That name is why the
+driver's frames are `oak_d_*` and match the URDF; renaming the node detaches every camera topic
+from the TF tree with no error anywhere. `test_launch_descriptions.py` cross-checks the name
+against the URDF.
 
-> **VERIFY** both parameter names against the installed `depthai-ros` version. They have moved
-> between releases.
+`i_publish_tf_from_calibration: false` is the load-bearing one. Left true, the driver injects its
+own camera transforms and fights `robot_state_publisher` — and the prefix then comes from
+`i_tf_base_frame` instead.
+
+> **RESOLVED** against `depthai-ros` 2.12.2, the version Jazzy ships. This block previously
+> specified `i_tf_tf_prefix: oak_d`, which **is not a parameter depthai-ros declares** — ROS 2
+> keeps undeclared YAML keys as initial values and never applies them, so it was silently ignored
+> and the frames were correct only because the node happened to be named `oak_d`. A test asserted
+> it too, and passed, because it read the same YAML the config wrote.
 
 ---
 
@@ -104,19 +119,29 @@ camera transforms and fights `robot_state_publisher`.
 | `/tf`, `/tf_static` | `tf2_msgs/TFMessage` | see ownership table | everything |
 | `/drive/status` | `lunabot_msgs/DriveStatus` | `SparkFlexSystem` | diagnostics |
 
-¹ **UNRESOLVED — resolve on day one and record the answer here.**
-In ROS 2 Jazzy, `diff_drive_controller` subscribes to `geometry_msgs/msg/TwistStamped` on
-`~/cmd_vel` and the `use_stamped_vel` parameter has been removed. Confirm with:
+¹ **RESOLVED. The whole chain is `TwistStamped`, and every switch is set.**
 
-```bash
-ros2 topic info /diff_drive_controller/cmd_vel -v
-ros2 param list /diff_drive_controller
-```
+`diff_drive_controller` in Jazzy subscribes to `geometry_msgs::msg::TwistStamped` on `~/cmd_vel`
+unconditionally — there is no `use_stamped_vel` parameter to get wrong
+(`ros2_controllers` jazzy, `diff_drive_controller.cpp`, `create_subscription<TwistStamped>`). It
+reads only the **timestamp**, for `cmd_vel_timeout`; `header.frame_id` is never looked at, and a
+zero stamp is replaced with the current time and a warning.
 
-The answer decides whether `teleop_twist_joy` needs `publish_stamped_twist: true`, whether
-`twist_mux` needs `use_stamped: true`, and whether Nav2 needs `enable_stamped_cmd_vel: true` on
-every node that publishes velocity. Getting it wrong produces a robot that silently does not move,
-with no error anywhere — budget an afternoon if you skip this check.
+Every upstream node that feeds it therefore has to be told to stamp, and each was checked against
+the version Jazzy ships rather than against documentation:
+
+| Node | Parameter | Default | Ours | Verified against |
+|---|---|---|---|---|
+| `teleop_twist_joy` | `publish_stamped_twist` | `false` | `true` | 2.6.5, `teleop_twist_joy.cpp` |
+| `twist_mux` | `use_stamped` | `true` | `true` | 4.5.0, `twist_mux.cpp` |
+| `controller_server`, `behavior_server`, `velocity_smoother` | `enable_stamped_cmd_vel` | `false` | `true` | Nav2 1.3.12, `nav2_util/twist_publisher.hpp` |
+
+Two of those three default to `false`, so they are not optional and not decoration. Nav2's is
+declared by `nav2_util::TwistPublisher`/`TwistSubscriber` on whichever node constructs one, which
+is why it is set per node rather than once.
+
+Getting any of them wrong produces a robot that silently does not move, with no error anywhere:
+the publisher and the subscriber simply never match.
 
 `/cmd_vel_nav_unsmoothed` is internal to Nav2 — the hop from the controller and the recovery
 behaviours into `velocity_smoother`, so that everything Nav2 commands is acceleration-limited and

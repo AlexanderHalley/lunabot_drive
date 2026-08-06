@@ -13,7 +13,9 @@
       i_nn_type: 'none'
       i_enable_imu: true
       i_enable_ir: false
-      i_tf_tf_prefix: 'oak_d'
+      # The frame prefix is the NODE NAME (camera.launch.py sets `oak_d`), not
+      # a parameter -- see oak_d_s2.yaml. i_publish_tf_from_calibration must
+      # stay false: robot_state_publisher owns the TF tree.
       i_publish_tf_from_calibration: false
 
     imu:

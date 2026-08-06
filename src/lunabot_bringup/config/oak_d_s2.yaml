@@ -29,10 +29,23 @@
       # true, the driver injects its own camera transforms and fights it --
       # two publishers on the same transforms, nondeterministic result.
       #
-      # VERIFY both keys against your installed depthai-ros; they have moved
-      # between releases.
-      i_tf_tf_prefix: 'oak_d'
+      # Verified against depthai-ros 2.12.2, the version Jazzy ships.
       i_publish_tf_from_calibration: false
+      #
+      # THE FRAME PREFIX IS THE NODE NAME. There used to be an
+      # `i_tf_tf_prefix: 'oak_d'` here and no such parameter exists -- it was
+      # silently ignored, because ROS 2 keeps undeclared YAML keys as initial
+      # values and never applies them. What the driver actually does, in
+      # sensor_helpers.cpp::tfPrefix(), is:
+      #
+      #     if (camera.i_publish_tf_from_calibration)  return camera.i_tf_base_frame;
+      #     return node->get_name();
+      #
+      # With the line above false, every published frame_id is prefixed with
+      # the NODE NAME, which camera.launch.py sets to `oak_d`. That is the
+      # only reason the frames match the URDF, and a rename of that node
+      # silently detaches every camera topic from the TF tree.
+      # test_launch_descriptions.py pins the name for exactly that reason.
       # ============================================================
 
     imu:

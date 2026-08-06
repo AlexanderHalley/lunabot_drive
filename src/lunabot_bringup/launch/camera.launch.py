@@ -62,6 +62,25 @@ ARGUMENTS = [
 
 # Profile -> config file. Indirection so the file layout can change without
 # breaking every command anyone has written down.
+# ==================== THIS NAME IS THE FRAME PREFIX ====================
+# Not a parameter. depthai_ros_driver derives every published frame_id from
+# the node's name, in sensor_helpers.cpp::tfPrefix():
+#
+#     if (camera.i_publish_tf_from_calibration)  return camera.i_tf_base_frame;
+#     return node->get_name();
+#
+# We run with i_publish_tf_from_calibration false, because
+# robot_state_publisher owns the TF tree -- so this string is the only reason
+# the driver's frames are oak_d_* and match the URDF. Rename it and every
+# camera topic quietly carries frame_ids nothing in the tree has heard of:
+# no error, and rtabmap simply never receives a usable transform.
+#
+# Verified against depthai-ros 2.12.2, the version Jazzy ships. A module
+# constant rather than a literal so a test can pin it without reaching into
+# launch_ros internals -- Node.node_name is unreadable until the action runs.
+# ======================================================================
+DRIVER_NODE_NAME = 'oak_d'
+
 CONFIG_FOR_PROFILE = {
     'default': 'oak_d_s2.yaml',
     'rgb_only': 'oak_d_s2_rgb_only.yaml',
@@ -89,14 +108,11 @@ def _nodes(context, *args, **kwargs):
         / CONFIG_FOR_PROFILE[profile]
     )
 
-    # Node name must be `oak_d`: the driver derives published frame_ids from
-    # it, and the URDF's frames are oak_d_*. Renaming this silently detaches
-    # every camera topic from the TF tree.
     nodes = [
         Node(
             package='depthai_ros_driver',
             executable='camera_node',
-            name='oak_d',
+            name=DRIVER_NODE_NAME,
             parameters=[config, {'use_sim_time': use_sim_time}],
             output='screen',
         )
