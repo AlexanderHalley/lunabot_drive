@@ -15,10 +15,18 @@ SLAM, then perception, then navigation.
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetParameter
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
+
+# SetParameter is a launch_ros action, not a launch one: it sets a ROS
+# parameter on every Node in scope, which plain launch knows nothing about.
+# Importing it from launch.actions raises ImportError while the module is
+# being loaded, so robot.launch.py -- the only launch file anyone types --
+# does not load at all, and every test that constructs it fails with the same
+# unrelated-looking message.
+from launch_ros.actions import SetParameter
 from launch_ros.substitutions import FindPackageShare
 
 ARGUMENTS = [
