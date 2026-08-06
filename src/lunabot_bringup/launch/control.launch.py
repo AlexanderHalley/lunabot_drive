@@ -25,6 +25,12 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
+# The `=` form is load-bearing: the value that follows starts with `-p`, and
+# argparse will not accept a dash-leading value as a separate token. A module
+# constant rather than a literal so test_launch_descriptions.py can pin the
+# shape without reaching into launch_ros internals.
+ENABLE_ODOM_TF_ARGUMENT = '--controller-ros-args=-p enable_odom_tf:='
+
 ARGUMENTS = [
     DeclareLaunchArgument(
         'use_sim_time',
@@ -74,11 +80,34 @@ def generate_launch_description():
         ],
     )
 
+    # ==================== NO parameters= ON A SPAWNER ====================
+    # Both spawners below deliberately take no `parameters=`, and putting
+    # `{'use_sim_time': ...}` back breaks the stack in a way that reads as a
+    # plugin problem.
+    #
+    # launch_ros implements `parameters=` by writing a temp YAML and passing
+    # `--params-file /tmp/launch_params_xxxx`. Jazzy's spawner scans its own
+    # argv for exactly that flag and appends whatever it finds to the
+    # CONTROLLER's parameter files (spawner.py, main(): get_ros_params_files
+    # then controller["param_files"]). The temp file's contents are
+    # `/**: ros__parameters: use_sim_time: ...`, whose wildcard matches the
+    # controller, so it becomes the controller's params_file -- and loading
+    # then fails:
+    #
+    #     [FATAL] [spawner_joint_state_broadcaster]:
+    #     Failed loading controller joint_state_broadcaster
+    #
+    # It was redundant as well as harmful. controller_manager already pushes
+    # its own use_sim_time into every controller it loads, by appending
+    # "use_sim_time:=true" to the controller's node options
+    # (controller_manager.cpp, "ensure controller's use_sim_time parameter
+    # matches controller_manager's"). Setting it on the controller_manager
+    # node above is what makes the controllers use sim time.
+    # =====================================================================
     joint_state_broadcaster = Node(
         package='controller_manager',
         executable='spawner',
         arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager'],
-        parameters=[{'use_sim_time': use_sim_time}],
         output='screen',
     )
 
@@ -93,10 +122,19 @@ def generate_launch_description():
             LaunchConfiguration('controllers_file'),
             # Overrides the YAML so odom TF ownership is a launch-time
             # decision. Only one node may publish odom -> base_link.
-            '--controller-ros-args',
-            ['-p enable_odom_tf:=', LaunchConfiguration('enable_odom_tf')],
+            #
+            # ONE argv element, joined with `=`, and that is not style. The
+            # value starts with `-p`, and argparse refuses to consume a value
+            # that looks like another option when it is a separate token:
+            #
+            #     spawner: error: argument --controller-ros-args:
+            #     expected one argument
+            #
+            # `--opt=value` is the form argparse splits itself, so the leading
+            # dash never reaches its option matcher. See
+            # ENABLE_ODOM_TF_ARGUMENT.
+            [ENABLE_ODOM_TF_ARGUMENT, LaunchConfiguration('enable_odom_tf')],
         ],
-        parameters=[{'use_sim_time': use_sim_time}],
         output='screen',
     )
 

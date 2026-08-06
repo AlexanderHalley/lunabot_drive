@@ -163,6 +163,33 @@ def test_the_camera_node_name_is_the_urdf_frame_prefix():
     )
 
 
+def test_the_controller_ros_args_argument_uses_the_equals_form():
+    """`--controller-ros-args=-p ...`, one argv element, not two.
+
+    The value starts with `-p`. argparse will not accept a dash-leading value
+    as a separate token -- it assumes another option -- and the spawner dies
+    before it reaches the controller manager:
+
+        spawner: error: argument --controller-ros-args: expected one argument
+
+    exit code 2, and the only visible symptom upstream is that
+    diff_drive_controller never appears and nothing publishes /odom. `--opt=`
+    is the form argparse splits itself, so the dash never reaches its option
+    matcher.
+    """
+    control = load('control.launch.py')
+    argument = control.ENABLE_ODOM_TF_ARGUMENT
+
+    assert argument.startswith('--controller-ros-args='), (
+        f'{argument!r} must pass its value with `=`; a separate token whose '
+        'value starts with a dash makes argparse reject it'
+    )
+    assert argument.endswith(':='), (
+        f'{argument!r} must end with the ROS parameter assignment, so the '
+        'launch configuration substitutes directly onto it'
+    )
+
+
 @pytest.mark.parametrize('odom_source', ['wheel', 'visual', 'ekf'])
 def test_exactly_one_node_owns_odom_to_base_link(odom_source):
     """The single most important invariant in the launch layer.
