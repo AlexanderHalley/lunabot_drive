@@ -86,11 +86,23 @@ rtabmap:
 
     # ==================== Publishing ====================
     # rtabmap owns map -> odom. Exactly one node may.
+    #
+    # Checked against rtabmap_ros 0.23.7, the version Jazzy ships:
+    # CoreWrapper.cpp declares publish_tf and nothing else beginning with
+    # publish_. Two keys that used to be here have been removed rather than
+    # left to look effective:
+    #
+    #   publish_null_when_lost  belongs to the ODOMETRY node (OdometryROS.cpp),
+    #                           not to rtabmap. It is set on rgbd_odometry
+    #                           below, where it does something.
+    #   publish_map_cloud       does not exist anywhere in rtabmap_ros. The
+    #                           map cloud is a subscriber-driven topic, not a
+    #                           parameter, so setting it false bought nothing
+    #                           and setting it true would have bought nothing.
+    #
+    # An undeclared parameter is not an error in ROS 2 -- it is kept as an
+    # initial value and never applied -- so both were silently ignored.
     publish_tf: true
-    publish_null_when_lost: false
-    # Set true to publish the map cloud as well. Off by default: it is a lot
-    # of bandwidth for something only RViz looks at.
-    publish_map_cloud: false
 
 
 # Visual odometry. Only started with odom_source:=visual; with the default
@@ -100,6 +112,17 @@ rgbd_odometry:
     frame_id: base_link
     odom_frame_id: odom
     publish_tf: true
+
+    # FALSE: on lost tracking, hold the last pose rather than publishing a
+    # null odometry message. A null breaks the odom -> base_link chain, and
+    # every consumer of TF sees the robot vanish rather than sees it stop.
+    # Odom/ResetCountdown below is the recovery path instead.
+    #
+    # This lives here and not on the rtabmap node: OdometryROS.cpp declares
+    # it, CoreWrapper.cpp does not. It spent its first life in the rtabmap
+    # block, where it was silently ignored.
+    publish_null_when_lost: false
+
     approx_sync: true
     queue_size: 30
     wait_for_transform: 0.2
