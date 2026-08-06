@@ -90,16 +90,25 @@ EXPECTED_CONTROLLERS = {
 # wired into the TF tree -- which makes sim flatter itself.
 GROUND_TRUTH_FRAMES = {'sim_ground_truth', 'sim_base_link'}
 
-# base_link -> * comes from robot_state_publisher, from the URDF.
+# base_link -> * all comes from robot_state_publisher, but it arrives on two
+# different topics and the split is not a detail: rsp puts FIXED joints on
+# /tf_static once, latched, and MOVABLE ones on /tf every time /joint_states
+# updates. Looking for a wheel on /tf_static finds nothing on a healthy stack.
 REQUIRED_STATIC_CHILDREN = (
     'base_footprint',
+    'oak_d_link',
+    'oak_d_rgb_camera_optical_frame',
+    'oak_d_imu_frame',
+)
+
+# The four continuous joints, which is why these are on /tf. Their presence
+# also means /joint_states is flowing: rsp publishes them only when it has
+# joint positions to publish them from.
+REQUIRED_DYNAMIC_CHILDREN = (
     'front_left_wheel_link',
     'front_right_wheel_link',
     'rear_left_wheel_link',
     'rear_right_wheel_link',
-    'oak_d_link',
-    'oak_d_rgb_camera_optical_frame',
-    'oak_d_imu_frame',
 )
 
 # Who is allowed to advertise /tf, by odom_source and slam backend. The names
@@ -295,16 +304,27 @@ class StackChecker(Node):
 
         results = []
 
-        missing = [
-            frame
-            for frame in REQUIRED_STATIC_CHILDREN
-            if frame not in {child for _, child in static_edges}
-        ]
+        static_children = {child for _, child in static_edges}
+        missing = [f for f in REQUIRED_STATIC_CHILDREN if f not in static_children]
         results.append(
             Result(
-                'base_link -> * from the URDF',
+                'fixed frames on /tf_static',
                 not missing,
                 f'no parent in /tf_static for {missing}' if missing else '',
+            )
+        )
+
+        dynamic_children = {child for _, child in dynamic_edges}
+        missing = [f for f in REQUIRED_DYNAMIC_CHILDREN if f not in dynamic_children]
+        results.append(
+            Result(
+                'wheel frames on /tf',
+                not missing,
+                f'no transform on /tf for {missing}; robot_state_publisher publishes '
+                'these from /joint_states, so silence here usually means the broadcaster '
+                'is not running rather than a TF problem'
+                if missing
+                else '',
             )
         )
 
