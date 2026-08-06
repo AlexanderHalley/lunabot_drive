@@ -82,6 +82,8 @@ Start here, in this order:
   frame names. Anything that disagrees with this file is a bug
 - [`docs/HARDWARE_CAN.md`](docs/HARDWARE_CAN.md) — SparkFlex/SocketCAN bring-up
 - [`docs/SIM_ISAAC.md`](docs/SIM_ISAAC.md) — running Isaac Sim
+- [`docs/SIM_ACCEPTANCE.md`](docs/SIM_ACCEPTANCE.md) — the checklist for the first bring-up on the
+  simulation machine, in the order that makes each step fail for one reason
 - [`docs/SLAM.md`](docs/SLAM.md) — choosing and tuning a SLAM backend
 - [`docs/NAVIGATION.md`](docs/NAVIGATION.md) — Nav2, and why it never publishes `/cmd_vel`
 - [`docs/OAK_D_S2_INTEGRATION.md`](docs/OAK_D_S2_INTEGRATION.md) — camera bring-up and bandwidth
@@ -95,3 +97,12 @@ classifier, and the cuVSLAM backend is scaffolding pending an Isaac ROS release 
 now starts and is wired to the contract, but nothing has been tuned and no rover has followed a
 path. Search the tree for `PLACEHOLDER`, `TODO(2027)` and `VERIFY` — those markers are the work
 queue.
+
+**Both hardware-free backends are exercised in CI.** `hw:=mock` and `hw:=sim` each bring the whole
+stack up and drive it — the sim one against a stand-in for Isaac's bridge graphs, so the
+`TopicBasedSystem` plugin, the `/isaac/*` topics, `use_sim_time` and wrapped joint positions are
+all covered on a runner with no GPU. What has never executed is `lunabot_sim`'s Isaac-facing half:
+`compat.py`, the OmniGraph builders, and the URDF importer. When the simulation machine is ready,
+[`docs/SIM_ACCEPTANCE.md`](docs/SIM_ACCEPTANCE.md) is the order to bring it up in, and
+`src/lunabot_sim/scripts/probe_isaac_api.sh` answers every `VERIFY` in `compat.py` in one command
+before anything else is attempted.

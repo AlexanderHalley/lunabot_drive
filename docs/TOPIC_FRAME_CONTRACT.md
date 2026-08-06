@@ -190,10 +190,20 @@ speculatively now.)
 | `/isaac/joint_states` | `sensor_msgs/JointState` | Isaac → `TopicBasedSystem` |
 | `/isaac/joint_commands` | `sensor_msgs/JointState` | `TopicBasedSystem` → Isaac |
 | `/sim/ground_truth/odom` | `nav_msgs/Odometry` | **Evaluation only. Never enters `/tf`** |
-| `/sim/ground_truth/boulders` | `vision_msgs/Detection3DArray` | Seeded scene layout, for scoring |
+| `/sim/ground_truth/boulders` | `vision_msgs/Detection3DArray` | Seeded scene layout, for scoring. **NOT PUBLISHED YET** |
 
 Ground truth is published in the **same message type the detector emits**, so scoring the detector
 is a direct comparison rather than a format conversion.
+
+> **`/sim/ground_truth/boulders` does not exist on the wire.** The data does: `run_sim.py` writes
+> `ground_truth_seed<N>.json` next to the expanded URDF, with every boulder's true pose and extent,
+> and `scene/boulders.py::to_ground_truth` is the function that builds it. What is missing is
+> something ROS-side to read that file and publish it — `lunabot_sim` cannot, because it runs under
+> Isaac's Python and imports no `rclpy` on purpose.
+>
+> The name is reserved here rather than deleted because the sidecar is written in the shape it will
+> be published in. Do not go looking for the topic on the simulation machine; it is not a
+> misconfiguration. See [`SIM_ACCEPTANCE.md`](SIM_ACCEPTANCE.md).
 
 `use_sim_time` must reach *every* node — `controller_manager`, `robot_state_publisher`, the
 spawners, rtabmap, Nav2, perception, `twist_mux`, and **RViz**. RViz is the one people forget, and

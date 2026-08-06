@@ -129,8 +129,13 @@ pre-commit run --all-files
 ```
 
 CI runs the same things plus a xacro expansion for all three hardware targets. It never runs Isaac
-Sim — that needs a GPU — but it does run `test_scene_layout.py`, which is why
-`lunabot_sim/scene/boulders.py` imports nothing but numpy.
+Sim — that needs a GPU — but it runs everything around it: `test_scene_layout.py` (which is why
+`lunabot_sim/scene/boulders.py` imports nothing but numpy), and both whole-stack bring-up tests,
+`hw:=mock` and `hw:=sim`. The sim one drives the real control stack against
+`lunabot_bringup/test/isaac_double.py`, a stand-in for Isaac's bridge graphs.
+
+So a change that breaks the simulation path fails in CI on a machine with no GPU. What CI cannot
+cover is Isaac itself — see [`SIM_ACCEPTANCE.md`](SIM_ACCEPTANCE.md).
 
 ---
 
@@ -148,5 +153,6 @@ they are deliberately noisy. The big ones:
   empty, which is the whole reason the ground segmentation splits three ways instead of two.
 - **Every Isaac API string in `compat.py` is an unverified reconstruction.** Isaac 4.5 renamed
   every namespace; the direction is right, the exact strings need checking against a running
-  install.
+  install. `src/lunabot_sim/scripts/probe_isaac_api.sh` checks all of them at once and names the
+  tuple to edit for each miss — run it first on the simulation machine.
 - **Nothing publishes `/drive/status`** yet, though the messages exist. Blocked on motor telemetry.

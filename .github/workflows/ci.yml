@@ -88,8 +88,14 @@ jobs:
   # rather than only on someone's laptop -- and runs every test.
   #
   # That includes test_mock_bringup, which brings the whole stack up on mock
-  # hardware and drives it. Headless, no hardware, no GPU. It is the highest
-  # value thing in this file.
+  # hardware and drives it, and test_sim_bringup, which does the same on
+  # hw:=sim against a stand-in for Isaac's bridge graphs. Headless, no
+  # hardware, no GPU. They are the highest value things in this file.
+  #
+  # test_sim_bringup needs topic_based_ros2_control, which comes from
+  # lunabot.repos via the vcs-repo-file-url below. It builds because
+  # lunabot_bringup declares it as an exec_depend -- imported and depended on
+  # by nothing, colcon has no reason to build it.
   # ---------------------------------------------------------------------------
   build-test:
     name: build and test
@@ -206,6 +212,14 @@ jobs:
       - name: Scene layout tests
         working-directory: src/lunabot_sim
         run: PYTHONPATH=. python -m pytest test/test_scene_layout.py -v
+
+      - name: Isaac API probe inventory
+        working-directory: src/lunabot_sim
+        # Parses graphs/*.py with ast and fails if the probe's list of
+        # OmniGraph node types drifts from what the code creates. Isaac-free
+        # by construction, so it belongs in this job rather than the colcon
+        # one -- and running it standalone proves it stays that way.
+        run: PYTHONPATH=. python -m pytest test/test_probe.py -v
 
       - name: Config file tests
         working-directory: src/lunabot_bringup

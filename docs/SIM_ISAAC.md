@@ -11,6 +11,12 @@ xacro the first time someone changed a wheel diameter. `.gitignore` blocks `*.us
 
 ## Running it
 
+> **First time on this machine?** Run
+> [`scripts/probe_isaac_api.sh`](../src/lunabot_sim/scripts/probe_isaac_api.sh) before anything
+> else and work through [`SIM_ACCEPTANCE.md`](SIM_ACCEPTANCE.md). Every version-sensitive string
+> below is unverified until that probe has passed once, and each one fails at a different point in
+> startup with an error that names the symbol rather than the rename.
+
 **Two processes, Isaac first.**
 
 ```bash
@@ -178,15 +184,40 @@ drive. Reduce the render resolution or run `--headless`.
 ## Testing
 
 ```bash
-colcon test --packages-select lunabot_sim
+colcon test --packages-select lunabot_sim lunabot_bringup
 ```
 
-Covers scene layout only, and covers it thoroughly: determinism under a seed, boulders inside the
-arena, nothing in the start zone, minimum separation held, rocks resting on the ground rather than
-floating or half-buried, and ground truth round-tripping through JSON. All of it runs with no GPU
-and no Isaac install, because `scene/boulders.py` imports nothing but numpy.
+Three things run with **no GPU and no Isaac install**, and between them they cover everything about
+the sim path except Isaac itself:
 
-Nothing tests the Isaac-dependent code automatically. That is a real gap and it is why the manual
-acceptance run matters: bring up `hw:=sim`, confirm `ros2 control list_controllers` shows the
-**same two controllers with the same names as `hw:=mock`**, then teleop forward and check `/odom`
-tracks `/sim/ground_truth/odom`.
+**Scene layout** (`lunabot_sim/test/test_scene_layout.py`) — determinism under a seed, boulders
+inside the arena, nothing in the start zone, minimum separation held, rocks resting on the ground
+rather than floating or half-buried, ground truth round-tripping through JSON. Possible because
+`scene/boulders.py` imports nothing but numpy.
+
+**The probe's inventory** (`lunabot_sim/test/test_probe.py`) — parses `graphs/*.py` with `ast` and
+fails if `probe.py`'s list of OmniGraph node types drifts from what the code actually creates, in
+either direction. A probe that silently forgets a node type is worse than no probe.
+
+**The whole ROS stack on `hw:=sim`** (`lunabot_bringup/test/test_sim_bringup.py`) — brought up
+through `sim.launch.py` against `test/isaac_double.py`, which publishes Isaac's ROS surface
+(`/clock`, `/isaac/joint_states` integrated from `/isaac/joint_commands`, ground-truth odom) and
+nothing else. It asserts the acceptance criterion this document used to state in prose: the **same
+two controllers, by the same names, as `hw:=mock`**. It also covers the two places the sim path is
+expected to hurt — wrapped joint positions through `sum_wrapped_joint_states`, and whether
+`TopicBasedSystem` populates the position array as well as velocity.
+
+The double is not a simulator. There is no contact, no friction and no mass, so this is a test of
+the plumbing and no test at all of whether the rover can climb a slope.
+
+### What still needs the real thing
+
+`compat.py`, `graphs/*.py`, `robot/importer.py`, `robot/articulation.py`, and the scene builders'
+Isaac imports have never executed. That is what the acceptance run is for, and it now has an order
+of operations and a pass/fail criterion per step:
+
+- **[`SIM_ACCEPTANCE.md`](SIM_ACCEPTANCE.md)** — the day-one checklist
+- `src/lunabot_sim/scripts/probe_isaac_api.sh` — resolves every `VERIFY` in `compat.py` against a
+  real install, in one command, before anything else is attempted
+- `ros2 run lunabot_bringup check_stack.py --profile sim` — judges the live graph against
+  `TOPIC_FRAME_CONTRACT.md`, and is the same tool the sim bringup test runs against the double
