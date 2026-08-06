@@ -16,10 +16,15 @@
   <depend>std_msgs</depend>
 
   <exec_depend>rosidl_default_runtime</exec_depend>
-  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+
+  <!-- LAST, after every depend tag. The format 3 schema fixes this order:
+       once member_of_group appears, only another member_of_group or export
+       may follow, so a test_depend below this line fails ament_xmllint with
+       "element test_depend: This element is not expected". -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <export>
     <build_type>ament_cmake</build_type>
