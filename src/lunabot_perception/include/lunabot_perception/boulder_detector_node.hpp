@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "lunabot_perception/cloud_segmentation.hpp"
 #include "rclcpp/rclcpp.hpp"

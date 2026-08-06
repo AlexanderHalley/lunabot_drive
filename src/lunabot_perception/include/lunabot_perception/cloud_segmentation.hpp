@@ -7,10 +7,15 @@
 #ifndef LUNABOT_PERCEPTION__CLOUD_SEGMENTATION_HPP_
 #define LUNABOT_PERCEPTION__CLOUD_SEGMENTATION_HPP_
 
-#include <vector>
-
+// PCL first, standard library second. cpplint classifies an angle-bracket
+// `.h` as a C system header and requires those ahead of the C++ ones, so the
+// intuitive order fails the lint with "Found C system header after C++ system
+// header". clang-format leaves the two blocks alone (IncludeBlocks: Preserve),
+// so the blank line between them is load-bearing.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+
+#include <vector>
 
 namespace lunabot_perception
 {

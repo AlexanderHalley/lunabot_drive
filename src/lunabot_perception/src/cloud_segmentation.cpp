@@ -27,15 +27,17 @@
 
 #include "lunabot_perception/cloud_segmentation.hpp"
 
-#include <algorithm>
-#include <limits>
-#include <vector>
-
+// PCL before the standard library: cpplint reads an angle-bracket `.h` as a C
+// system header and wants those first. See cloud_segmentation.hpp.
 #include <pcl/common/common.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
+
+#include <algorithm>
+#include <limits>
+#include <vector>
 
 namespace lunabot_perception
 {
