@@ -7,10 +7,15 @@
 #ifndef LUNABOT_PERCEPTION__CLOUD_SEGMENTATION_HPP_
 #define LUNABOT_PERCEPTION__CLOUD_SEGMENTATION_HPP_
 
-#include <vector>
-
+// PCL's headers end in .h, so cpplint files them as C system headers and
+// wants them before the C++ ones. Not a stylistic preference: with the blocks
+// the other way round, ament_cpplint fails with "Found C system header after
+// C++ system header" on every pcl include. clang-format keeps the blocks in
+// this order (IncludeBlocks: Preserve) and sorts within them.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+
+#include <vector>
 
 namespace lunabot_perception
 {

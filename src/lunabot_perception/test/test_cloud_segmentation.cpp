@@ -235,14 +235,34 @@ TEST(ExtractClusters, an_empty_cloud_yields_no_clusters)
 
 TEST(ExtractClusters, reports_the_box_centre_not_the_visible_surface)
 {
-  // A boulder seen from one side has all its points on the near face. The
-  // point centroid would sit on the surface; every consumer wants the middle
-  // of the box.
+  // A boulder seen from one side gives up most of its points on the near
+  // face, a few off the sides at a glancing angle, and almost none off the
+  // back. A POINT centroid therefore lands near the front surface; the box
+  // centre is 0.1 m further away, and the box centre is what every consumer
+  // wants.
+  //
+  // The side rails are not decoration. Euclidean clustering joins points
+  // within tolerance (0.10 m) of one another, and the two faces are 0.20 m
+  // apart -- faces alone are two clusters, not one shell, which is what this
+  // test asserted against for its first life.
   auto cloud = std::make_shared<Cloud>();
+  constexpr float kNearFace = 1.0f;
+  constexpr float kFarFace = 1.2f;
+
   for (float y = -0.1f; y <= 0.1f; y += 0.02f) {
     for (float z = 0.0f; z <= 0.2f; z += 0.02f) {
-      cloud->points.emplace_back(1.0f, y, z);  // dense near face
-      cloud->points.emplace_back(1.2f, y, z);  // sparse far face
+      cloud->points.emplace_back(kNearFace, y, z);
+    }
+  }
+  for (float y = -0.1f; y <= 0.1f; y += 0.05f) {
+    for (float z = 0.0f; z <= 0.2f; z += 0.05f) {
+      cloud->points.emplace_back(kFarFace, y, z);
+    }
+  }
+  for (float x = kNearFace; x <= kFarFace; x += 0.02f) {
+    for (float z = 0.0f; z <= 0.2f; z += 0.10f) {
+      cloud->points.emplace_back(x, -0.1f, z);
+      cloud->points.emplace_back(x, 0.1f, z);
     }
   }
   finish(cloud);
@@ -250,6 +270,15 @@ TEST(ExtractClusters, reports_the_box_centre_not_the_visible_surface)
   const auto clusters = extract_clusters(cloud, cluster_params());
   ASSERT_EQ(clusters.size(), 1u);
   EXPECT_NEAR(clusters[0].centroid.x(), 1.1f, 0.01f);
+
+  // The property under test, stated as the comparison it is: the mean of the
+  // points sits well in front of the reported centre.
+  float mean_x = 0.0f;
+  for (const auto & point : cloud->points) {
+    mean_x += point.x;
+  }
+  mean_x /= static_cast<float>(cloud->points.size());
+  EXPECT_LT(mean_x, clusters[0].centroid.x() - 0.02f);
 }
 
 TEST(FilterByDimensions, drops_specks_and_walls_and_keeps_boulders)
