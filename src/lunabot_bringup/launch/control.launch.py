@@ -74,11 +74,28 @@ def generate_launch_description():
         ],
     )
 
+    # NOTE the spawners below take no `parameters=`. A dict there is not a
+    # parameter on the spawner -- launch_ros writes it to a temp YAML and
+    # appends `--params-file /tmp/launch_params_xxxx` to the command line
+    # (node.py, _perform_substitutions), and Jazzy's spawner scans its own argv
+    # for exactly that flag and folds what it finds into the CONTROLLER's
+    # param_files (spawner.py, get_ros_params_files). The temp file holds
+    # `/**: ros__parameters: use_sim_time: ...`, whose wildcard matches the
+    # controller, so it arrives as a controller parameter file and the load
+    # fails:
+    #
+    #     [FATAL] [spawner_joint_state_broadcaster]:
+    #     Failed loading controller joint_state_broadcaster
+    #
+    # It was redundant as well as harmful. controller_manager already appends
+    # use_sim_time to every controller's node options, under the comment
+    # "ensure controller's `use_sim_time` parameter matches
+    # controller_manager's" -- so setting it on controller_manager above is
+    # what makes the controllers use sim time, and that is unchanged.
     joint_state_broadcaster = Node(
         package='controller_manager',
         executable='spawner',
         arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager'],
-        parameters=[{'use_sim_time': use_sim_time}],
         output='screen',
     )
 
@@ -93,10 +110,22 @@ def generate_launch_description():
             LaunchConfiguration('controllers_file'),
             # Overrides the YAML so odom TF ownership is a launch-time
             # decision. Only one node may publish odom -> base_link.
-            '--controller-ros-args',
-            ['-p enable_odom_tf:=', LaunchConfiguration('enable_odom_tf')],
+            #
+            # JOINED WITH `=`, and it matters. As a separate token the value
+            # starts with a dash, and the spawner's per-controller parser
+            # declares `-p` as the short form of --param-file, so argparse
+            # matches `-p` and treats the rest as its explicit argument rather
+            # than as this option's value:
+            #
+            #     spawner: error: argument --controller-ros-args:
+            #     expected one argument
+            #
+            # exit code 2, and the only symptom upstream is that
+            # diff_drive_controller never appears. The `=` form is split by
+            # argparse itself before any of that, so the dash never reaches
+            # its option matcher.
+            ['--controller-ros-args=-p enable_odom_tf:=', LaunchConfiguration('enable_odom_tf')],
         ],
-        parameters=[{'use_sim_time': use_sim_time}],
         output='screen',
     )
 
