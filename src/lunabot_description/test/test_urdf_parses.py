@@ -231,6 +231,53 @@ def test_sim_topics_are_wired_to_the_contract_names():
     assert params['joint_commands_topic'] == '/isaac/joint_commands'
 
 
+def test_sim_publishes_commands_on_every_cycle():
+    """trigger_joint_command_threshold must be negative, or the rover never moves.
+
+    TopicBasedSystem::write() skips publishing when the position command and
+    the position state are within this threshold:
+
+        diff = sum |position_state - position_command|
+        if (diff <= trigger_joint_command_threshold_) return;
+
+    This drivetrain has a velocity command interface and no position one, so
+    nothing ever writes a position command and it stays at the 0.0 on_init
+    gave it. At rest the position state is 0.0 too, so at the default
+    threshold of 1e-5 the skip is permanent: no command reaches the simulator,
+    the wheels never turn, the position never changes, and the rover sits
+    still under any /cmd_vel with nothing wrong in any log.
+
+    test_sim_bringup.py catches this too, but that test needs a built
+    workspace and half a minute. This one is a xacro expansion and a string
+    compare.
+    """
+    root = expand(hardware='sim')
+    params = {p.get('name'): p.text.strip() for p in root.findall('ros2_control/hardware/param')}
+
+    assert 'trigger_joint_command_threshold' in params, (
+        'trigger_joint_command_threshold is not set, so TopicBasedSystem uses its '
+        'default of 1e-5 and never publishes a command for a velocity-only drivetrain.'
+    )
+    assert float(params['trigger_joint_command_threshold']) < 0.0, (
+        f'trigger_joint_command_threshold is {params["trigger_joint_command_threshold"]}; '
+        'it must be negative to make the skip in write() unreachable.'
+    )
+
+
+def test_sim_declares_no_position_command_interface():
+    """A position command would let Isaac drive to an angle instead of a rate.
+
+    ROS2SubscribeJointState picks position or velocity targets by which array
+    in the incoming JointState is non-empty, and TopicBasedSystem fills an
+    array only for the interfaces a joint declares. Velocity alone is what
+    keeps the position array empty.
+    """
+    root = expand(hardware='sim')
+    for joint in root.findall('ros2_control/joint'):
+        commands = {c.get('name') for c in joint.findall('command_interface')}
+        assert commands == {'velocity'}, f'{joint.get("name")} commands {sorted(commands)}'
+
+
 def test_real_hardware_defaults_to_can0_and_is_overridable():
     default = expand(hardware='real')
     params = {

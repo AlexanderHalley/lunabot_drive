@@ -151,15 +151,24 @@ ros2 topic pub -r 20 /cmd_vel geometry_msgs/msg/TwistStamped \
 | Observation | Meaning |
 |---|---|
 | `/odom` advances in x | the whole chain works |
-| the rover snaps to a wheel angle and stops | the anticipated bug — see below |
+| nothing moves, and `/isaac/joint_commands` is silent | `trigger_joint_command_threshold` — see below |
+| the rover snaps to a wheel angle and stops | the anticipated bug, which should not happen — see below |
 | `/odom` jumps backwards periodically | `sum_wrapped_joint_states`; see below |
-| nothing moves, no errors | check `/cmd_vel` type and `use_sim_time` on every node |
+| nothing moves, and `/isaac/joint_commands` is publishing | Isaac's side: the articulation, the drives, or the joint names |
+
+**Nothing moves and no command is published** is the failure to check first, with
+`ros2 topic hz /isaac/joint_commands`. `TopicBasedSystem::write()` skips publishing when the
+position command and position state are within `trigger_joint_command_threshold`, and a
+velocity-only drivetrain leaves both at 0.0 forever, so at the default threshold it never publishes
+anything at all. `lunabot.ros2_control.xacro` sets it negative for exactly this reason; the
+comment there is the long version.
 
 **Snapping to an angle** is the failure `graphs/joints.py` and `robot/articulation.py` are both
 written against: `ROS2SubscribeJointState` chooses position or velocity targets by which arrays are
-non-empty, and `TopicBasedSystem` may populate both. The two defences are zero drive stiffness and
-`positionCommand` left unwired. `test_sim_bringup` prints whether the position array is populated —
-read that output before touching anything.
+non-empty. It should not happen — `write()` pushes an array only for the command interfaces a joint
+declares, and these declare velocity alone, which `test_sim_bringup` asserts. If it happens anyway,
+something added a position command interface, and the two defences that keep it merely slow rather
+than broken are zero drive stiffness and `positionCommand` left unwired.
 
 **Backwards jumps in `/odom`** mean wrapped joint positions are not being summed back into a
 monotonic position. Confirm it in seconds without Isaac:

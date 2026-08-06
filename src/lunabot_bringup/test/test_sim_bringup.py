@@ -253,20 +253,30 @@ class TestSimBringup(unittest.TestCase):
                 f'{name} is {controllers[name].state}, not active',
             )
 
-    def test_04_commands_reach_the_simulator_as_velocities(self):
+    def test_04_commands_reach_the_simulator_as_velocities_only(self):
         """What TopicBasedSystem actually puts on /isaac/joint_commands.
 
-        The open question this settles is in graphs/joints.py: Isaac's
-        ROS2SubscribeJointState picks position or velocity targets by which
-        arrays are non-empty, so a command carrying both may drive the wheels
-        to an ANGLE instead of a rate -- the rover snapping to a heading and
-        stopping. Two defences are already in place (zero drive stiffness,
-        positionCommand left unwired), and this reports which case we are
-        actually in rather than waiting to find out on the GPU machine.
+        Two separate things are pinned here, and both are failures that look
+        like a working stack.
 
-        Only the velocity array is asserted. A populated position array is a
-        risk, not a defect, and failing on it would be failing on a thing the
-        design already survives.
+        THAT ANYTHING IS PUBLISHED AT ALL. write() skips publishing when the
+        position command and position state are within
+        trigger_joint_command_threshold of each other. This drivetrain has no
+        position command interface, so that command stays 0.0 forever; at rest
+        the state is 0.0 too, and the default threshold of 1e-5 makes the skip
+        permanent. No command reaches the simulator, so the wheels never turn,
+        so the position never changes. lunabot.ros2_control.xacro sets the
+        threshold negative to make the early return unreachable -- remove it
+        and this test fails, which is the only warning there is.
+
+        THAT THE POSITION ARRAY IS EMPTY. Isaac's ROS2SubscribeJointState
+        picks position or velocity targets by which arrays are non-empty, so a
+        command carrying both may drive the wheels to an ANGLE instead of a
+        rate -- the rover snapping to a heading and stopping. write() pushes
+        an array only for the command interfaces a joint declares, and this
+        one declares velocity alone. Asserted rather than noted, because the
+        day someone adds a position command interface is the day that stops
+        being true.
         """
         commands = []
         sub = self.node.create_subscription(
@@ -275,7 +285,12 @@ class TestSimBringup(unittest.TestCase):
         self.addCleanup(self.node.destroy_subscription, sub)
 
         self.drive(0.3, 0.0, seconds=3.0)
-        self.assertTrue(commands, 'TopicBasedSystem published nothing on /isaac/joint_commands')
+        self.assertTrue(
+            commands,
+            'TopicBasedSystem published nothing on /isaac/joint_commands. Check '
+            'trigger_joint_command_threshold in lunabot.ros2_control.xacro: at the '
+            'default it never publishes for a velocity-only drivetrain.',
+        )
 
         last = commands[-1]
         self.assertTrue(
@@ -287,15 +302,14 @@ class TestSimBringup(unittest.TestCase):
             any(abs(v) > 1e-6 for v in last.velocity),
             f'all commanded velocities are zero after driving: {list(last.velocity)}',
         )
-
-        if last.position:
-            print(
-                '\nNOTE: TopicBasedSystem populates the POSITION array as well as velocity. '
-                'That is the case graphs/joints.py anticipates -- Isaac may drive to an '
-                'angle rather than a rate. The defences are zero drive stiffness in '
-                'robot/articulation.py and positionCommand left unwired in graphs/joints.py; '
-                'if the rover snaps to a heading and stops, that is where to look.'
-            )
+        self.assertFalse(
+            list(last.position),
+            'the command carries a POSITION array as well as velocity. Isaac picks '
+            'position or velocity targets by which array is non-empty, so the rover '
+            'will drive to an angle and stop rather than spin at a rate. Something '
+            'has added a position command interface to lunabot.ros2_control.xacro, '
+            'or the plugin changed.',
+        )
 
     def test_05_odometry_responds_to_command(self):
         """The one that matters, through the sim plumbing end to end.
@@ -399,15 +413,16 @@ class TestShutdown(unittest.TestCase):
         is missing, controller_manager exits here rather than reporting a
         controller that never activates.
 
-        SIGINT and SIGTERM are allowed: launch signals the graph down at the
-        end of the run, and a node that exits because it was asked to is not
-        a failure.
+        EXIT_SIGINT is allowed alongside EXIT_OK: launch signals the graph
+        down at the end of the run, and a process that exits because it was
+        asked to is not a failure. (launch_testing.asserts defines EXIT_OK,
+        EXIT_SIGINT, EXIT_SIGQUIT, EXIT_SIGKILL and EXIT_SIGSEGV -- there is
+        no EXIT_SIGTERM, and the last three all mean something went wrong.)
         """
         launch_testing.asserts.assertExitCodes(
             proc_info,
             allowable_exit_codes=[
                 launch_testing.asserts.EXIT_OK,
                 launch_testing.asserts.EXIT_SIGINT,
-                launch_testing.asserts.EXIT_SIGTERM,
             ],
         )

@@ -154,12 +154,28 @@ a 22.04-only build means revisiting the Jazzy decision.
 
 ## Known rough edges
 
-**The rover snaps to a wheel angle and stops instead of driving.** The likely bug, and it is
-anticipated. `ROS2SubscribeJointState` picks position or velocity targets based on which arrays in
-the incoming `JointState` are non-empty, and `topic_based_ros2_control` populates both. Two
-defences are already in place: wheel drives have **zero stiffness** (a drive that cannot hold a
-position cannot obey a position target), and `positionCommand` is deliberately left unconnected in
-`graphs/joints.py`. If it still happens, those are the two places to look.
+**The rover does not move at all, and nothing errors.** The first thing to check, and it is a
+configured parameter rather than a mystery. `TopicBasedSystem::write()` skips publishing when the
+position command and the position state are within `trigger_joint_command_threshold` of each other.
+This drivetrain declares a velocity command interface and no position one, so the position command
+stays at the 0.0 it was initialised with; at rest the state is 0.0 too, and the default threshold of
+1e-5 makes the skip permanent. Nothing reaches Isaac, so the wheels never turn, so the position
+never changes.
+
+`lunabot.ros2_control.xacro` sets that threshold **negative**, which makes the early return
+unreachable. If the rover sits still under `/cmd_vel` with a healthy graph, check that the parameter
+survived, and check `ros2 topic hz /isaac/joint_commands` — silence there is this.
+
+**The rover snaps to a wheel angle and stops instead of driving.** Anticipated, and now known not to
+happen with this URDF. `ROS2SubscribeJointState` picks position or velocity targets by which arrays
+in the incoming `JointState` are non-empty; `TopicBasedSystem::write()` pushes an array only for the
+command interfaces a joint declares, and this one declares velocity alone, so the position array
+arrives empty. `test_sim_bringup.py` asserts that, so a change that makes it untrue fails in CI.
+
+Two defences remain in place because they cost nothing and they turn a future position command
+interface into a slow rover rather than a broken one: wheel drives have **zero stiffness** (a drive
+that cannot hold a position cannot obey a position target), and `positionCommand` is deliberately
+left unconnected in `graphs/joints.py`.
 
 **Point cloud density differs from hardware.** On the robot the cloud is built by
 `depth_image_proc` with decimation 4 and a 2 m clip; in sim the camera helper produces it directly.

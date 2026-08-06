@@ -120,6 +120,39 @@
           <param name="joint_states_topic">${sim_joint_states_topic}</param>
           <param name="joint_commands_topic">${sim_joint_commands_topic}</param>
           <param name="sum_wrapped_joint_states">true</param>
+
+          <!--
+            ============ NEGATIVE, AND THE ROVER DOES NOT MOVE WITHOUT IT ============
+            TopicBasedSystem::write() skips publishing when the joint
+            commands are close to the joint states, to avoid spamming the
+            topic. The comparison it makes is between the POSITION command
+            and the POSITION state, and it is the whole of write():
+
+                diff = sum |position_state - position_command|
+                if (diff <= trigger_joint_command_threshold_) return;
+
+            This drivetrain declares a VELOCITY command interface and no
+            position one, so nothing ever writes a position command: it stays
+            at the 0.0 on_init gave it. At rest the position state is also
+            0.0, so diff is 0, 0 <= 1e-5 (the default) is true, and write()
+            returns without publishing.
+
+            The deadlock is total. No command reaches Isaac, so the wheels do
+            not turn, so the position state stays 0, so diff stays 0. The
+            rover sits still under any /cmd_vel, with no error anywhere, and
+            the plugin, the controllers and the graphs are all working.
+
+            A negative threshold makes the early return unreachable, so every
+            control cycle publishes. That is what a velocity drivetrain wants
+            anyway: the skip exists for position-controlled arms that hold
+            still for long periods, and this is four wheels at 100 Hz, which
+            is the rate SparkFlexSystem writes at on the real robot.
+
+            Verified against topic_based_ros2_control's source, not guessed:
+            src/topic_based_system.cpp, write() and on_init().
+            =========================================================================
+          -->
+          <param name="trigger_joint_command_threshold">-1.0</param>
         </hardware>
       </xacro:if>
 

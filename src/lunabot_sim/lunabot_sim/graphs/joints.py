@@ -16,16 +16,29 @@ hardware plugin differs.
 The topic names must match the sim_joint_states_topic and
 sim_joint_commands_topic arguments in lunabot.urdf.xacro.
 
-==================== THE LIKELY BUG ====================
-ROS2SubscribeJointState chooses between position and velocity targets based on
-which arrays in the incoming JointState are non-empty, and TopicBasedSystem
-populates both. The rover may therefore try to drive to an absolute wheel
-angle instead of spinning at a rate.
+==================== THE ANGLE-INSTEAD-OF-RATE BUG ====================
+ROS2SubscribeJointState chooses between position and velocity targets by which
+arrays in the incoming JointState are non-empty, so a message carrying both
+may drive the wheels to an absolute angle rather than at a rate -- the rover
+snapping to a heading and stopping.
 
-articulation.py defends against this by giving the wheel drives zero
-stiffness, so a position target physically cannot be held. If the rover still
-snaps to an angle and stops, look there first.
-========================================================
+This was written as the LIKELY failure. It is not, and the reason is worth
+keeping: TopicBasedSystem::write() pushes an array only for the command
+interfaces a joint actually declares --
+
+    if (interface.name == HW_IF_POSITION)      joint_state.position.push_back(...)
+    else if (interface.name == HW_IF_VELOCITY) joint_state.velocity.push_back(...)
+
+-- and lunabot.ros2_control.xacro declares velocity and nothing else. The
+position array arrives empty, so the node picks velocity. test_sim_bringup.py
+asserts exactly that against the plugin, so if it ever stops being true,
+something fails in CI rather than on regolith.
+
+The two defences stay because they cost nothing and they are what makes adding
+a position command interface later a slow rover rather than a broken one:
+wheel drives get zero stiffness in articulation.py, so a position target
+cannot be held, and positionCommand is left unwired below.
+======================================================================
 """
 
 from __future__ import annotations
