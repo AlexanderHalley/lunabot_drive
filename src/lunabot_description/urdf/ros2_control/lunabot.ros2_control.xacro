@@ -112,9 +112,17 @@
             sets of constants and /odom comes from a different place in sim
             than on the robot, so sim stops testing anything.
 
-            VERIFY: this plugin may need building from source. Check
-              apt-cache policy ros-jazzy-topic-based-ros2-control
-            and delete the lunabot.repos entry if a binary exists.
+            The plugin name and all three parameter names below are checked
+            against topic_based_ros2_control upstream (0.3.0): the class is
+            registered as topic_based_ros2_control/TopicBasedSystem, and
+            joint_states_topic, joint_commands_topic and
+            sum_wrapped_joint_states are read in TopicBasedSystem::on_init.
+            sum_wrapped_joint_states exists for this exact case. Upstream
+            documents it as "the values on the joint_states_topic are wrapped
+            between -2*pi and 2*pi (like they are in Isaac Sim)".
+
+            It has no Jazzy binary and must come from source; see
+            lunabot.repos.
           -->
           <plugin>topic_based_ros2_control/TopicBasedSystem</plugin>
           <param name="joint_states_topic">${sim_joint_states_topic}</param>
