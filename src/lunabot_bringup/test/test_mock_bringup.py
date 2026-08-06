@@ -251,11 +251,21 @@ class TestMockBringup(unittest.TestCase):
         self.assertEqual(messages[-1].header.frame_id, 'odom')
         self.assertEqual(messages[-1].child_frame_id, 'base_link')
 
-    def test_06_exactly_one_publisher_owns_odom_to_base_link(self):
-        """Exactly one node publishes odom -> base_link.
+    def test_06_only_the_expected_nodes_publish_dynamic_tf(self):
+        """Who advertises /tf, by name, against who is supposed to.
 
-        With odom_source:=wheel that is diff_drive_controller, and nothing else may be publishing
-        it.
+        This asserted a COUNT of one and was wrong: it expected only
+        diff_drive_controller and got robot_state_publisher too. Both belong
+        there. rsp splits the tree by joint type -- fixed joints are latched
+        once on /tf_static, movable ones go out on /tf every time
+        /joint_states updates -- and the four wheels are continuous. A healthy
+        stack has two publishers here, always.
+
+        Naming them is the stronger check anyway. The failure being guarded
+        against is a SECOND owner of odom -> base_link, and a count cannot
+        distinguish that from rsp doing its job. TFMessage carries no
+        publisher identity, so the topic's publisher list is the only place
+        the question can be asked at all.
         """
         tf = []
         sub = self.node.create_subscription(TFMessage, '/tf', tf.append, 100)
@@ -267,12 +277,18 @@ class TestMockBringup(unittest.TestCase):
         edges = {(t.header.frame_id, t.child_frame_id) for m in tf for t in m.transforms}
         self.assertIn(('odom', 'base_link'), edges)
 
-        publishers = self.node.get_publishers_info_by_topic('/tf')
-        names = [p.node_name for p in publishers]
+        # The wheels, which are what robot_state_publisher is doing here.
+        children = {child for _, child in edges}
+        self.assertTrue(
+            {j.replace('_joint', '_link') for j in WHEEL_JOINTS} <= children,
+            f'no wheel transforms on /tf; children seen: {sorted(children)}',
+        )
+
+        names = {p.node_name for p in self.node.get_publishers_info_by_topic('/tf')}
         self.assertEqual(
-            len(names),
-            1,
-            f'expected one /tf publisher with odom_source:=wheel, got {names}',
+            names,
+            {'robot_state_publisher', 'diff_drive_controller'},
+            f'unexpected set of /tf publishers with odom_source:=wheel: {sorted(names)}',
         )
 
 

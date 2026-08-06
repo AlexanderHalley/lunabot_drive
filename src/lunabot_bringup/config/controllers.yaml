@@ -113,8 +113,32 @@ diff_drive_controller:
     angular.z.has_acceleration_limits: true
 
 
-joint_state_broadcaster:
-  ros__parameters:
-    # Empty means "publish every state interface the hardware exports",
-    # which is what robot_state_publisher needs to build the TF tree.
-    joints: []
+# ==================== joint_state_broadcaster has NO SECTION ====================
+# Deliberately. It wants to publish every state interface the hardware exports,
+# which is what robot_state_publisher needs to build the TF tree, and that is
+# already the controller's default: `joints` and `interfaces` both default to
+# an empty list, and an empty list means "everything".
+#
+# Saying so explicitly is what you cannot do. This file used to carry
+#
+#     joint_state_broadcaster:
+#       ros__parameters:
+#         joints: []
+#
+# and an empty YAML sequence in a ROS 2 parameter file carries NO ELEMENT TYPE,
+# so the parser cannot build a value for it and leaves the parameter unset.
+# The controller then refuses to initialize:
+#
+#     Caught exception of type InvalidParameterValueException while
+#     initializing controller 'joint_state_broadcaster': parameter_value_from
+#     failed for parameter 'joints': No parameter value set
+#
+# which the spawner reports only as "Failed loading controller
+# joint_state_broadcaster" -- so /joint_states never appears, and with it no
+# TF for the wheels and no odometry. Writing the default down cost the entire
+# control stack.
+#
+# This is the same class of trap as the YAML 1.1 exponent one further up:
+# something that reads as a value and is not. test_config_files.py fails on
+# any empty list in this directory.
+# ===============================================================================

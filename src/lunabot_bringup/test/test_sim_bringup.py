@@ -201,7 +201,18 @@ class TestSimBringup(unittest.TestCase):
         )
 
     def test_02_the_description_selects_the_topic_based_plugin(self):
-        """The sim backend differs from mock in exactly one place: the plugin."""
+        """The sim backend differs from mock in exactly one place: the plugin.
+
+        Every received description is checked rather than just the last one.
+        /robot_description is TRANSIENT_LOCAL, so a subscriber gets the latched
+        sample from every matched publisher -- and a robot_state_publisher from
+        a previous launch test, still winding down on the same domain, once
+        served this test a `mock_components/GenericSystem` description off a
+        correctly-configured sim stack. The launch tests now run on separate
+        ROS_DOMAIN_IDs (see CMakeLists.txt) so that cannot recur, but the
+        assertion may as well say what it means: no description anywhere in
+        this graph names the mock plugin, and one of them names the sim plugin.
+        """
         from std_msgs.msg import String
 
         qos = QoSProfile(
@@ -209,12 +220,22 @@ class TestSimBringup(unittest.TestCase):
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             reliability=QoSReliabilityPolicy.RELIABLE,
         )
-        description = self.collect('/robot_description', String, timeout=60.0, qos=qos)[-1].data
-        self.assertIn('topic_based_ros2_control/TopicBasedSystem', description)
-        self.assertNotIn('mock_components/GenericSystem', description)
+        descriptions = [m.data for m in self.collect('/robot_description', String, 60.0, qos=qos)]
+
+        mock = [d for d in descriptions if 'mock_components/GenericSystem' in d]
+        self.assertFalse(
+            mock,
+            f'{len(mock)} of {len(descriptions)} descriptions on this graph name the MOCK '
+            'plugin. Under hw:=sim nothing should: check description.launch.py is being '
+            'passed hardware:=sim, and that no other stack is on this ROS_DOMAIN_ID.',
+        )
+
+        sim = [d for d in descriptions if 'topic_based_ros2_control/TopicBasedSystem' in d]
+        self.assertTrue(sim, 'no /robot_description selected the sim hardware plugin')
+
         # The topic names the double and the graphs both hardcode.
-        self.assertIn('/isaac/joint_states', description)
-        self.assertIn('/isaac/joint_commands', description)
+        self.assertIn('/isaac/joint_states', sim[-1])
+        self.assertIn('/isaac/joint_commands', sim[-1])
 
     def test_03_the_same_two_controllers_run_as_on_mock(self):
         """`ros2 control list_controllers` shows what hw:=mock shows.

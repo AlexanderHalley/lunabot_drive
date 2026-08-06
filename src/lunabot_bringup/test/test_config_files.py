@@ -51,10 +51,17 @@ def xacro_property(name):
 
 
 def _walk(node, path=''):
-    if isinstance(node, dict):
+    """Yield every leaf as (path, value). An EMPTY container is a leaf.
+
+    That last part is not a detail. Recursing into an empty list visits zero
+    elements and yields nothing, so a check written on top of this could not
+    see an empty list at all -- test_no_empty_lists below was written that way
+    first and silently passed against the very file that had one.
+    """
+    if isinstance(node, dict) and node:
         for key, value in node.items():
             yield from _walk(value, f'{path}.{key}')
-    elif isinstance(node, list):
+    elif isinstance(node, list) and node:
         for index, value in enumerate(node):
             yield from _walk(value, f'{path}[{index}]')
     else:
@@ -81,6 +88,41 @@ def test_no_numbers_hiding_as_strings(path):
     assert not offenders, (
         f'{path.name}: these parsed as strings, not numbers -- YAML 1.1 needs a '
         f'decimal point and a signed exponent (1.0e+6, not 1.0e6):\n  ' + '\n  '.join(offenders)
+    )
+
+
+@pytest.mark.parametrize('path', CONFIG_FILES, ids=lambda p: p.name)
+def test_no_empty_lists(path):
+    """An empty sequence in a ROS 2 parameter file leaves the parameter UNSET.
+
+    The sibling of the exponent trap above, and it cost more. A YAML `[]`
+    carries no element type, so the parameter parser cannot build a value and
+    the parameter arrives at the node as PARAMETER_NOT_SET rather than as an
+    empty array. A node using generate_parameter_library then refuses to
+    initialize at all:
+
+        Caught exception of type InvalidParameterValueException while
+        initializing controller 'joint_state_broadcaster':
+        parameter_value_from failed for parameter 'joints':
+        No parameter value set
+
+    controllers.yaml carried `joints: []` for joint_state_broadcaster, written
+    to say out loud what the controller already defaults to. The spawner
+    reported only "Failed loading controller", so /joint_states never
+    appeared, robot_state_publisher had nothing to publish wheel transforms
+    from, and both whole-stack tests failed a long way from the cause.
+
+    A parameter whose default is an empty list must simply be left out.
+    """
+    offenders = [
+        key
+        for key, value in _walk(yaml.safe_load(path.read_text()))
+        if isinstance(value, list) and not value
+    ]
+    assert not offenders, (
+        f'{path.name}: these are empty lists, which arrive at the node as unset '
+        f'rather than as empty:\n  ' + '\n  '.join(offenders) + '\n'
+        'Delete the key and let the default apply.'
     )
 
 

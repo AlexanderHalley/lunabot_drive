@@ -45,7 +45,15 @@ if(BUILD_TESTING)
   # GPU, no network. This is the highest-value test in the workspace: if
   # /odom moves, the URDF parsed, the plugin loaded, the interfaces were
   # claimed, the kinematics ran and TF is connected.
-  add_launch_test(test/test_mock_bringup.py TIMEOUT 120)
+  #
+  # ENV ROS_DOMAIN_ID: the two launch tests get a domain each, and neither is
+  # the default. ctest runs them back to back, and /robot_description is
+  # TRANSIENT_LOCAL -- so the previous stack's robot_state_publisher, still
+  # winding down, served its latched description to the next test's
+  # subscriber. The sim test read `mock_components/GenericSystem` off a
+  # correctly-configured sim stack and failed. Anything latched can do this;
+  # separate domains end the whole class rather than that one symptom.
+  add_launch_test(test/test_mock_bringup.py TIMEOUT 120 ENV ROS_DOMAIN_ID=71)
 
   # The same thing on hw:=sim, against test/isaac_double.py standing in for
   # Isaac's bridge graphs. Still no GPU and no Isaac install: what it covers
@@ -55,7 +63,7 @@ if(BUILD_TESTING)
   # Longer timeout than the mock test: it waits for /clock before starting
   # anything, then drives for five seconds to cross the joint wrap several
   # times.
-  add_launch_test(test/test_sim_bringup.py TIMEOUT 300)
+  add_launch_test(test/test_sim_bringup.py TIMEOUT 300 ENV ROS_DOMAIN_ID=72)
 endif()
 
 ament_package()
