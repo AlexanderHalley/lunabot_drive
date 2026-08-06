@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-# Copyright 2027 Lunabot. Licensed under the MIT License.
+# Copyright 2027 Lunabot
+#
+# Use of this source code is governed by an MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT.
 
 """Every SLAM backend must at least produce a valid launch description.
 

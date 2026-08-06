@@ -1,4 +1,8 @@
-// Copyright 2027 Lunabot. Licensed under the MIT License.
+// Copyright 2027 Lunabot
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
 //
 // Standard ROS 2 symbol visibility boilerplate. Only Windows actually needs
 // the dllimport/dllexport dance; on Linux this reduces to the visibility

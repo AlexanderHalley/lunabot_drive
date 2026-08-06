@@ -62,8 +62,18 @@ If you re-add `ament_flake8`, you are signing up to reconcile two style systems.
 **Every source file carries a copyright header.** `ament_copyright` still runs and will tell you.
 
 ```
-# Copyright 2027 Lunabot. Licensed under the MIT License.
+# Copyright 2027 Lunabot
+#
+# Use of this source code is governed by an MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT.
 ```
+
+Use `//` instead of `#` in C++. Copy it verbatim — `ament_copyright` does not read the header as
+prose, it matches it against a fixed set of license templates, and this is the short MIT form it
+recognises. The one-line variant this repository used until now (`# Copyright 2027 Lunabot.
+Licensed under the MIT License.`) parses as a copyright holder called "Lunabot. Licensed under the
+MIT License." with no license at all, which is why every file in the workspace failed the check.
 
 **Kinematic constants live in two files and must agree.** `wheel_radius` and `wheel_separation` are
 in both `properties.xacro` and `controllers.yaml`, because xacro cannot reach into a controller
