@@ -33,7 +33,9 @@ from launch.actions import (
     IncludeLaunchDescription,
     LogInfo,
     RegisterEventHandler,
+    Shutdown,
 )
+from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -76,34 +78,32 @@ ARGUMENTS = [
             'hangs at time zero with no error.'
         ),
     ),
+    DeclareLaunchArgument(
+        'clock_timeout',
+        default_value='120',
+        description=(
+            'Seconds to wait for /clock before giving up. A first Isaac run on '
+            'a new machine compiles shaders and can take considerably longer '
+            'than a warm one; raise this rather than switching the wait off.'
+        ),
+    ),
 ]
 
 
-def generate_launch_description():
-    # `ros2 topic echo --once` returns as soon as one message arrives and
-    # exits non-zero on timeout, which makes it a serviceable barrier without
-    # writing a node for it.
-    wait_for_clock = ExecuteProcess(
-        cmd=[
-            'ros2',
-            'topic',
-            'echo',
-            '--once',
-            '--timeout',
-            '120',
-            '/clock',
-            'rosgraph_msgs/msg/Clock',
-        ],
-        name='wait_for_clock',
-        output='screen',
-    )
+def _robot_stack(condition=None):
+    """Build the stack itself, under hw:=sim.
 
-    robot = IncludeLaunchDescription(
+    A factory rather than a variable because launch actions are stateful and
+    cannot appear twice in one description: this is instantiated once for the
+    wait_for_clock:=false path and once from the barrier's exit handler.
+    """
+    return IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
                 [FindPackageShare('lunabot_bringup'), 'launch', 'robot.launch.py']
             )
         ),
+        condition=condition,
         launch_arguments={
             'hw': 'sim',
             'use_sim_time': 'true',
@@ -119,6 +119,53 @@ def generate_launch_description():
         }.items(),
     )
 
+
+def generate_launch_description():
+    wait = LaunchConfiguration('wait_for_clock')
+
+    # `ros2 topic echo --once` returns as soon as one message arrives, which is
+    # the barrier. Its own --timeout is NOT used: on expiry ros2cli resolves
+    # the wait and returns success, so a timed-out barrier is indistinguishable
+    # from a satisfied one and the stack launches into exactly the hang this
+    # guard exists to prevent. coreutils `timeout` exits 124 instead, which the
+    # handler below can actually act on.
+    clock_barrier = ExecuteProcess(
+        cmd=[
+            'timeout',
+            LaunchConfiguration('clock_timeout'),
+            'ros2',
+            'topic',
+            'echo',
+            '--once',
+            '/clock',
+            'rosgraph_msgs/msg/Clock',
+        ],
+        name='wait_for_clock',
+        output='screen',
+        condition=IfCondition(wait),
+    )
+
+    def on_barrier_exit(event, context):
+        if event.returncode == 0:
+            return [_robot_stack()]
+        # Refusing to start is the point. Bringing the stack up without /clock
+        # produces nodes blocked at time zero -- no error, no log line, a graph
+        # that merely appears hung -- and diagnosing that costs far more than
+        # this message.
+        return [
+            LogInfo(
+                msg=(
+                    'No /clock within the timeout, so Isaac Sim is not running or is '
+                    'not publishing it. NOT starting the stack: every node would '
+                    'block at time zero with no error. Start Isaac first with '
+                    'src/lunabot_sim/scripts/run_isaac_sim.sh, or raise '
+                    'clock_timeout: on a cold machine the first run compiles '
+                    'shaders and can take several minutes.'
+                )
+            ),
+            Shutdown(reason='Isaac Sim is not publishing /clock'),
+        ]
+
     return LaunchDescription(
         ARGUMENTS
         + [
@@ -127,9 +174,17 @@ def generate_launch_description():
                     'Waiting for /clock from Isaac Sim. If this hangs, Isaac is not '
                     'running -- start it with '
                     'src/lunabot_sim/scripts/run_isaac_sim.sh'
-                )
+                ),
+                condition=IfCondition(wait),
             ),
-            wait_for_clock,
-            RegisterEventHandler(OnProcessExit(target_action=wait_for_clock, on_exit=[robot])),
+            clock_barrier,
+            RegisterEventHandler(
+                OnProcessExit(target_action=clock_barrier, on_exit=on_barrier_exit),
+                condition=IfCondition(wait),
+            ),
+            # wait_for_clock:=false used to be declared and then ignored -- the
+            # barrier ran unconditionally and the argument did nothing. This is
+            # the path that makes it mean something.
+            _robot_stack(condition=UnlessCondition(wait)),
         ]
     )
