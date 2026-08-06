@@ -1,4 +1,8 @@
-# Copyright 2027 Lunabot. Licensed under the MIT License.
+# Copyright 2027 Lunabot
+#
+# Use of this source code is governed by an MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT.
 
 """Isaac Sim scene builder and ROS 2 bridge for the Lunabot rover.
 

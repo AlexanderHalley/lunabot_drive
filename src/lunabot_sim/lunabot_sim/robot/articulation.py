@@ -1,4 +1,8 @@
-# Copyright 2027 Lunabot. Licensed under the MIT License.
+# Copyright 2027 Lunabot
+#
+# Use of this source code is governed by an MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT.
 
 """Configure the rover's articulation for VELOCITY control.
 

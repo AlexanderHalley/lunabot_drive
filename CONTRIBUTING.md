@@ -62,8 +62,23 @@ If you re-add `ament_flake8`, you are signing up to reconcile two style systems.
 **Every source file carries a copyright header.** `ament_copyright` still runs and will tell you.
 
 ```
-# Copyright 2027 Lunabot. Licensed under the MIT License.
+# Copyright 2027 Lunabot
+#
+# Use of this source code is governed by an MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT.
 ```
+
+Five lines rather than the one this used to be, and the wording is not adjustable. `ament_copyright`
+does not check that a header *mentions* a license; it matches the text against templates registered
+as Python entry points by the `ament_copyright` package itself, so a workspace cannot add its own.
+The single line `# Copyright 2027 Lunabot. Licensed under the MIT License.` matched nothing, which
+made `license=<unknown>` — an error — on **every source file in the workspace**, 40 of the 88 test
+failures on the commit before this one.
+
+The block above is `ament_copyright`'s short MIT form, verbatim except for the holder. The only
+other accepted MIT wording is the full 17-line permission notice in every file. Reflow it, drop the
+blank comment line, or re-add `Licensed under the MIT License.` and the whole workspace fails again.
 
 **Kinematic constants live in two files and must agree.** `wheel_radius` and `wheel_separation` are
 in both `properties.xacro` and `controllers.yaml`, because xacro cannot reach into a controller

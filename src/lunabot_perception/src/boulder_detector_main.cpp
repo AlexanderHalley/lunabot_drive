@@ -1,4 +1,8 @@
-// Copyright 2027 Lunabot. Licensed under the MIT License.
+// Copyright 2027 Lunabot
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
 //
 // Standalone entry point. The node is also registered as a component, so it
 // can be loaded into a container alongside the camera driver to avoid
