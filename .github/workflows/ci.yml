@@ -15,10 +15,10 @@ env:
   # Source-built dependencies, imported by vcs from lunabot.repos. Must match
   # that file -- they are the same list wearing different hats.
   #
-  # isaac_ros_visual_slam is skipped for a different reason: the cuVSLAM
-  # backend is scaffolding until an Isaac ROS release for this distro is
-  # confirmed, so requiring it would fail the build to get a node that does
-  # not run. See docs/SLAM.md.
+  # isaac_ros_visual_slam is skipped for a different reason, and permanently:
+  # it is not in the Jazzy distribution at all -- no isaac_ros_* package is in
+  # the index rosdep resolves against. Requiring it would fail every build to
+  # get a node that cannot be installed. See docs/SLAM.md.
   ROSDEP_SKIP_KEYS: "sparkcan isaac_ros_visual_slam"
 
 jobs:

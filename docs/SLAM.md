@@ -41,15 +41,38 @@ README, the launch files and the RViz config each holding their own copy.
 The launch file, parameters and remappings exist and are tested to construct. **The node is not
 known to run.** Two things have to be true first:
 
-1. **An Isaac ROS release supporting ROS 2 Jazzy must exist.** Isaac ROS binaries have historically
-   targeted Ubuntu 22.04 / Humble. Check before promising this path to anyone.
+1. **An Isaac ROS release supporting ROS 2 Jazzy must exist.** Partly answered, and the answer is
+   not encouraging:
+
+   - **`isaac_ros_visual_slam` is not in the ROS 2 Jazzy distribution.** Neither is any other
+     `isaac_ros_*` package — checked against `rosdistro`'s `jazzy/distribution.yaml`, which is the
+     index `rosdep` resolves against. So `rosdep` can never install it on Jazzy, no matter what
+     the workspace declares. The skip-key is permanent, not a workaround waiting to be removed.
+   - **The upstream repository has no `jazzy` branch**, and no `humble` one either: it releases
+     from `main` and `release-N.M` branches (currently 4.5.0). Isaac ROS is distributed through
+     NVIDIA's own apt repository on its own cadence, not through the ROS distro.
+
+   What is left to check is whether NVIDIA's apt repository carries a Jazzy build, which needs
+   that repository configured on the machine:
+
+   ```bash
+   apt-cache policy ros-jazzy-isaac-ros-visual-slam
+   ```
+
+   Until that returns a candidate, this backend has no installation path at all.
+
 2. **The rover must carry an NVIDIA GPU.** A Raspberry Pi 5 cannot run cuVSLAM at all. This is
    blocked on the 2027 compute decision — Jetson Orin or Pi.
 
-`isaac_ros_visual_slam` is deliberately **not** declared in `lunabot_slam/package.xml`. Declaring a
-dependency that may have no release for this distro would make the entire workspace un-installable
-in order to get a backend that does not run. Instead the launch file logs a clear warning and the
-node fails to start, which is a better failure than `rosdep` refusing to install anything.
+`isaac_ros_visual_slam` is deliberately **not** declared in `lunabot_slam/package.xml`, and given
+the above it must stay that way: declaring a dependency that is not in the distro's index makes the
+entire workspace un-installable, in order to get a backend that does not run. Instead the launch
+file logs a clear warning and the node fails to start, which is a better failure than `rosdep`
+refusing to install anything.
+
+**Plan around it.** `slam:=rtabmap` is the backend that works on CPU and is the one to tune. Treat
+cuVSLAM as a possibility that needs the compute decision AND an NVIDIA apt build, rather than as
+work that is nearly done.
 
 **Verify before debugging:** the visual SLAM topic names changed around Isaac ROS 3.x, from
 `stereo_camera/left/image` to a multi-camera `visual_slam/image_0` / `camera_info_0` scheme. The

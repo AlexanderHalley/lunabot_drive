@@ -34,7 +34,12 @@ repositories:
 
 # NOT listed here on purpose:
 #
-#   isaac_ros_visual_slam -- the cuVSLAM backend is scaffolding until an Isaac
-#   ROS release supporting Jazzy is confirmed (see docs/SLAM.md). It lives in
-#   isaac_ros.repos so the default CI path stays fast and does not fail on a
-#   package that may not build for this distro yet.
+#   isaac_ros_visual_slam -- it is NOT IN THE JAZZY DISTRIBUTION AT ALL.
+#   Checked against rosdistro's jazzy/distribution.yaml: no isaac_ros_*
+#   package is in the index rosdep resolves against, and the upstream repo has
+#   no jazzy branch. Isaac ROS ships from NVIDIA's own apt repository on its
+#   own cadence.
+#
+#   So it cannot be vcs-imported to fix anything either: this is not a
+#   temporary gap waiting on a release we can pull in, and the skip-key for it
+#   is permanent. See docs/SLAM.md.
