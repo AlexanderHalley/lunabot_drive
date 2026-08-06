@@ -235,21 +235,37 @@ TEST(ExtractClusters, an_empty_cloud_yields_no_clusters)
 
 TEST(ExtractClusters, reports_the_box_centre_not_the_visible_surface)
 {
-  // A boulder seen from one side has all its points on the near face. The
-  // point centroid would sit on the surface; every consumer wants the middle
-  // of the box.
+  // A boulder seen from one side has most of its points on the near face. The
+  // point centroid would sit close to that surface; every consumer wants the
+  // middle of the box.
+  //
+  // Two numbers here are load-bearing:
+  //
+  // The faces are 8 cm apart, INSIDE the 10 cm cluster tolerance, so this is
+  // one cluster. At the 20 cm this test used to build, Euclidean clustering
+  // correctly returned two, and the test failed on its own fixture rather
+  // than on the property it is about.
+  //
+  // The spacings differ, so the two candidate answers do not coincide: 121
+  // points on the near face against 36 on the far one puts the POINT centroid
+  // at x=1.018, while the box centre is 1.04. The tolerance below separates
+  // them, which is the entire point of the test -- with equally dense faces
+  // both implementations land on the same number and nothing is pinned.
   auto cloud = std::make_shared<Cloud>();
-  for (float y = -0.1f; y <= 0.1f; y += 0.02f) {
-    for (float z = 0.0f; z <= 0.2f; z += 0.02f) {
-      cloud->points.emplace_back(1.0f, y, z);  // dense near face
-      cloud->points.emplace_back(1.2f, y, z);  // sparse far face
+  const auto add_face = [&cloud](float x, float spacing) {
+    for (float y = -0.1f; y <= 0.1f; y += spacing) {
+      for (float z = 0.0f; z <= 0.2f; z += spacing) {
+        cloud->points.emplace_back(x, y, z);
+      }
     }
-  }
+  };
+  add_face(1.00f, 0.02f);  // dense near face
+  add_face(1.08f, 0.04f);  // sparse far face
   finish(cloud);
 
   const auto clusters = extract_clusters(cloud, cluster_params());
   ASSERT_EQ(clusters.size(), 1u);
-  EXPECT_NEAR(clusters[0].centroid.x(), 1.1f, 0.01f);
+  EXPECT_NEAR(clusters[0].centroid.x(), 1.04f, 0.01f);
 }
 
 TEST(FilterByDimensions, drops_specks_and_walls_and_keeps_boulders)
