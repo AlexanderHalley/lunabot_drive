@@ -25,6 +25,22 @@
        Without this the default launch configuration does not work. -->
   <exec_depend>hardware_interface</exec_depend>
 
+  <!-- Bridges ros2_control to Isaac over two JointState topics, which is what
+       hw:=sim loads. Built from source via lunabot.repos; exec-only, so a
+       missing binary blocks hw:=sim rather than the build. -->
+  <exec_depend>topic_based_ros2_control</exec_depend>
+
+  <!-- scripts/check_stack.py, which reads a live graph and judges it against
+       docs/TOPIC_FRAME_CONTRACT.md. -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>controller_manager_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>rosgraph_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tf2_msgs</exec_depend>
+
   <!-- Teleop and velocity arbitration -->
   <exec_depend>joy</exec_depend>
   <exec_depend>teleop_twist_joy</exec_depend>

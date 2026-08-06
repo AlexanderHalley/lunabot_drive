@@ -8,6 +8,13 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# lib/, not share/: this is where `ros2 run lunabot_bringup check_stack.py`
+# looks. PROGRAMS rather than FILES so it stays executable.
+install(
+  PROGRAMS scripts/check_stack.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # ruff owns Python, clang-format owns C++, both via pre-commit. Skip the
@@ -39,6 +46,16 @@ if(BUILD_TESTING)
   # /odom moves, the URDF parsed, the plugin loaded, the interfaces were
   # claimed, the kinematics ran and TF is connected.
   add_launch_test(test/test_mock_bringup.py TIMEOUT 120)
+
+  # The same thing on hw:=sim, against test/isaac_double.py standing in for
+  # Isaac's bridge graphs. Still no GPU and no Isaac install: what it covers
+  # is the plumbing that differs between mock and sim -- the TopicBasedSystem
+  # plugin, the two /isaac topics, use_sim_time, and wrapped joint positions.
+  #
+  # Longer timeout than the mock test: it waits for /clock before starting
+  # anything, then drives for five seconds to cross the joint wrap several
+  # times.
+  add_launch_test(test/test_sim_bringup.py TIMEOUT 300)
 endif()
 
 ament_package()
