@@ -80,35 +80,13 @@ xacro "${XACRO_FILE}" hardware:=sim > "${URDF_FILE}"
 # ---------------------------------------------------------------------------
 # 2. Hand off to Isaac's Python
 # ---------------------------------------------------------------------------
-# ISAAC_SIM_PATH must point at the install root -- the directory containing
-# python.sh. Common locations differ by install method, so check a few.
-if [[ -z "${ISAAC_SIM_PATH:-}" ]]; then
-  for candidate in \
-    "${HOME}/isaacsim" \
-    "${HOME}/.local/share/ov/pkg/isaac-sim-"* \
-    "${HOME}/.local/share/ov/pkg/isaac_sim-"* \
-    "/isaac-sim"
-  do
-    if [[ -x "${candidate}/python.sh" ]]; then
-      ISAAC_SIM_PATH="${candidate}"
-      break
-    fi
-  done
-fi
+# Finding the install and putting lunabot_sim on PYTHONPATH is shared with
+# probe_isaac_api.sh -- one copy, or the probe reports on a different Isaac
+# than the one the simulator runs.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/isaac_env.sh"
 
-if [[ -z "${ISAAC_SIM_PATH:-}" || ! -x "${ISAAC_SIM_PATH}/python.sh" ]]; then
-  echo "error: could not find Isaac Sim's python.sh." >&2
-  echo "Set ISAAC_SIM_PATH to the install root, e.g.:" >&2
-  echo "  export ISAAC_SIM_PATH=\$HOME/isaacsim" >&2
-  exit 1
-fi
-
-echo "using Isaac Sim at ${ISAAC_SIM_PATH}"
-
-# lunabot_sim must be importable by ISAAC's python, which knows nothing about
-# the colcon install tree. Point PYTHONPATH at the package source directly.
-PACKAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export PYTHONPATH="${PACKAGE_ROOT}:${PYTHONPATH:-}"
+lunabot_sim_find_isaac
+lunabot_sim_export_pythonpath
 
 # The bridge reads this to pick a domain when useDomainIDEnvVar is set. The
 # graphs set the id explicitly, so this is belt and braces.
