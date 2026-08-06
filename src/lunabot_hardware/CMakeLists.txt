@@ -64,7 +64,6 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 
   find_package(ament_cmake_gmock REQUIRED)
-  find_package(ros2_control_test_assets REQUIRED)
 
   # pluginlib-loads the plugin against a synthetic URDF and exercises
   # on_init. No SocketCAN, so this runs in CI on a machine with no CAN stack
@@ -78,7 +77,6 @@ if(BUILD_TESTING)
     pluginlib
     # The fixture builds a node to hand ResourceManager a clock and a logger.
     rclcpp
-    ros2_control_test_assets
   )
 endif()
 

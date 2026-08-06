@@ -20,8 +20,68 @@
 namespace lunabot_hardware_test
 {
 
-// Minimal but structurally complete: ros2_control_test_assets supplies the
-// URDF head and tail, so only the <ros2_control> block varies between cases.
+// The URDF head and tail these blocks get wrapped in.
+//
+// These used to come from ros2_control_test_assets::urdf_head, and that is
+// what broke the whole suite: ros2_control cross-checks every <joint> in the
+// <ros2_control> block against the joints of the URDF proper, and the stock
+// test asset describes a two-joint arm called joint1/joint2. Every case here
+// died in the parser with
+//
+//   C++ exception with description "Joint 'front_left_wheel_joint' not found
+//   in URDF" thrown in the test body
+//
+// before the plugin was reached at all. So the head below is ours: a
+// four-wheel base carrying exactly the joint names the <ros2_control> blocks
+// claim. Wheel geometry is deliberately not realistic -- lunabot_description
+// owns the real numbers, and this test is about the plugin's contract with
+// ros2_control, not about the robot's dimensions.
+
+const auto kUrdfHead =
+  R"(<?xml version="1.0" encoding="utf-8"?>
+<robot name="lunabot_test">
+  <link name="base_link"/>
+
+  <link name="front_left_wheel"/>
+  <joint name="front_left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="front_left_wheel"/>
+    <origin xyz="0.2 0.25 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="front_right_wheel"/>
+  <joint name="front_right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="front_right_wheel"/>
+    <origin xyz="0.2 -0.25 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="rear_left_wheel"/>
+  <joint name="rear_left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="rear_left_wheel"/>
+    <origin xyz="-0.2 0.25 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="rear_right_wheel"/>
+  <joint name="rear_right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="rear_right_wheel"/>
+    <origin xyz="-0.2 -0.25 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+)";
+
+const auto kUrdfTail =
+  R"(
+</robot>
+)";
+
+// Minimal but structurally complete: only the <ros2_control> block varies
+// between cases.
 
 const auto kValidSystem =
   R"(

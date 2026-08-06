@@ -17,18 +17,20 @@
 
 #include <gmock/gmock.h>
 
+#include <exception>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "hardware_interface/resource_manager.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "ros2_control_test_assets/descriptions.hpp"
 #include "test_assets.hpp"
 
 using lunabot_hardware_test::kDuplicateCanIds;
 using lunabot_hardware_test::kMissingCanId;
 using lunabot_hardware_test::kMissingPositionState;
+using lunabot_hardware_test::kUrdfHead;
+using lunabot_hardware_test::kUrdfTail;
 using lunabot_hardware_test::kValidSystem;
 using lunabot_hardware_test::kWrongCommandInterface;
 
@@ -37,8 +39,7 @@ namespace
 
 std::string wrap(const std::string & ros2_control_block)
 {
-  return ros2_control_test_assets::urdf_head + ros2_control_block +
-         ros2_control_test_assets::urdf_tail;
+  return kUrdfHead + ros2_control_block + kUrdfTail;
 }
 
 }  // namespace
@@ -60,11 +61,25 @@ protected:
 
   // load_and_initialize_components parses the description and runs on_init on
   // each component, which is exactly the part of the real hardware path that
-  // can be covered without a CAN bus. It REPORTS failure rather than throwing
-  // it -- see the note on the rejects_* tests below.
+  // can be covered without a CAN bus.
+  //
+  // It reports an on_init failure by returning false, but the URDF parsing
+  // that runs first THROWS. Which of the two refuses a given bad description
+  // is an implementation detail of ros2_control -- one that has already moved
+  // twice inside Jazzy -- and the rejects_* tests below care only that it is
+  // refused. So collapse both into false here rather than writing each test
+  // against whichever layer happens to catch it today.
+  //
+  // This cannot hide a broken fixture: a mistake in kUrdfHead would make
+  // plugin_loads_from_a_valid_description fail, since it shares the head.
   bool load(const std::string & ros2_control_block)
   {
-    return rm_->load_and_initialize_components(wrap(ros2_control_block));
+    try {
+      return rm_->load_and_initialize_components(wrap(ros2_control_block));
+    } catch (const std::exception & ex) {
+      RCLCPP_INFO(node_->get_logger(), "description refused: %s", ex.what());
+      return false;
+    }
   }
 
   rclcpp::Node::SharedPtr node_;
