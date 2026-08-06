@@ -23,7 +23,6 @@
 
 #include "hardware_interface/resource_manager.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "ros2_control_test_assets/descriptions.hpp"
 #include "test_assets.hpp"
 
 using lunabot_hardware_test::kDuplicateCanIds;
@@ -35,10 +34,12 @@ using lunabot_hardware_test::kWrongCommandInterface;
 namespace
 {
 
+// The URDF the block is wrapped in has to declare the same joints the block
+// names: ResourceManager cross-checks them and throws "Joint '...' not found
+// in URDF" before the plugin is ever loaded. See test_assets.hpp.
 std::string wrap(const std::string & ros2_control_block)
 {
-  return ros2_control_test_assets::urdf_head + ros2_control_block +
-         ros2_control_test_assets::urdf_tail;
+  return lunabot_hardware_test::kUrdfHead + ros2_control_block + lunabot_hardware_test::kUrdfTail;
 }
 
 }  // namespace
