@@ -69,9 +69,10 @@ If you re-add `ament_flake8`, you are signing up to reconcile two style systems.
 # https://opensource.org/licenses/MIT.
 ```
 
-Five lines rather than the one this used to be, and the wording is not adjustable. `ament_copyright`
-does not check that a header *mentions* a license; it matches the text against templates registered
-as Python entry points by the `ament_copyright` package itself, so a workspace cannot add its own.
+Use `//` instead of `#` in C++. Otherwise copy it verbatim: five lines rather than the one this
+used to be, and the wording is not adjustable. `ament_copyright` does not check that a header
+*mentions* a license; it matches the text against templates registered as Python entry points by
+the `ament_copyright` package itself, so a workspace cannot add its own.
 The single line `# Copyright 2027 Lunabot. Licensed under the MIT License.` matched nothing, which
 made `license=<unknown>` — an error — on **every source file in the workspace**, 40 of the 88 test
 failures on the commit before this one.

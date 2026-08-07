@@ -24,9 +24,15 @@ repositories:
     version: master
 
   # Hardware interface that bridges ros2_control to a simulator over topics.
-  # VERIFY: check for a binary first --
-  #   apt-cache policy ros-jazzy-topic-based-ros2-control
-  # If it exists, delete this entry and let rosdep handle it.
+  #
+  # This entry is REQUIRED, not a convenience: the package has no Jazzy
+  # release. It does not appear in jazzy/distribution.yaml in ros/rosdistro,
+  # so `apt-cache policy ros-jazzy-topic-based-ros2-control` finds nothing and
+  # rosdep cannot resolve it. It does build from source against Jazzy -- CI
+  # builds it on every run through this file.
+  #
+  # Recheck at the start of a distro cycle rather than per-PR; if it is ever
+  # released, delete this entry and let rosdep handle it.
   topic_based_ros2_control:
     type: git
     url: https://github.com/PickNikRobotics/topic_based_ros2_control.git

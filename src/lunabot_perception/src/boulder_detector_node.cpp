@@ -6,6 +6,8 @@
 
 #include "lunabot_perception/boulder_detector_node.hpp"
 
+// PCL before the standard library: cpplint reads an angle-bracket `.h` as a C
+// system header and wants those first. See cloud_segmentation.hpp.
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <memory>

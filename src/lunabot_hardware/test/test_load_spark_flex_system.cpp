@@ -17,6 +17,7 @@
 
 #include <gmock/gmock.h>
 
+#include <exception>
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,6 +29,8 @@
 using lunabot_hardware_test::kDuplicateCanIds;
 using lunabot_hardware_test::kMissingCanId;
 using lunabot_hardware_test::kMissingPositionState;
+using lunabot_hardware_test::kUrdfHead;
+using lunabot_hardware_test::kUrdfTail;
 using lunabot_hardware_test::kValidSystem;
 using lunabot_hardware_test::kWrongCommandInterface;
 
@@ -39,7 +42,7 @@ namespace
 // in URDF" before the plugin is ever loaded. See test_assets.hpp.
 std::string wrap(const std::string & ros2_control_block)
 {
-  return lunabot_hardware_test::kUrdfHead + ros2_control_block + lunabot_hardware_test::kUrdfTail;
+  return kUrdfHead + ros2_control_block + kUrdfTail;
 }
 
 }  // namespace
@@ -61,11 +64,25 @@ protected:
 
   // load_and_initialize_components parses the description and runs on_init on
   // each component, which is exactly the part of the real hardware path that
-  // can be covered without a CAN bus. It REPORTS failure rather than throwing
-  // it -- see the note on the rejects_* tests below.
+  // can be covered without a CAN bus.
+  //
+  // It reports an on_init failure by returning false, but the URDF parsing
+  // that runs first THROWS. Which of the two refuses a given bad description
+  // is an implementation detail of ros2_control -- one that has already moved
+  // twice inside Jazzy -- and the rejects_* tests below care only that it is
+  // refused. So collapse both into false here rather than writing each test
+  // against whichever layer happens to catch it today.
+  //
+  // This cannot hide a broken fixture: a mistake in kUrdfHead would make
+  // plugin_loads_from_a_valid_description fail, since it shares the head.
   bool load(const std::string & ros2_control_block)
   {
-    return rm_->load_and_initialize_components(wrap(ros2_control_block));
+    try {
+      return rm_->load_and_initialize_components(wrap(ros2_control_block));
+    } catch (const std::exception & ex) {
+      RCLCPP_INFO(node_->get_logger(), "description refused: %s", ex.what());
+      return false;
+    }
   }
 
   rclcpp::Node::SharedPtr node_;
@@ -108,11 +125,11 @@ TEST_F(SparkFlexSystemTest, does_not_export_a_position_command)
 }
 
 // The four rejects_* tests below assert on a RETURN VALUE, not on an
-// exception. load_and_initialize_components catches whatever on_init raises
-// and reports false, so EXPECT_THROW here would fail even though the
-// component correctly refused the description. What is being pinned is that
-// each bad description is refused at all -- every one of them is a fault that
-// otherwise presents as a wheel that does not turn, with nothing in the log.
+// exception -- load() above collapses both refusal paths into false, so
+// EXPECT_THROW here would fail on a description that was correctly refused
+// through the other one. What is being pinned is that each bad description is
+// refused at all -- every one of them is a fault that otherwise presents as a
+// wheel that does not turn, with nothing in the log.
 
 TEST_F(SparkFlexSystemTest, rejects_duplicate_can_ids)
 {

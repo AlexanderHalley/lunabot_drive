@@ -29,12 +29,29 @@ ros2 launch lunabot_bringup sim.launch.py
 
 `sim.launch.py` blocks on `/clock` before starting anything, because the failure otherwise is
 silent: with `use_sim_time:=true` and no `/clock`, **every ROS node blocks at time zero** — no
-error, no log line, just a stack that appears hung. If that wait times out, Isaac is not running.
+error, no log line, just a stack that appears hung. If the wait times out, the launch says so and
+**shuts down rather than starting the stack**, because a stack brought up without `/clock` is that
+same silent hang.
+
+Two arguments control it. `clock_timeout` defaults to 120 seconds — raise it for a first run on a
+cold machine, where Isaac compiles shaders and can take several minutes:
+
+```bash
+ros2 launch lunabot_bringup sim.launch.py clock_timeout:=600
+ros2 launch lunabot_bringup sim.launch.py wait_for_clock:=false   # skip the barrier entirely
+```
 
 Set `ISAAC_SIM_PATH` if the script cannot find `python.sh`:
 
 ```bash
 export ISAAC_SIM_PATH=$HOME/isaacsim
+```
+
+**Before the first run, import the source dependencies** — `topic_based_ros2_control` has no Jazzy
+binary, and `hw:=sim` selects it as the hardware plugin:
+
+```bash
+vcs import src < lunabot.repos && colcon build
 ```
 
 ---
