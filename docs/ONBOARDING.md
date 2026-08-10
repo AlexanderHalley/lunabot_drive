@@ -145,8 +145,10 @@ Search the tree for `PLACEHOLDER`, `TODO(2027)` and `VERIFY`. Those markers are 
 they are deliberately noisy. The big ones:
 
 - **Every robot dimension is a placeholder.** Measure the 2027 chassis.
-- **The boulder detector is a geometric stub** — it finds lumps above a flat plane, cannot tell a
-  boulder from a berm, and reports a constant score, not a confidence.
+- **The boulder detector is a geometric stub** — it finds lumps above the ground plane, cannot tell
+  a boulder from a berm, and reports a constant score, not a confidence. The plane itself is now
+  fitted with RANSAC rather than assumed level, so slopes and a wrong `ground_z` are handled; ground
+  that is not planar at all still is not.
 - **cuVSLAM is scaffolding.** Blocked on the compute decision (Jetson or Pi) and on an Isaac ROS
   release supporting Jazzy.
 - **Craters are not simulated or detected.** The interfaces that will carry them exist and are

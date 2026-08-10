@@ -127,6 +127,34 @@ segmentation stage emits **three** clouds — `ground`, `above_ground`, `below_g
 the obvious two: boulders are the above-ground clusters, craters are the below-ground ones. That
 three-way split costs nothing today and is the difference between adding craters and rewriting.
 
+### The ground plane is fitted, not assumed
+
+The three clouds above are split by **perpendicular distance to a RANSAC-fitted plane**, not by a
+threshold on `z`. The flat threshold this started as needed the ground to be level and needed
+`ground_z` to be right; on a 10° slope it calls everything past the first 30 cm an obstacle, which
+is a floor-wide false positive rather than a degradation.
+
+The fit is constrained rather than free — roughly horizontal, well supported, and near the expected
+height — because an *unconstrained* plane fit fails worse than no fit at all: the flat top of a
+large rock is a perfectly good plane, and accepting it makes the real ground an obstacle and the
+rock the floor. Each of the three constraints has its own parameter in
+`config/boulder_detector.yaml`, because each fails for a different reason and is fixed by a
+different number.
+
+When a fit is rejected the detector falls back to the level plane at `ground_z` — the old
+behaviour, which is still correct on flat ground — and warns. It never silently degrades: the
+startup log says whether fitting is on, `/perception/debug/markers` draws the plane it is actually
+using (green when fitted, grey when fallen back), and a throttled warning fires on every frame that
+falls back.
+
+`ground_z` survives as the prior rather than the threshold. It is what the fit is sanity-checked
+against and what the fallback uses, so it still wants to be roughly `-wheel_radius` — but being a
+few centimetres out no longer breaks anything, which it used to.
+
+What this does **not** fix: one plane is one plane. A crest, a dip, or a berm crossing the region of
+interest still splits badly, and the bounding boxes stay axis-aligned in `base_link`, so on a slope
+they are bigger than the rock inside them. Both want different machinery, not a better plane.
+
 ### The odometry is known-bad, on purpose, for now
 
 The 2026 drivetrain has no encoders. `SparkFlexSystem` therefore runs with
