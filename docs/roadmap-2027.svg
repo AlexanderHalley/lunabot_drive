@@ -1,0 +1,1056 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3331" height="1458" viewBox="0 -206 3331 1458" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<title>Lunabot 2027 - software roadmap</title>
+<rect x="0" y="-206" width="3331" height="1458" fill="#fcfcfb"/>
+<text x="34" y="-154" font-size="34" font-weight="700" fill="#0b0b0b">Lunabot &#8212; the software road to Lunabotics 2027</text>
+<text x="34" y="-124" font-size="16" fill="#52514e">Every piece of software that has to exist between today and competition week. Read it left to right; an arrow means the thing it points at cannot start until the thing behind it is done.</text>
+<text x="34" y="-101" font-size="13.5" fill="#898781">Branch <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">develop-2027</tspan> as of 10 August 2026 &#183; the stack builds and drives on mock hardware; Isaac has never been run and no rover has ever followed a path.</text>
+<line x1="34" y1="-80" x2="3297" y2="-80" stroke="#dcdbd4" stroke-width="1"/>
+<rect x="34" y="-62" width="30" height="19" rx="5" fill="#d5e8d4" stroke="#82b366" stroke-width="1.6"/>
+<text x="72" y="-53" font-size="12.5" font-weight="700" fill="#0b0b0b">work</text>
+<text x="72" y="-38" font-size="11.5" fill="#898781">a job somebody does</text>
+<rect x="235.7" y="-62" width="30" height="19" rx="5" fill="#d5e8d4" stroke="#d6b656" stroke-width="2.6"/>
+<text x="273.7" y="-53" font-size="12.5" font-weight="700" fill="#0b0b0b">GATE</text>
+<text x="273.7" y="-38" font-size="11.5" fill="#898781">proof that unblocks what follows</text>
+<rect x="519.3" y="-62" width="30" height="19" rx="5" fill="#fff2cc" stroke="#d6b656" stroke-width="2.0"/>
+<text x="557.3" y="-53" font-size="12.5" font-weight="700" fill="#0b0b0b">YOU</text>
+<text x="557.3" y="-38" font-size="11.5" fill="#898781">only a human closes it</text>
+<rect x="739.9" y="-62" width="30" height="19" rx="5" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2.0"/>
+<text x="777.9" y="-53" font-size="12.5" font-weight="700" fill="#0b0b0b">DELIVER</text>
+<text x="777.9" y="-38" font-size="11.5" fill="#898781">an artifact that leaves the team</text>
+<rect x="1023.5" y="-62" width="30" height="19" rx="5" fill="#e1d5e7" stroke="#9673a6" stroke-width="2.0"/>
+<text x="1061.5" y="-53" font-size="12.5" font-weight="700" fill="#0b0b0b">date</text>
+<text x="1061.5" y="-38" font-size="11.5" fill="#898781">fixed, not ours to move</text>
+<rect x="1250.4" y="-62" width="30" height="19" rx="5" fill="#f5f5f5" stroke="#909090" stroke-width="1.6"/>
+<text x="1288.4" y="-53" font-size="12.5" font-weight="700" fill="#0b0b0b">input</text>
+<text x="1288.4" y="-38" font-size="11.5" fill="#898781">state, or something we wait on</text>
+
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(33.84 1132.2)">
+<title>lunabot2027</title>
+
+<!-- now -->
+<g id="node1" class="node">
+<title>now</title>
+<path fill="#f5f5f5" stroke="#909090" stroke-width="1.6" d="M194,-519.37C194,-519.37 12,-519.37 12,-519.37 6,-519.37 0,-513.37 0,-507.37 0,-507.37 0,-484.36 0,-484.36 0,-478.36 6,-472.36 12,-472.36 12,-472.36 194,-472.36 194,-472.36 200,-472.36 206,-478.36 206,-484.36 206,-484.36 206,-507.37 206,-507.37 206,-513.37 200,-519.37 194,-519.37"/>
+<text text-anchor="start" x="39.5" y="-504.21" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">TODAY · 10 Aug 2026</text>
+<text text-anchor="start" x="12" y="-493.71" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">stack builds, mock + sim CI green,</text>
+<text text-anchor="start" x="14" y="-483.21" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">no rover has ever followed a path</text>
+</g>
+<!-- y_compute -->
+<g id="node8" class="node">
+<title>y_compute</title>
+<path fill="#fff2cc" stroke="#d6b656" stroke-width="1.6" d="M412.5,-764.86C412.5,-764.86 273.5,-764.86 273.5,-764.86 267.5,-764.86 261.5,-758.86 261.5,-752.86 261.5,-752.86 261.5,-730.86 261.5,-730.86 261.5,-724.86 267.5,-718.86 273.5,-718.86 273.5,-718.86 412.5,-718.86 412.5,-718.86 418.5,-718.86 424.5,-724.86 424.5,-730.86 424.5,-730.86 424.5,-752.86 424.5,-752.86 424.5,-758.86 418.5,-764.86 412.5,-764.86"/>
+<text text-anchor="start" x="273.5" y="-749.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">YOU:</text>
+<text text-anchor="start" x="303.5" y="-749.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> pick the compute —</text>
+<text text-anchor="start" x="308.5" y="-738.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">Jetson or Pi 5</text>
+<text text-anchor="start" x="289.5" y="-729.66" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.00" fill="#1a1a1a">gates cuVSLAM entirely</text>
+</g>
+<!-- now&#45;&gt;y_compute -->
+<g id="edge4" class="edge">
+<title>now&#45;&gt;y_compute</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M121.78,-519.38C146.98,-552.1 195.24,-612.55 242,-658.86 262.16,-678.83 286.65,-699.21 306.34,-714.78"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="304.99,-716.6 311.5,-718.83 307.8,-713.03 304.99,-716.6"/>
+</g>
+<!-- y_tier -->
+<g id="node9" class="node">
+<title>y_tier</title>
+<path fill="#fff2cc" stroke="#d6b656" stroke-width="1.6" d="M907,-117.36C907,-117.36 753,-117.36 753,-117.36 747,-117.36 741,-111.36 741,-105.36 741,-105.36 741,-92.36 741,-92.36 741,-86.36 747,-80.36 753,-80.36 753,-80.36 907,-80.36 907,-80.36 913,-80.36 919,-86.36 919,-92.36 919,-92.36 919,-105.36 919,-105.36 919,-111.36 913,-117.36 907,-117.36"/>
+<text text-anchor="start" x="753" y="-101.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">YOU:</text>
+<text text-anchor="start" x="783" y="-101.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> pick the autonomy tier</text>
+<text text-anchor="start" x="757.5" y="-91.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">we are actually building for</text>
+</g>
+<!-- now&#45;&gt;y_tier -->
+<g id="edge5" class="edge">
+<title>now&#45;&gt;y_tier</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M127.33,-472.24C153.57,-446.54 198.25,-405.34 242,-376.86 423.85,-258.51 663.96,-161.02 772.01,-119.89"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="773.04,-121.93 778.31,-117.5 771.42,-117.68 773.04,-121.93"/>
+</g>
+<!-- s_probe -->
+<g id="node13" class="node">
+<title>s_probe</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M408.5,-920.36C408.5,-920.36 277.5,-920.36 277.5,-920.36 271.5,-920.36 265.5,-914.36 265.5,-908.36 265.5,-908.36 265.5,-895.36 265.5,-895.36 265.5,-889.36 271.5,-883.36 277.5,-883.36 277.5,-883.36 408.5,-883.36 408.5,-883.36 414.5,-883.36 420.5,-889.36 420.5,-895.36 420.5,-895.36 420.5,-908.36 420.5,-908.36 420.5,-914.36 414.5,-920.36 408.5,-920.36"/>
+<text text-anchor="start" x="277.5" y="-904.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">run </text>
+<text text-anchor="start" x="299.5" y="-904.96" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">probe_isaac_api.sh</text>
+<text text-anchor="start" x="288.5" y="-894.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">on the GPU machine</text>
+</g>
+<!-- now&#45;&gt;s_probe -->
+<g id="edge1" class="edge">
+<title>now&#45;&gt;s_probe</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M112.8,-519.43C132.26,-570.16 182,-692.56 242,-784.86 264.74,-819.86 296.96,-855.7 318.62,-878.33"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="317.2,-880.13 323.35,-883.24 320.47,-876.98 317.2,-880.13"/>
+</g>
+<!-- p_ransac -->
+<g id="node40" class="node">
+<title>p_ransac</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1136,-477.86C1136,-477.86 971,-477.86 971,-477.86 965,-477.86 959,-471.86 959,-465.86 959,-465.86 959,-449.86 959,-449.86 959,-443.86 965,-437.86 971,-437.86 971,-437.86 1136,-437.86 1136,-437.86 1142,-437.86 1148,-443.86 1148,-449.86 1148,-449.86 1148,-465.86 1148,-465.86 1148,-471.86 1142,-477.86 1136,-477.86"/>
+<text text-anchor="start" x="971" y="-461.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">RANSAC ground plane replaces</text>
+<text text-anchor="start" x="1003" y="-449.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">the flat&#45;height stub</text>
+</g>
+<!-- now&#45;&gt;p_ransac -->
+<g id="edge2" class="edge">
+<title>now&#45;&gt;p_ransac</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M206.41,-491.76C389.53,-484.42 770.86,-469.15 952.34,-461.88"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="952.58,-464.14 958.98,-461.61 952.39,-459.6 952.58,-464.14"/>
+</g>
+<!-- n_ver -->
+<g id="node44" class="node">
+<title>n_ver</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M432,-433.36C432,-433.36 254,-433.36 254,-433.36 248,-433.36 242,-427.36 242,-421.36 242,-421.36 242,-408.36 242,-408.36 242,-402.36 248,-396.36 254,-396.36 254,-396.36 432,-396.36 432,-396.36 438,-396.36 444,-402.36 444,-408.36 444,-408.36 444,-421.36 444,-421.36 444,-427.36 438,-433.36 432,-433.36"/>
+<text text-anchor="start" x="254" y="-417.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">Nav2 VERIFY sweep: executables,</text>
+<text text-anchor="start" x="276.5" y="-407.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">enable_stamped_cmd_vel</text>
+</g>
+<!-- now&#45;&gt;n_ver -->
+<g id="edge3" class="edge">
+<title>now&#45;&gt;n_ver</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M173.16,-472.33C207.26,-460.72 248.02,-446.85 280.95,-435.64"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="282,-437.69 287.42,-433.44 280.54,-433.38 282,-437.69"/>
+</g>
+<!-- gpu -->
+<g id="node2" class="node">
+<title>gpu</title>
+<path fill="#f5f5f5" stroke="#909090" stroke-width="1.6" d="M179.5,-921.86C179.5,-921.86 26.5,-921.86 26.5,-921.86 20.5,-921.86 14.5,-915.86 14.5,-909.86 14.5,-909.86 14.5,-893.86 14.5,-893.86 14.5,-887.86 20.5,-881.86 26.5,-881.86 26.5,-881.86 179.5,-881.86 179.5,-881.86 185.5,-881.86 191.5,-887.86 191.5,-893.86 191.5,-893.86 191.5,-909.86 191.5,-909.86 191.5,-915.86 185.5,-921.86 179.5,-921.86"/>
+<text text-anchor="start" x="26.5" y="-905.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">the GPU / Isaac Sim machine</text>
+<text text-anchor="start" x="72.5" y="-893.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">is available</text>
+</g>
+<!-- gpu&#45;&gt;s_probe -->
+<g id="edge6" class="edge">
+<title>gpu&#45;&gt;s_probe</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M191.61,-901.86C213.47,-901.86 236.85,-901.86 258.51,-901.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="258.67,-904.14 265.17,-901.86 258.67,-899.59 258.67,-904.14"/>
+</g>
+<!-- chassis -->
+<g id="node3" class="node">
+<title>chassis</title>
+<path fill="#f5f5f5" stroke="#909090" stroke-width="1.6" d="M406.5,-638.86C406.5,-638.86 279.5,-638.86 279.5,-638.86 273.5,-638.86 267.5,-632.86 267.5,-626.86 267.5,-626.86 267.5,-610.86 267.5,-610.86 267.5,-604.86 273.5,-598.86 279.5,-598.86 279.5,-598.86 406.5,-598.86 406.5,-598.86 412.5,-598.86 418.5,-604.86 418.5,-610.86 418.5,-610.86 418.5,-626.86 418.5,-626.86 418.5,-632.86 412.5,-638.86 406.5,-638.86"/>
+<text text-anchor="start" x="279.5" y="-622.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">2027 chassis fabricated</text>
+<text text-anchor="start" x="299" y="-610.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">and measurable</text>
+</g>
+<!-- h_meas -->
+<g id="node23" class="node">
+<title>h_meas</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M657,-642.37C657,-642.37 525,-642.37 525,-642.37 519,-642.37 513,-636.37 513,-630.37 513,-630.37 513,-607.36 513,-607.36 513,-601.36 519,-595.36 525,-595.36 525,-595.36 657,-595.36 657,-595.36 663,-595.36 669,-601.36 669,-607.36 669,-607.36 669,-630.37 669,-630.37 669,-636.37 663,-642.37 657,-642.37"/>
+<text text-anchor="start" x="525" y="-627.21" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">measure the chassis into</text>
+<text text-anchor="start" x="542.5" y="-616.71" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">properties.xacro</text>
+<text text-anchor="start" x="530.5" y="-606.21" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">and </text>
+<text text-anchor="start" x="554.5" y="-606.21" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">controllers.yaml</text>
+</g>
+<!-- chassis&#45;&gt;h_meas -->
+<g id="edge19" class="edge">
+<title>chassis&#45;&gt;h_meas</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M418.81,-618.86C446.42,-618.86 477.88,-618.86 506.24,-618.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="506.49,-621.14 512.99,-618.86 506.49,-616.59 506.49,-621.14"/>
+</g>
+<!-- encoders -->
+<g id="node4" class="node">
+<title>encoders</title>
+<path fill="#f5f5f5" stroke="#909090" stroke-width="1.6" d="M873,-757.86C873,-757.86 787,-757.86 787,-757.86 781,-757.86 775,-751.86 775,-745.86 775,-745.86 775,-729.86 775,-729.86 775,-723.86 781,-717.86 787,-717.86 787,-717.86 873,-717.86 873,-717.86 879,-717.86 885,-723.86 885,-729.86 885,-729.86 885,-745.86 885,-745.86 885,-751.86 879,-757.86 873,-757.86"/>
+<text text-anchor="start" x="789.5" y="-741.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">encoders fitted</text>
+<text text-anchor="start" x="787" y="-729.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">to the drivetrain</text>
+</g>
+<!-- h_fb -->
+<g id="node25" class="node">
+<title>h_fb</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1128,-717.36C1128,-717.36 979,-717.36 979,-717.36 973,-717.36 967,-711.36 967,-705.36 967,-705.36 967,-692.36 967,-692.36 967,-686.36 973,-680.36 979,-680.36 979,-680.36 1128,-680.36 1128,-680.36 1134,-680.36 1140,-686.36 1140,-692.36 1140,-692.36 1140,-705.36 1140,-705.36 1140,-711.36 1134,-717.36 1128,-717.36"/>
+<text text-anchor="start" x="979" y="-701.96" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">use_motor_feedback: true</text>
+<text text-anchor="start" x="1124" y="-701.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">,</text>
+<text text-anchor="start" x="993" y="-691.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">publish </text>
+<text text-anchor="start" x="1035" y="-691.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">/drive/status</text>
+</g>
+<!-- encoders&#45;&gt;h_fb -->
+<g id="edge21" class="edge">
+<title>encoders&#45;&gt;h_fb</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M885.18,-728.32C907.85,-724.33 934.85,-719.58 960.46,-715.07"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="960.93,-717.3 966.94,-713.93 960.15,-712.81 960.93,-717.3"/>
+</g>
+<!-- l_imu -->
+<g id="node35" class="node">
+<title>l_imu</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1117.5,-795.36C1117.5,-795.36 989.5,-795.36 989.5,-795.36 983.5,-795.36 977.5,-789.36 977.5,-783.36 977.5,-783.36 977.5,-770.36 977.5,-770.36 977.5,-764.36 983.5,-758.36 989.5,-758.36 989.5,-758.36 1117.5,-758.36 1117.5,-758.36 1123.5,-758.36 1129.5,-764.36 1129.5,-770.36 1129.5,-770.36 1129.5,-783.36 1129.5,-783.36 1129.5,-789.36 1123.5,-795.36 1117.5,-795.36"/>
+<text text-anchor="start" x="991.5" y="-779.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">characterise the IMU —</text>
+<text text-anchor="start" x="989.5" y="-769.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">real noise into </text>
+<text text-anchor="start" x="1068.5" y="-769.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">ekf.yaml</text>
+</g>
+<!-- encoders&#45;&gt;l_imu -->
+<g id="edge34" class="edge">
+<title>encoders&#45;&gt;l_imu</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M885.18,-747.4C910.9,-751.93 942.19,-757.44 970.71,-762.46"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="970.34,-764.71 977.13,-763.59 971.13,-760.23 970.34,-764.71"/>
+</g>
+<!-- d_guide -->
+<g id="node5" class="node">
+<title>d_guide</title>
+<path fill="#e1d5e7" stroke="#9673a6" stroke-width="1.6" d="M1127,-324.37C1127,-324.37 980,-324.37 980,-324.37 974,-324.37 968,-318.37 968,-312.37 968,-312.37 968,-289.36 968,-289.36 968,-283.36 974,-277.36 980,-277.36 980,-277.36 1127,-277.36 1127,-277.36 1133,-277.36 1139,-283.36 1139,-289.36 1139,-289.36 1139,-312.37 1139,-312.37 1139,-318.37 1133,-324.37 1127,-324.37"/>
+<text text-anchor="start" x="1019.5" y="-309.21" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">3 SEP 2026</text>
+<text text-anchor="start" x="994" y="-298.71" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">guidebook released —</text>
+<text text-anchor="start" x="980" y="-288.21" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">the arena spec finally exists</text>
+</g>
+<!-- s_arena -->
+<g id="node17" class="node">
+<title>s_arena</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1371,-318.86C1371,-318.86 1256,-318.86 1256,-318.86 1250,-318.86 1244,-312.86 1244,-306.86 1244,-306.86 1244,-290.86 1244,-290.86 1244,-284.86 1250,-278.86 1256,-278.86 1256,-278.86 1371,-278.86 1371,-278.86 1377,-278.86 1383,-284.86 1383,-290.86 1383,-290.86 1383,-306.86 1383,-306.86 1383,-312.86 1377,-318.86 1371,-318.86"/>
+<text text-anchor="start" x="1262.5" y="-302.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">arena rebuilt to the</text>
+<text text-anchor="start" x="1256" y="-290.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">2027 guidebook spec</text>
+</g>
+<!-- d_guide&#45;&gt;s_arena -->
+<g id="edge11" class="edge">
+<title>d_guide&#45;&gt;s_arena</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1139.34,-300.21C1170.88,-299.96 1206.42,-299.69 1237.07,-299.45"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1237.45,-301.72 1243.93,-299.4 1237.42,-297.17 1237.45,-301.72"/>
+</g>
+<!-- d_teams -->
+<g id="node6" class="node">
+<title>d_teams</title>
+<path fill="#e1d5e7" stroke="#9673a6" stroke-width="1.6" d="M2313.5,-1022.37C2313.5,-1022.37 2165.5,-1022.37 2165.5,-1022.37 2159.5,-1022.37 2153.5,-1016.37 2153.5,-1010.37 2153.5,-1010.37 2153.5,-987.36 2153.5,-987.36 2153.5,-981.36 2159.5,-975.36 2165.5,-975.36 2165.5,-975.36 2313.5,-975.36 2313.5,-975.36 2319.5,-975.36 2325.5,-981.36 2325.5,-987.36 2325.5,-987.36 2325.5,-1010.37 2325.5,-1010.37 2325.5,-1016.37 2319.5,-1022.37 2313.5,-1022.37"/>
+<text text-anchor="start" x="2201" y="-1007.21" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">14 DEC 2026</text>
+<text text-anchor="start" x="2191" y="-996.71" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">teams announced</text>
+<text text-anchor="start" x="2165.5" y="-986.21" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">(design&#45;review down&#45;select)</text>
+</g>
+<!-- del_sep -->
+<g id="node60" class="node">
+<title>del_sep</title>
+<path fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" d="M2546,-909.36C2546,-909.36 2375,-909.36 2375,-909.36 2369,-909.36 2363,-903.36 2363,-897.36 2363,-897.36 2363,-884.36 2363,-884.36 2363,-878.36 2369,-872.36 2375,-872.36 2375,-872.36 2546,-872.36 2546,-872.36 2552,-872.36 2558,-878.36 2558,-884.36 2558,-884.36 2558,-897.36 2558,-897.36 2558,-903.36 2552,-909.36 2546,-909.36"/>
+<text text-anchor="start" x="2375" y="-893.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">DELIVER:</text>
+<text text-anchor="start" x="2431" y="-893.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> Systems Engineering</text>
+<text text-anchor="start" x="2403" y="-883.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">Paper — 30 Mar 2027</text>
+</g>
+<!-- d_teams&#45;&gt;del_sep -->
+<g id="edge77" class="edge">
+<title>d_teams&#45;&gt;del_sep</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2288.29,-975.3C2326.24,-956.58 2378.88,-930.62 2415.74,-912.44"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2417.15,-914.29 2421.97,-909.37 2415.14,-910.21 2417.15,-914.29"/>
+</g>
+<!-- d_comp -->
+<g id="node7" class="node">
+<title>d_comp</title>
+<path fill="#e1d5e7" stroke="#9673a6" stroke-width="3" d="M3251,-790.86C3251,-790.86 3060,-790.86 3060,-790.86 3054,-790.86 3048,-784.86 3048,-778.86 3048,-778.86 3048,-756.86 3048,-756.86 3048,-750.86 3054,-744.86 3060,-744.86 3060,-744.86 3251,-744.86 3251,-744.86 3257,-744.86 3263,-750.86 3263,-756.86 3263,-756.86 3263,-778.86 3263,-778.86 3263,-784.86 3257,-790.86 3251,-790.86"/>
+<text text-anchor="start" x="3060" y="-775.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">MAY 2027 · COMPETITION WEEK</text>
+<text text-anchor="start" x="3068.5" y="-764.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">Center for Space Education, KSC</text>
+<text text-anchor="start" x="3087.5" y="-755.66" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.00" fill="#1a1a1a">exact dates not yet published</text>
+</g>
+<!-- l_cu -->
+<g id="node32" class="node">
+<title>l_cu</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M666.5,-761.86C666.5,-761.86 515.5,-761.86 515.5,-761.86 509.5,-761.86 503.5,-755.86 503.5,-749.86 503.5,-749.86 503.5,-733.86 503.5,-733.86 503.5,-727.86 509.5,-721.86 515.5,-721.86 515.5,-721.86 666.5,-721.86 666.5,-721.86 672.5,-721.86 678.5,-727.86 678.5,-733.86 678.5,-733.86 678.5,-749.86 678.5,-749.86 678.5,-755.86 672.5,-761.86 666.5,-761.86"/>
+<text text-anchor="start" x="515.5" y="-745.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">cuVSLAM: does NVIDIA&#39;s apt</text>
+<text text-anchor="start" x="525.5" y="-733.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">carry a Jazzy build at all?</text>
+</g>
+<!-- y_compute&#45;&gt;l_cu -->
+<g id="edge30" class="edge">
+<title>y_compute&#45;&gt;l_cu</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M424.55,-741.86C447.6,-741.86 472.93,-741.86 496.68,-741.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="496.83,-744.14 503.33,-741.86 496.83,-739.59 496.83,-744.14"/>
+</g>
+<!-- del_pmp -->
+<g id="node58" class="node">
+<title>del_pmp</title>
+<path fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" d="M690,-839.36C690,-839.36 492,-839.36 492,-839.36 486,-839.36 480,-833.36 480,-827.36 480,-827.36 480,-814.36 480,-814.36 480,-808.36 486,-802.36 492,-802.36 492,-802.36 690,-802.36 690,-802.36 696,-802.36 702,-808.36 702,-814.36 702,-814.36 702,-827.36 702,-827.36 702,-833.36 696,-839.36 690,-839.36"/>
+<text text-anchor="start" x="492" y="-823.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">DELIVER:</text>
+<text text-anchor="start" x="548" y="-823.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> Project Management Plan,</text>
+<text text-anchor="start" x="503.5" y="-813.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">software sections — 30 Sep 2026</text>
+</g>
+<!-- y_compute&#45;&gt;del_pmp -->
+<g id="edge73" class="edge">
+<title>y_compute&#45;&gt;del_pmp</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M415.81,-764.93C450.66,-776.12 492.18,-789.45 525.94,-800.29"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="525.26,-802.46 532.15,-802.28 526.65,-798.13 525.26,-802.46"/>
+</g>
+<!-- m_pkg -->
+<g id="node50" class="node">
+<title>m_pkg</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1136,-121.86C1136,-121.86 971,-121.86 971,-121.86 965,-121.86 959,-115.86 959,-109.86 959,-109.86 959,-87.86 959,-87.86 959,-81.86 965,-75.86 971,-75.86 971,-75.86 1136,-75.86 1136,-75.86 1142,-75.86 1148,-81.86 1148,-87.86 1148,-87.86 1148,-109.86 1148,-109.86 1148,-115.86 1142,-121.86 1136,-121.86"/>
+<text text-anchor="start" x="971" y="-106.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">new package </text>
+<text text-anchor="start" x="1045" y="-106.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">lunabot_mission</text>
+<text text-anchor="start" x="984" y="-95.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">+ behaviour&#45;tree skeleton</text>
+<text text-anchor="start" x="988.5" y="-86.66" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="9.00" fill="#1a1a1a">nothing like this exists today</text>
+</g>
+<!-- y_tier&#45;&gt;m_pkg -->
+<g id="edge57" class="edge">
+<title>y_tier&#45;&gt;m_pkg</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M919.18,-98.86C929.97,-98.86 941.06,-98.86 952.01,-98.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="952.31,-101.14 958.81,-98.86 952.31,-96.59 952.31,-101.14"/>
+</g>
+<!-- m_tier -->
+<g id="node52" class="node">
+<title>m_tier</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1869,-88.86C1869,-88.86 1714,-88.86 1714,-88.86 1708,-88.86 1702,-82.86 1702,-76.86 1702,-76.86 1702,-60.86 1702,-60.86 1702,-54.86 1708,-48.86 1714,-48.86 1714,-48.86 1869,-48.86 1869,-48.86 1875,-48.86 1881,-54.86 1881,-60.86 1881,-60.86 1881,-76.86 1881,-76.86 1881,-82.86 1875,-88.86 1869,-88.86"/>
+<text text-anchor="start" x="1714" y="-72.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">autonomy tiers mapped onto</text>
+<text text-anchor="start" x="1746.5" y="-60.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">the scoring table</text>
+</g>
+<!-- y_tier&#45;&gt;m_tier -->
+<g id="edge62" class="edge">
+<title>y_tier&#45;&gt;m_tier</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M875.74,-80.35C899.71,-71.3 929.99,-61.23 958,-55.86 1267.28,3.35 1354.9,19.88 1666,-28.86 1688.66,-32.42 1712.83,-39.39 1733.79,-46.54"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1733.3,-48.78 1740.18,-48.76 1734.79,-44.48 1733.3,-48.78"/>
+</g>
+<!-- y_backend -->
+<g id="node10" class="node">
+<title>y_backend</title>
+<path fill="#fff2cc" stroke="#d6b656" stroke-width="1.6" d="M1384.5,-958.36C1384.5,-958.36 1242.5,-958.36 1242.5,-958.36 1236.5,-958.36 1230.5,-952.36 1230.5,-946.36 1230.5,-946.36 1230.5,-933.36 1230.5,-933.36 1230.5,-927.36 1236.5,-921.36 1242.5,-921.36 1242.5,-921.36 1384.5,-921.36 1384.5,-921.36 1390.5,-921.36 1396.5,-927.36 1396.5,-933.36 1396.5,-933.36 1396.5,-946.36 1396.5,-946.36 1396.5,-952.36 1390.5,-958.36 1384.5,-958.36"/>
+<text text-anchor="start" x="1249.5" y="-942.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">YOU:</text>
+<text text-anchor="start" x="1279.5" y="-942.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> sign off one SLAM</text>
+<text text-anchor="start" x="1242.5" y="-932.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">backend and stop hedging</text>
+</g>
+<!-- g_back -->
+<g id="node34" class="node">
+<title>g_back</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M1642.5,-949.36C1642.5,-949.36 1501.5,-949.36 1501.5,-949.36 1495.5,-949.36 1489.5,-943.36 1489.5,-937.36 1489.5,-937.36 1489.5,-924.36 1489.5,-924.36 1489.5,-918.36 1495.5,-912.36 1501.5,-912.36 1501.5,-912.36 1642.5,-912.36 1642.5,-912.36 1648.5,-912.36 1654.5,-918.36 1654.5,-924.36 1654.5,-924.36 1654.5,-937.36 1654.5,-937.36 1654.5,-943.36 1648.5,-949.36 1642.5,-949.36"/>
+<text text-anchor="start" x="1501.5" y="-933.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1537.5" y="-933.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> one SLAM backend</text>
+<text text-anchor="start" x="1521" y="-923.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">chosen and pinned</text>
+</g>
+<!-- y_backend&#45;&gt;g_back -->
+<g id="edge33" class="edge">
+<title>y_backend&#45;&gt;g_back</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1396.72,-936.98C1424.12,-936.02 1454.76,-934.94 1482.61,-933.97"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1482.83,-936.23 1489.25,-933.73 1482.67,-931.69 1482.83,-936.23"/>
+</g>
+<!-- y_freeze -->
+<g id="node11" class="node">
+<title>y_freeze</title>
+<path fill="#fff2cc" stroke="#d6b656" stroke-width="1.6" d="M2769,-594.36C2769,-594.36 2606,-594.36 2606,-594.36 2600,-594.36 2594,-588.36 2594,-582.36 2594,-582.36 2594,-569.36 2594,-569.36 2594,-563.36 2600,-557.36 2606,-557.36 2606,-557.36 2769,-557.36 2769,-557.36 2775,-557.36 2781,-563.36 2781,-569.36 2781,-569.36 2781,-582.36 2781,-582.36 2781,-588.36 2775,-594.36 2769,-594.36"/>
+<text text-anchor="start" x="2606" y="-578.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">YOU:</text>
+<text text-anchor="start" x="2636" y="-578.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> approve the code freeze</text>
+<text text-anchor="start" x="2625.5" y="-568.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">— config&#45;only after this</text>
+</g>
+<!-- del_run -->
+<g id="node63" class="node">
+<title>del_run</title>
+<path fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" d="M3000,-671.36C3000,-671.36 2829,-671.36 2829,-671.36 2823,-671.36 2817,-665.36 2817,-659.36 2817,-659.36 2817,-646.36 2817,-646.36 2817,-640.36 2823,-634.36 2829,-634.36 2829,-634.36 3000,-634.36 3000,-634.36 3006,-634.36 3012,-640.36 3012,-646.36 3012,-646.36 3012,-659.36 3012,-659.36 3012,-665.36 3006,-671.36 3000,-671.36"/>
+<text text-anchor="start" x="2829" y="-655.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">DELIVER:</text>
+<text text-anchor="start" x="2885" y="-655.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> competition runbook</text>
+<text text-anchor="start" x="2855.5" y="-645.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">+ tagged, frozen build</text>
+</g>
+<!-- y_freeze&#45;&gt;del_run -->
+<g id="edge84" class="edge">
+<title>y_freeze&#45;&gt;del_run</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2742.68,-594.41C2775.98,-605.8 2818.69,-620.42 2853.08,-632.19"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2852.51,-634.4 2859.4,-634.35 2853.99,-630.09 2852.51,-634.4"/>
+</g>
+<!-- y_pol -->
+<g id="node12" class="node">
+<title>y_pol</title>
+<path fill="#fff2cc" stroke="#d6b656" stroke-width="1.6" d="M2734,-748.36C2734,-748.36 2641,-748.36 2641,-748.36 2635,-748.36 2629,-742.36 2629,-736.36 2629,-736.36 2629,-723.36 2629,-723.36 2629,-717.36 2635,-711.36 2641,-711.36 2641,-711.36 2734,-711.36 2734,-711.36 2740,-711.36 2746,-717.36 2746,-723.36 2746,-723.36 2746,-736.36 2746,-736.36 2746,-742.36 2740,-748.36 2734,-748.36"/>
+<text text-anchor="start" x="2641" y="-732.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">YOU:</text>
+<text text-anchor="start" x="2671" y="-732.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> sign off the</text>
+<text text-anchor="start" x="2645" y="-722.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">Proof of Life run</text>
+</g>
+<!-- del_pol -->
+<g id="node62" class="node">
+<title>del_pol</title>
+<path fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" d="M2976,-748.36C2976,-748.36 2853,-748.36 2853,-748.36 2847,-748.36 2841,-742.36 2841,-736.36 2841,-736.36 2841,-723.36 2841,-723.36 2841,-717.36 2847,-711.36 2853,-711.36 2853,-711.36 2976,-711.36 2976,-711.36 2982,-711.36 2988,-717.36 2988,-723.36 2988,-723.36 2988,-736.36 2988,-736.36 2988,-742.36 2982,-748.36 2976,-748.36"/>
+<text text-anchor="start" x="2853" y="-732.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">DELIVER:</text>
+<text text-anchor="start" x="2909" y="-732.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> Proof of Life</text>
+<text text-anchor="start" x="2856" y="-722.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">review — 29 Apr 2027</text>
+</g>
+<!-- y_pol&#45;&gt;del_pol -->
+<g id="edge83" class="edge">
+<title>y_pol&#45;&gt;del_pol</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2746.15,-729.86C2772.9,-729.86 2805.13,-729.86 2834.14,-729.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2834.16,-732.14 2840.66,-729.86 2834.16,-727.59 2834.16,-732.14"/>
+</g>
+<!-- g_compat -->
+<g id="node14" class="node">
+<title>g_compat</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M652.5,-997.36C652.5,-997.36 529.5,-997.36 529.5,-997.36 523.5,-997.36 517.5,-991.36 517.5,-985.36 517.5,-985.36 517.5,-972.36 517.5,-972.36 517.5,-966.36 523.5,-960.36 529.5,-960.36 529.5,-960.36 652.5,-960.36 652.5,-960.36 658.5,-960.36 664.5,-966.36 664.5,-972.36 664.5,-972.36 664.5,-985.36 664.5,-985.36 664.5,-991.36 658.5,-997.36 652.5,-997.36"/>
+<text text-anchor="start" x="529.5" y="-981.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="565.5" y="-981.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> every VERIFY in</text>
+<text text-anchor="start" x="539" y="-971.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">compat.py</text>
+<text text-anchor="start" x="594" y="-971.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> resolved</text>
+</g>
+<!-- s_probe&#45;&gt;g_compat -->
+<g id="edge7" class="edge">
+<title>s_probe&#45;&gt;g_compat</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M403.24,-920.41C439.79,-931.85 486.73,-946.54 524.41,-958.33"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="523.97,-960.58 530.85,-960.35 525.33,-956.24 523.97,-960.58"/>
+</g>
+<!-- s_head -->
+<g id="node15" class="node">
+<title>s_head</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M878.5,-998.86C878.5,-998.86 781.5,-998.86 781.5,-998.86 775.5,-998.86 769.5,-992.86 769.5,-986.86 769.5,-986.86 769.5,-970.86 769.5,-970.86 769.5,-964.86 775.5,-958.86 781.5,-958.86 781.5,-958.86 878.5,-958.86 878.5,-958.86 884.5,-958.86 890.5,-964.86 890.5,-970.86 890.5,-970.86 890.5,-986.86 890.5,-986.86 890.5,-992.86 884.5,-998.86 878.5,-998.86"/>
+<text text-anchor="start" x="781.5" y="-982.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">Isaac scene builds</text>
+<text text-anchor="start" x="781.5" y="-970.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">and runs headless</text>
+</g>
+<!-- g_compat&#45;&gt;s_head -->
+<g id="edge8" class="edge">
+<title>g_compat&#45;&gt;s_head</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M664.72,-978.86C695.84,-978.86 731.93,-978.86 762.35,-978.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="762.65,-981.14 769.15,-978.86 762.65,-976.59 762.65,-981.14"/>
+</g>
+<!-- doc_ver -->
+<g id="node22" class="node">
+<title>doc_ver</title>
+<path fill="#f5f5f5" stroke="#909090" stroke-width="1.6" d="M907,-1078.86C907,-1078.86 753,-1078.86 753,-1078.86 747,-1078.86 741,-1072.86 741,-1066.86 741,-1066.86 741,-1050.86 741,-1050.86 741,-1044.86 747,-1038.86 753,-1038.86 753,-1038.86 907,-1038.86 907,-1038.86 913,-1038.86 919,-1044.86 919,-1050.86 919,-1050.86 919,-1066.86 919,-1066.86 919,-1072.86 913,-1078.86 907,-1078.86"/>
+<text text-anchor="start" x="764.5" y="-1062.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">record the Isaac version,</text>
+<text text-anchor="start" x="753" y="-1050.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">delete the answered VERIFYs</text>
+</g>
+<!-- g_compat&#45;&gt;doc_ver -->
+<g id="edge10" class="edge">
+<title>g_compat&#45;&gt;doc_ver</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M646.97,-997.42C681.61,-1009.11 726.54,-1024.28 763.09,-1036.62"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="762.46,-1038.8 769.35,-1038.73 763.92,-1034.49 762.46,-1038.8"/>
+</g>
+<!-- g_sim -->
+<g id="node16" class="node">
+<title>g_sim</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M1134,-1007.36C1134,-1007.36 973,-1007.36 973,-1007.36 967,-1007.36 961,-1001.36 961,-995.36 961,-995.36 961,-982.36 961,-982.36 961,-976.36 967,-970.36 973,-970.36 973,-970.36 1134,-970.36 1134,-970.36 1140,-970.36 1146,-976.36 1146,-982.36 1146,-982.36 1146,-995.36 1146,-995.36 1146,-1001.36 1140,-1007.36 1134,-1007.36"/>
+<text text-anchor="start" x="973" y="-991.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1009" y="-991.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> </text>
+<text text-anchor="start" x="1013" y="-991.96" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">hw:=sim</text>
+<text text-anchor="start" x="1056" y="-991.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> drives against</text>
+<text text-anchor="start" x="975" y="-981.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">real Isaac, not the test double</text>
+</g>
+<!-- s_head&#45;&gt;g_sim -->
+<g id="edge9" class="edge">
+<title>s_head&#45;&gt;g_sim</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M890.65,-981.56C910.16,-982.44 932.38,-983.44 953.97,-984.42"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="954.05,-986.7 960.64,-984.72 954.25,-982.15 954.05,-986.7"/>
+</g>
+<!-- g_sim&#45;&gt;s_arena -->
+<g id="edge12" class="edge">
+<title>g_sim&#45;&gt;s_arena</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1068.13,-970.33C1089.69,-939.89 1131.04,-876.58 1149,-815.86 1179.16,-713.93 1118.9,-422.11 1185,-338.86 1197.95,-322.55 1217.5,-312.76 1237.43,-306.92"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1238.23,-309.06 1243.9,-305.16 1237.03,-304.67 1238.23,-309.06"/>
+</g>
+<!-- l_rtab -->
+<g id="node33" class="node">
+<title>l_rtab</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1395,-1038.86C1395,-1038.86 1232,-1038.86 1232,-1038.86 1226,-1038.86 1220,-1032.86 1220,-1026.86 1220,-1026.86 1220,-1010.86 1220,-1010.86 1220,-1004.86 1226,-998.86 1232,-998.86 1232,-998.86 1395,-998.86 1395,-998.86 1401,-998.86 1407,-1004.86 1407,-1010.86 1407,-1010.86 1407,-1026.86 1407,-1026.86 1407,-1032.86 1401,-1038.86 1395,-1038.86"/>
+<text text-anchor="start" x="1232" y="-1022.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">rtabmap tuned for low&#45;texture,</text>
+<text text-anchor="start" x="1262.5" y="-1010.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">self&#45;similar regolith</text>
+</g>
+<!-- g_sim&#45;&gt;l_rtab -->
+<g id="edge18" class="edge">
+<title>g_sim&#45;&gt;l_rtab</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1146.19,-999.53C1167.94,-1002.05 1191.24,-1004.76 1213.31,-1007.33"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1213.08,-1009.59 1219.8,-1008.08 1213.61,-1005.07 1213.08,-1009.59"/>
+</g>
+<!-- del_drr -->
+<g id="node59" class="node">
+<title>del_drr</title>
+<path fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" d="M1430,-1116.36C1430,-1116.36 1197,-1116.36 1197,-1116.36 1191,-1116.36 1185,-1110.36 1185,-1104.36 1185,-1104.36 1185,-1091.36 1185,-1091.36 1185,-1085.36 1191,-1079.36 1197,-1079.36 1197,-1079.36 1430,-1079.36 1430,-1079.36 1436,-1079.36 1442,-1085.36 1442,-1091.36 1442,-1091.36 1442,-1104.36 1442,-1104.36 1442,-1110.36 1436,-1116.36 1430,-1116.36"/>
+<text text-anchor="start" x="1219" y="-1100.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">DELIVER:</text>
+<text text-anchor="start" x="1275" y="-1100.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> Design Review Report —</text>
+<text text-anchor="start" x="1197" y="-1090.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">architecture + sim evidence — 20 Nov 2026</text>
+</g>
+<!-- g_sim&#45;&gt;del_drr -->
+<g id="edge74" class="edge">
+<title>g_sim&#45;&gt;del_drr</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1085.04,-1007.46C1110.97,-1022.7 1149.52,-1044.09 1185,-1058.86 1201.46,-1065.72 1219.56,-1071.98 1236.83,-1077.38"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1236.26,-1079.59 1243.14,-1079.34 1237.6,-1075.24 1236.26,-1079.59"/>
+</g>
+<!-- s_terr -->
+<g id="node18" class="node">
+<title>s_terr</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1641.5,-250.86C1641.5,-250.86 1502.5,-250.86 1502.5,-250.86 1496.5,-250.86 1490.5,-244.86 1490.5,-238.86 1490.5,-238.86 1490.5,-222.86 1490.5,-222.86 1490.5,-216.86 1496.5,-210.86 1502.5,-210.86 1502.5,-210.86 1641.5,-210.86 1641.5,-210.86 1647.5,-210.86 1653.5,-216.86 1653.5,-222.86 1653.5,-222.86 1653.5,-238.86 1653.5,-238.86 1653.5,-244.86 1647.5,-250.86 1641.5,-250.86"/>
+<text text-anchor="start" x="1502.5" y="-234.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">terrain v2: slopes, craters,</text>
+<text text-anchor="start" x="1531" y="-222.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">regolith friction</text>
+</g>
+<!-- s_arena&#45;&gt;s_terr -->
+<g id="edge13" class="edge">
+<title>s_arena&#45;&gt;s_terr</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1383.24,-280.64C1415.79,-272.01 1454.91,-261.64 1489,-252.6"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1489.6,-254.8 1495.3,-250.93 1488.44,-250.4 1489.6,-254.8"/>
+</g>
+<!-- s_score -->
+<g id="node20" class="node">
+<title>s_score</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1858,-329.36C1858,-329.36 1725,-329.36 1725,-329.36 1719,-329.36 1713,-323.36 1713,-317.36 1713,-317.36 1713,-304.36 1713,-304.36 1713,-298.36 1719,-292.36 1725,-292.36 1725,-292.36 1858,-292.36 1858,-292.36 1864,-292.36 1870,-298.36 1870,-304.36 1870,-304.36 1870,-317.36 1870,-317.36 1870,-323.36 1864,-329.36 1858,-329.36"/>
+<text text-anchor="start" x="1741" y="-313.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">scoring harness on</text>
+<text text-anchor="start" x="1725" y="-303.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">/sim/ground_truth/odom</text>
+</g>
+<!-- s_arena&#45;&gt;s_score -->
+<g id="edge16" class="edge">
+<title>s_arena&#45;&gt;s_score</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1383.21,-300.6C1468.56,-302.75 1614.16,-306.42 1706.19,-308.74"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1706.17,-311.01 1712.72,-308.9 1706.28,-306.46 1706.17,-311.01"/>
+</g>
+<!-- g_obst -->
+<g id="node43" class="node">
+<title>g_obst</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M1654,-445.36C1654,-445.36 1490,-445.36 1490,-445.36 1484,-445.36 1478,-439.36 1478,-433.36 1478,-433.36 1478,-420.36 1478,-420.36 1478,-414.36 1484,-408.36 1490,-408.36 1490,-408.36 1654,-408.36 1654,-408.36 1660,-408.36 1666,-414.36 1666,-420.36 1666,-420.36 1666,-433.36 1666,-433.36 1666,-439.36 1660,-445.36 1654,-445.36"/>
+<text text-anchor="start" x="1490" y="-429.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1526" y="-429.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> the guidebook obstacle</text>
+<text text-anchor="start" x="1508.5" y="-419.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">field is detected reliably</text>
+</g>
+<!-- s_arena&#45;&gt;g_obst -->
+<g id="edge45" class="edge">
+<title>s_arena&#45;&gt;g_obst</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1383.09,-316.33C1402.59,-322.36 1423.52,-329.91 1442,-338.86 1479.12,-356.86 1517.7,-384.55 1542.88,-404.06"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1541.52,-405.89 1548.04,-408.09 1544.32,-402.3 1541.52,-405.89"/>
+</g>
+<!-- n_zone -->
+<g id="node47" class="node">
+<title>n_zone</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1649,-550.86C1649,-550.86 1495,-550.86 1495,-550.86 1489,-550.86 1483,-544.86 1483,-538.86 1483,-538.86 1483,-522.86 1483,-522.86 1483,-516.86 1489,-510.86 1495,-510.86 1495,-510.86 1649,-510.86 1649,-510.86 1655,-510.86 1661,-516.86 1661,-522.86 1661,-522.86 1661,-538.86 1661,-538.86 1661,-544.86 1655,-550.86 1649,-550.86"/>
+<text text-anchor="start" x="1495" y="-534.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">zone&#45;aware layers: keep&#45;out,</text>
+<text text-anchor="start" x="1507" y="-522.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">excavation, construction</text>
+</g>
+<!-- s_arena&#45;&gt;n_zone -->
+<g id="edge52" class="edge">
+<title>s_arena&#45;&gt;n_zone</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1383.13,-307.41C1404.43,-313.18 1426.39,-322.82 1442,-338.86 1482.9,-380.92 1443.98,-418.06 1478,-465.86 1490.01,-482.73 1507.83,-496.71 1524.68,-507.32"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1523.61,-509.34 1530.34,-510.79 1525.99,-505.46 1523.61,-509.34"/>
+</g>
+<!-- s_exc -->
+<g id="node19" class="node">
+<title>s_exc</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1848,-250.86C1848,-250.86 1735,-250.86 1735,-250.86 1729,-250.86 1723,-244.86 1723,-238.86 1723,-238.86 1723,-222.86 1723,-222.86 1723,-216.86 1729,-210.86 1735,-210.86 1735,-210.86 1848,-210.86 1848,-210.86 1854,-210.86 1860,-216.86 1860,-222.86 1860,-222.86 1860,-238.86 1860,-238.86 1860,-244.86 1854,-250.86 1848,-250.86"/>
+<text text-anchor="start" x="1735" y="-234.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">excavation and berm</text>
+<text text-anchor="start" x="1754.5" y="-222.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">physics in sim</text>
+</g>
+<!-- s_terr&#45;&gt;s_exc -->
+<g id="edge14" class="edge">
+<title>s_terr&#45;&gt;s_exc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1653.68,-230.86C1674.1,-230.86 1695.94,-230.86 1716.03,-230.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1716.28,-233.14 1722.78,-230.86 1716.28,-228.59 1716.28,-233.14"/>
+</g>
+<!-- g_simcyc -->
+<g id="node21" class="node">
+<title>g_simcyc</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M2086.5,-319.36C2086.5,-319.36 1946.5,-319.36 1946.5,-319.36 1940.5,-319.36 1934.5,-313.36 1934.5,-307.36 1934.5,-307.36 1934.5,-294.36 1934.5,-294.36 1934.5,-288.36 1940.5,-282.36 1946.5,-282.36 1946.5,-282.36 2086.5,-282.36 2086.5,-282.36 2092.5,-282.36 2098.5,-288.36 2098.5,-294.36 2098.5,-294.36 2098.5,-307.36 2098.5,-307.36 2098.5,-313.36 2092.5,-319.36 2086.5,-319.36"/>
+<text text-anchor="start" x="1946.5" y="-303.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1982.5" y="-303.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> a full mission cycle</text>
+<text text-anchor="start" x="1957.5" y="-293.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">runs end to end in sim</text>
+</g>
+<!-- s_exc&#45;&gt;g_simcyc -->
+<g id="edge15" class="edge">
+<title>s_exc&#45;&gt;g_simcyc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1856.4,-250.92C1885.84,-260.16 1920.73,-271.11 1950.32,-280.4"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1949.67,-282.58 1956.55,-282.36 1951.03,-278.24 1949.67,-282.58"/>
+</g>
+<!-- s_score&#45;&gt;g_simcyc -->
+<g id="edge17" class="edge">
+<title>s_score&#45;&gt;g_simcyc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1870.18,-307.38C1888.65,-306.55 1908.49,-305.66 1927.39,-304.81"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1927.92,-307.07 1934.31,-304.5 1927.71,-302.52 1927.92,-307.07"/>
+</g>
+<!-- g_auto -->
+<g id="node54" class="node">
+<title>g_auto</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M2534.5,-319.36C2534.5,-319.36 2386.5,-319.36 2386.5,-319.36 2380.5,-319.36 2374.5,-313.36 2374.5,-307.36 2374.5,-307.36 2374.5,-294.36 2374.5,-294.36 2374.5,-288.36 2380.5,-282.36 2386.5,-282.36 2386.5,-282.36 2534.5,-282.36 2534.5,-282.36 2540.5,-282.36 2546.5,-288.36 2546.5,-294.36 2546.5,-294.36 2546.5,-307.36 2546.5,-307.36 2546.5,-313.36 2540.5,-319.36 2534.5,-319.36"/>
+<text text-anchor="start" x="2386.5" y="-303.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="2422.5" y="-303.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> two full autonomous</text>
+<text text-anchor="start" x="2407" y="-293.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">cycles, back to back</text>
+</g>
+<!-- g_simcyc&#45;&gt;g_auto -->
+<g id="edge67" class="edge">
+<title>g_simcyc&#45;&gt;g_auto</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2098.57,-300.86C2174.69,-300.86 2288.42,-300.86 2367.81,-300.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2367.93,-303.14 2374.43,-300.86 2367.93,-298.59 2367.93,-303.14"/>
+</g>
+<!-- g_urdf -->
+<g id="node24" class="node">
+<title>g_urdf</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M906.5,-637.36C906.5,-637.36 753.5,-637.36 753.5,-637.36 747.5,-637.36 741.5,-631.36 741.5,-625.36 741.5,-625.36 741.5,-612.36 741.5,-612.36 741.5,-606.36 747.5,-600.36 753.5,-600.36 753.5,-600.36 906.5,-600.36 906.5,-600.36 912.5,-600.36 918.5,-606.36 918.5,-612.36 918.5,-612.36 918.5,-625.36 918.5,-625.36 918.5,-631.36 912.5,-637.36 906.5,-637.36"/>
+<text text-anchor="start" x="753.5" y="-621.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="789.5" y="-621.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> URDF and kinematics</text>
+<text text-anchor="start" x="775.5" y="-611.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">match the real rover</text>
+</g>
+<!-- h_meas&#45;&gt;g_urdf -->
+<g id="edge20" class="edge">
+<title>h_meas&#45;&gt;g_urdf</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M669.27,-618.86C690.09,-618.86 712.83,-618.86 734.47,-618.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="734.65,-621.14 741.15,-618.86 734.65,-616.59 734.65,-621.14"/>
+</g>
+<!-- g_urdf&#45;&gt;h_fb -->
+<g id="edge22" class="edge">
+<title>g_urdf&#45;&gt;h_fb</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M882.37,-637.42C915.94,-649.54 959.84,-665.4 994.64,-677.96"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="994.14,-680.2 1001.02,-680.27 995.68,-675.92 994.14,-680.2"/>
+</g>
+<!-- h_exc -->
+<g id="node27" class="node">
+<title>h_exc</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1137,-236.86C1137,-236.86 970,-236.86 970,-236.86 964,-236.86 958,-230.86 958,-224.86 958,-224.86 958,-208.86 958,-208.86 958,-202.86 964,-196.86 970,-196.86 970,-196.86 1137,-196.86 1137,-196.86 1143,-196.86 1149,-202.86 1149,-208.86 1149,-208.86 1149,-224.86 1149,-224.86 1149,-230.86 1143,-236.86 1137,-236.86"/>
+<text text-anchor="start" x="973.5" y="-220.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">excavation actuators: URDF +</text>
+<text text-anchor="start" x="970" y="-208.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">a second ros2_control interface</text>
+</g>
+<!-- g_urdf&#45;&gt;h_exc -->
+<g id="edge24" class="edge">
+<title>g_urdf&#45;&gt;h_exc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M844.06,-599.89C864.01,-570.01 901.85,-509.53 922,-452.86 951.67,-369.41 902.58,-325.95 958,-256.86 963.14,-250.46 969.49,-245.06 976.45,-240.52"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="978.05,-242.21 982.43,-236.9 975.69,-238.32 978.05,-242.21"/>
+</g>
+<!-- n_foot -->
+<g id="node46" class="node">
+<title>n_foot</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1126.5,-557.86C1126.5,-557.86 980.5,-557.86 980.5,-557.86 974.5,-557.86 968.5,-551.86 968.5,-545.86 968.5,-545.86 968.5,-529.86 968.5,-529.86 968.5,-523.86 974.5,-517.86 980.5,-517.86 980.5,-517.86 1126.5,-517.86 1126.5,-517.86 1132.5,-517.86 1138.5,-523.86 1138.5,-529.86 1138.5,-529.86 1138.5,-545.86 1138.5,-545.86 1138.5,-551.86 1132.5,-557.86 1126.5,-557.86"/>
+<text text-anchor="start" x="980.5" y="-541.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">costmap and footprint from</text>
+<text text-anchor="start" x="996" y="-529.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">the measured chassis</text>
+</g>
+<!-- g_urdf&#45;&gt;n_foot -->
+<g id="edge48" class="edge">
+<title>g_urdf&#45;&gt;n_foot</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M881.82,-600.28C914.4,-588.36 956.89,-572.83 991.33,-560.23"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="992.33,-562.29 997.66,-557.92 990.77,-558.01 992.33,-562.29"/>
+</g>
+<!-- n_tune -->
+<g id="node48" class="node">
+<title>n_tune</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1387.5,-638.86C1387.5,-638.86 1239.5,-638.86 1239.5,-638.86 1233.5,-638.86 1227.5,-632.86 1227.5,-626.86 1227.5,-626.86 1227.5,-610.86 1227.5,-610.86 1227.5,-604.86 1233.5,-598.86 1239.5,-598.86 1239.5,-598.86 1387.5,-598.86 1387.5,-598.86 1393.5,-598.86 1399.5,-604.86 1399.5,-610.86 1399.5,-610.86 1399.5,-626.86 1399.5,-626.86 1399.5,-632.86 1393.5,-638.86 1387.5,-638.86"/>
+<text text-anchor="start" x="1239.5" y="-622.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">regolith tuning: accel limits,</text>
+<text text-anchor="start" x="1246" y="-610.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">no spin&#45;in&#45;place recovery</text>
+</g>
+<!-- g_urdf&#45;&gt;n_tune -->
+<g id="edge50" class="edge">
+<title>g_urdf&#45;&gt;n_tune</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M918.75,-618.86C1004.28,-618.86 1133.78,-618.86 1220.67,-618.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1220.87,-621.14 1227.37,-618.86 1220.87,-616.59 1220.87,-621.14"/>
+</g>
+<!-- g_urdf&#45;&gt;del_drr -->
+<g id="edge75" class="edge">
+<title>g_urdf&#45;&gt;del_drr</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M862.64,-637.44C883.21,-651.33 908.61,-672.29 922,-697.86 956.21,-763.22 908.14,-973.5 958,-1027.86 1012.75,-1087.55 1102.43,-1104.84 1177.9,-1107.31"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1178.13,-1109.59 1184.69,-1107.5 1178.25,-1105.05 1178.13,-1109.59"/>
+</g>
+<!-- g_odom -->
+<g id="node26" class="node">
+<title>g_odom</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M1405.5,-716.36C1405.5,-716.36 1221.5,-716.36 1221.5,-716.36 1215.5,-716.36 1209.5,-710.36 1209.5,-704.36 1209.5,-704.36 1209.5,-691.36 1209.5,-691.36 1209.5,-685.36 1215.5,-679.36 1221.5,-679.36 1221.5,-679.36 1405.5,-679.36 1405.5,-679.36 1411.5,-679.36 1417.5,-685.36 1417.5,-691.36 1417.5,-691.36 1417.5,-704.36 1417.5,-704.36 1417.5,-710.36 1411.5,-716.36 1405.5,-716.36"/>
+<text text-anchor="start" x="1254" y="-700.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1290" y="-700.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> /odom tracks a</text>
+<text text-anchor="start" x="1221.5" y="-690.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">measured drive, not the command</text>
+</g>
+<!-- h_fb&#45;&gt;g_odom -->
+<g id="edge23" class="edge">
+<title>h_fb&#45;&gt;g_odom</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1140.05,-698.53C1160.04,-698.45 1181.6,-698.37 1202.48,-698.29"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1202.74,-700.56 1209.24,-698.26 1202.73,-696.01 1202.74,-700.56"/>
+</g>
+<!-- h_can -->
+<g id="node29" class="node">
+<title>h_can</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1632,-848.86C1632,-848.86 1512,-848.86 1512,-848.86 1506,-848.86 1500,-842.86 1500,-836.86 1500,-836.86 1500,-820.86 1500,-820.86 1500,-814.86 1506,-808.86 1512,-808.86 1512,-808.86 1632,-808.86 1632,-808.86 1638,-808.86 1644,-814.86 1644,-820.86 1644,-820.86 1644,-836.86 1644,-836.86 1644,-842.86 1638,-848.86 1632,-848.86"/>
+<text text-anchor="start" x="1512" y="-832.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">CAN watchdog, E&#45;stop,</text>
+<text text-anchor="start" x="1535" y="-820.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">fault recovery</text>
+</g>
+<!-- g_odom&#45;&gt;h_can -->
+<g id="edge27" class="edge">
+<title>g_odom&#45;&gt;h_can</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1350.98,-716.49C1396.96,-739.98 1476.01,-780.35 1525.78,-805.77"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1524.88,-807.86 1531.7,-808.79 1526.95,-803.81 1524.88,-807.86"/>
+</g>
+<!-- l_ekf -->
+<g id="node36" class="node">
+<title>l_ekf</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1645.5,-715.86C1645.5,-715.86 1498.5,-715.86 1498.5,-715.86 1492.5,-715.86 1486.5,-709.86 1486.5,-703.86 1486.5,-703.86 1486.5,-691.86 1486.5,-691.86 1486.5,-685.86 1492.5,-679.86 1498.5,-679.86 1498.5,-679.86 1645.5,-679.86 1645.5,-679.86 1651.5,-679.86 1657.5,-685.86 1657.5,-691.86 1657.5,-691.86 1657.5,-703.86 1657.5,-703.86 1657.5,-709.86 1651.5,-715.86 1645.5,-715.86"/>
+<text text-anchor="start" x="1498.5" y="-696.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">switch to </text>
+<text text-anchor="start" x="1548.5" y="-696.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">odom_source:=ekf</text>
+</g>
+<!-- g_odom&#45;&gt;l_ekf -->
+<g id="edge36" class="edge">
+<title>g_odom&#45;&gt;l_ekf</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1417.72,-697.86C1438.23,-697.86 1459.63,-697.86 1479.71,-697.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1479.97,-700.14 1486.47,-697.86 1479.97,-695.59 1479.97,-700.14"/>
+</g>
+<!-- g_exc -->
+<g id="node28" class="node">
+<title>g_exc</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M1397.5,-158.36C1397.5,-158.36 1229.5,-158.36 1229.5,-158.36 1223.5,-158.36 1217.5,-152.36 1217.5,-146.36 1217.5,-146.36 1217.5,-133.36 1217.5,-133.36 1217.5,-127.36 1223.5,-121.36 1229.5,-121.36 1229.5,-121.36 1397.5,-121.36 1397.5,-121.36 1403.5,-121.36 1409.5,-127.36 1409.5,-133.36 1409.5,-133.36 1409.5,-146.36 1409.5,-146.36 1409.5,-152.36 1403.5,-158.36 1397.5,-158.36"/>
+<text text-anchor="start" x="1229.5" y="-142.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1265.5" y="-142.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> excavation commanded</text>
+<text text-anchor="start" x="1251.5" y="-132.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">from ROS on the bench</text>
+</g>
+<!-- h_exc&#45;&gt;g_exc -->
+<g id="edge25" class="edge">
+<title>h_exc&#45;&gt;g_exc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1121.61,-196.83C1159.16,-185.63 1205.86,-171.69 1243.68,-160.4"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1244.57,-162.51 1250.15,-158.47 1243.27,-158.15 1244.57,-162.51"/>
+</g>
+<!-- doc_con -->
+<g id="node31" class="node">
+<title>doc_con</title>
+<path fill="#f5f5f5" stroke="#909090" stroke-width="1.6" d="M1410.5,-238.86C1410.5,-238.86 1216.5,-238.86 1216.5,-238.86 1210.5,-238.86 1204.5,-232.86 1204.5,-226.86 1204.5,-226.86 1204.5,-210.86 1204.5,-210.86 1204.5,-204.86 1210.5,-198.86 1216.5,-198.86 1216.5,-198.86 1410.5,-198.86 1410.5,-198.86 1416.5,-198.86 1422.5,-204.86 1422.5,-210.86 1422.5,-210.86 1422.5,-226.86 1422.5,-226.86 1422.5,-232.86 1416.5,-238.86 1410.5,-238.86"/>
+<text text-anchor="start" x="1216.5" y="-222.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">extend TOPIC_FRAME_CONTRACT.md</text>
+<text text-anchor="start" x="1239.5" y="-210.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">to the excavation interfaces</text>
+</g>
+<!-- h_exc&#45;&gt;doc_con -->
+<g id="edge26" class="edge">
+<title>h_exc&#45;&gt;doc_con</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1149.1,-217.6C1164.83,-217.72 1181.3,-217.85 1197.47,-217.97"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1197.86,-220.25 1204.38,-218.03 1197.9,-215.7 1197.86,-220.25"/>
+</g>
+<!-- g_exc&#45;&gt;s_exc -->
+<g id="edge29" class="edge">
+<title>g_exc&#45;&gt;s_exc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1409.66,-149.32C1480.83,-157.44 1580.24,-171.01 1666,-190.86 1686.66,-195.65 1708.81,-202.26 1728.62,-208.74"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1728.08,-210.95 1734.97,-210.83 1729.51,-206.63 1728.08,-210.95"/>
+</g>
+<!-- m_cyc -->
+<g id="node51" class="node">
+<title>m_cyc</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1650.5,-88.86C1650.5,-88.86 1493.5,-88.86 1493.5,-88.86 1487.5,-88.86 1481.5,-82.86 1481.5,-76.86 1481.5,-76.86 1481.5,-60.86 1481.5,-60.86 1481.5,-54.86 1487.5,-48.86 1493.5,-48.86 1493.5,-48.86 1650.5,-48.86 1650.5,-48.86 1656.5,-48.86 1662.5,-54.86 1662.5,-60.86 1662.5,-60.86 1662.5,-76.86 1662.5,-76.86 1662.5,-82.86 1656.5,-88.86 1650.5,-88.86"/>
+<text text-anchor="start" x="1493.5" y="-72.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">the cycle: traverse, excavate,</text>
+<text text-anchor="start" x="1533" y="-60.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">return, deposit</text>
+</g>
+<!-- g_exc&#45;&gt;m_cyc -->
+<g id="edge60" class="edge">
+<title>g_exc&#45;&gt;m_cyc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1381.56,-121.3C1415.37,-111.94 1456.6,-100.53 1491.96,-90.74"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1492.83,-92.86 1498.48,-88.94 1491.61,-88.48 1492.83,-92.86"/>
+</g>
+<!-- g_stop -->
+<g id="node30" class="node">
+<title>g_stop</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M1860.5,-869.36C1860.5,-869.36 1722.5,-869.36 1722.5,-869.36 1716.5,-869.36 1710.5,-863.36 1710.5,-857.36 1710.5,-857.36 1710.5,-844.36 1710.5,-844.36 1710.5,-838.36 1716.5,-832.36 1722.5,-832.36 1722.5,-832.36 1860.5,-832.36 1860.5,-832.36 1866.5,-832.36 1872.5,-838.36 1872.5,-844.36 1872.5,-844.36 1872.5,-857.36 1872.5,-857.36 1872.5,-863.36 1866.5,-869.36 1860.5,-869.36"/>
+<text text-anchor="start" x="1722.5" y="-853.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1758.5" y="-853.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> E&#45;stop cuts motion</text>
+<text text-anchor="start" x="1753" y="-843.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">from any state</text>
+</g>
+<!-- h_can&#45;&gt;g_stop -->
+<g id="edge28" class="edge">
+<title>h_can&#45;&gt;g_stop</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1644.22,-836.07C1663.25,-837.99 1684.03,-840.09 1703.8,-842.09"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1703.77,-844.38 1710.46,-842.77 1704.22,-839.85 1703.77,-844.38"/>
+</g>
+<!-- r_bring -->
+<g id="node55" class="node">
+<title>r_bring</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M2104,-869.36C2104,-869.36 1929,-869.36 1929,-869.36 1923,-869.36 1917,-863.36 1917,-857.36 1917,-857.36 1917,-844.36 1917,-844.36 1917,-838.36 1923,-832.36 1929,-832.36 1929,-832.36 2104,-832.36 2104,-832.36 2110,-832.36 2116,-838.36 2116,-844.36 2116,-844.36 2116,-857.36 2116,-857.36 2116,-863.36 2110,-869.36 2104,-869.36"/>
+<text text-anchor="start" x="1964.5" y="-853.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">real&#45;rover bring&#45;up:</text>
+<text text-anchor="start" x="1929" y="-843.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">check_stack.py &#45;&#45;profile real</text>
+</g>
+<!-- g_stop&#45;&gt;r_bring -->
+<g id="edge68" class="edge">
+<title>g_stop&#45;&gt;r_bring</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1872.69,-850.86C1884.92,-850.86 1897.7,-850.86 1910.36,-850.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1910.47,-853.14 1916.97,-850.86 1910.47,-848.59 1910.47,-853.14"/>
+</g>
+<!-- l_cu&#45;&gt;g_back -->
+<g id="edge31" class="edge">
+<title>l_cu&#45;&gt;g_back</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M669.06,-761.9C691.25,-767.38 715.52,-773.12 738,-777.86 1048.85,-843.49 1130.49,-839.45 1442,-901.86 1455.86,-904.64 1470.51,-907.76 1484.78,-910.89"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1484.46,-913.15 1491.3,-912.33 1485.44,-908.71 1484.46,-913.15"/>
+</g>
+<!-- l_rtab&#45;&gt;g_back -->
+<g id="edge32" class="edge">
+<title>l_rtab&#45;&gt;g_back</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1380.56,-998.86C1400.39,-992.66 1422.14,-985.67 1442,-978.86 1466.59,-970.44 1493.57,-960.51 1516.47,-951.87"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1517.55,-953.9 1522.82,-949.47 1515.94,-949.64 1517.55,-953.9"/>
+</g>
+<!-- l_reloc -->
+<g id="node38" class="node">
+<title>l_reloc</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1841.5,-791.86C1841.5,-791.86 1741.5,-791.86 1741.5,-791.86 1735.5,-791.86 1729.5,-785.86 1729.5,-779.86 1729.5,-779.86 1729.5,-763.86 1729.5,-763.86 1729.5,-757.86 1735.5,-751.86 1741.5,-751.86 1741.5,-751.86 1841.5,-751.86 1841.5,-751.86 1847.5,-751.86 1853.5,-757.86 1853.5,-763.86 1853.5,-763.86 1853.5,-779.86 1853.5,-779.86 1853.5,-785.86 1847.5,-791.86 1841.5,-791.86"/>
+<text text-anchor="start" x="1741.5" y="-775.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">relocalisation after</text>
+<text text-anchor="start" x="1758" y="-763.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">tracking loss</text>
+</g>
+<!-- g_back&#45;&gt;l_reloc -->
+<g id="edge38" class="edge">
+<title>g_back&#45;&gt;l_reloc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1607.77,-912.36C1626.42,-901.34 1648.99,-886.16 1666,-868.86 1686.75,-847.77 1679.69,-832.3 1702,-812.86 1709.82,-806.05 1718.97,-800.15 1728.37,-795.11"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1729.5,-797.09 1734.24,-792.09 1727.42,-793.04 1729.5,-797.09"/>
+</g>
+<!-- g_back&#45;&gt;r_bring -->
+<g id="edge69" class="edge">
+<title>g_back&#45;&gt;r_bring</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1654.63,-923.37C1717.03,-916.82 1804.98,-905.85 1881,-889.86 1904.6,-884.9 1930.1,-877.93 1952.48,-871.25"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1953.14,-873.43 1958.71,-869.38 1951.83,-869.07 1953.14,-873.43"/>
+</g>
+<!-- l_imu&#45;&gt;l_ekf -->
+<g id="edge35" class="edge">
+<title>l_imu&#45;&gt;l_ekf</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1129.78,-773.35C1208.33,-768.7 1334.75,-758.41 1442,-736.86 1465.59,-732.12 1491.05,-724.9 1513.06,-717.95"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1513.98,-720.05 1519.48,-715.9 1512.59,-715.71 1513.98,-720.05"/>
+</g>
+<!-- g_ekf -->
+<g id="node37" class="node">
+<title>g_ekf</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M1859,-711.36C1859,-711.36 1724,-711.36 1724,-711.36 1718,-711.36 1712,-705.36 1712,-699.36 1712,-699.36 1712,-686.36 1712,-686.36 1712,-680.36 1718,-674.36 1724,-674.36 1724,-674.36 1859,-674.36 1859,-674.36 1865,-674.36 1871,-680.36 1871,-686.36 1871,-686.36 1871,-699.36 1871,-699.36 1871,-705.36 1865,-711.36 1859,-711.36"/>
+<text text-anchor="start" x="1724" y="-695.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1760" y="-695.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> fused odom beats</text>
+<text text-anchor="start" x="1731" y="-685.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">wheel odom under slip</text>
+</g>
+<!-- l_ekf&#45;&gt;g_ekf -->
+<g id="edge37" class="edge">
+<title>l_ekf&#45;&gt;g_ekf</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1657.71,-695.92C1673.26,-695.56 1689.51,-695.19 1705.08,-694.83"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1705.26,-697.1 1711.71,-694.68 1705.16,-692.55 1705.26,-697.1"/>
+</g>
+<!-- g_map -->
+<g id="node39" class="node">
+<title>g_map</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M2081.5,-711.36C2081.5,-711.36 1951.5,-711.36 1951.5,-711.36 1945.5,-711.36 1939.5,-705.36 1939.5,-699.36 1939.5,-699.36 1939.5,-686.36 1939.5,-686.36 1939.5,-680.36 1945.5,-674.36 1951.5,-674.36 1951.5,-674.36 2081.5,-674.36 2081.5,-674.36 2087.5,-674.36 2093.5,-680.36 2093.5,-686.36 2093.5,-686.36 2093.5,-699.36 2093.5,-699.36 2093.5,-705.36 2087.5,-711.36 2081.5,-711.36"/>
+<text text-anchor="start" x="1951.5" y="-695.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="1987.5" y="-695.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> the map survives</text>
+<text text-anchor="start" x="1959" y="-685.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">a full competition run</text>
+</g>
+<!-- g_ekf&#45;&gt;g_map -->
+<g id="edge40" class="edge">
+<title>g_ekf&#45;&gt;g_map</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1871.12,-692.86C1891.15,-692.86 1912.73,-692.86 1932.95,-692.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1932.96,-695.14 1939.46,-692.86 1932.96,-690.59 1932.96,-695.14"/>
+</g>
+<!-- l_reloc&#45;&gt;g_map -->
+<g id="edge39" class="edge">
+<title>l_reloc&#45;&gt;g_map</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1849.06,-751.83C1882.1,-740.12 1923.72,-725.38 1957.08,-713.56"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1957.84,-715.7 1963.21,-711.39 1956.32,-711.41 1957.84,-715.7"/>
+</g>
+<!-- g_trav -->
+<g id="node49" class="node">
+<title>g_trav</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M2315,-610.36C2315,-610.36 2164,-610.36 2164,-610.36 2158,-610.36 2152,-604.36 2152,-598.36 2152,-598.36 2152,-585.36 2152,-585.36 2152,-579.36 2158,-573.36 2164,-573.36 2164,-573.36 2315,-573.36 2315,-573.36 2321,-573.36 2327,-579.36 2327,-585.36 2327,-585.36 2327,-598.36 2327,-598.36 2327,-604.36 2321,-610.36 2315,-610.36"/>
+<text text-anchor="start" x="2164.5" y="-594.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="2200.5" y="-594.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> the rover crosses the</text>
+<text text-anchor="start" x="2164" y="-584.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">obstacle field autonomously</text>
+</g>
+<!-- g_map&#45;&gt;g_trav -->
+<g id="edge56" class="edge">
+<title>g_map&#45;&gt;g_trav</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2058.03,-674.34C2095.77,-657.09 2151.99,-631.4 2191.63,-613.28"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2192.88,-615.21 2197.85,-610.44 2190.99,-611.07 2192.88,-615.21"/>
+</g>
+<!-- p_disc -->
+<g id="node41" class="node">
+<title>p_disc</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1401,-398.86C1401,-398.86 1226,-398.86 1226,-398.86 1220,-398.86 1214,-392.86 1214,-386.86 1214,-386.86 1214,-370.86 1214,-370.86 1214,-364.86 1220,-358.86 1226,-358.86 1226,-358.86 1401,-358.86 1401,-358.86 1407,-358.86 1413,-364.86 1413,-370.86 1413,-370.86 1413,-386.86 1413,-386.86 1413,-392.86 1407,-398.86 1401,-398.86"/>
+<text text-anchor="start" x="1229" y="-382.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">boulder vs berm discrimination,</text>
+<text text-anchor="start" x="1226" y="-370.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">a real confidence, not a constant</text>
+</g>
+<!-- p_ransac&#45;&gt;p_disc -->
+<g id="edge41" class="edge">
+<title>p_ransac&#45;&gt;p_disc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1119.94,-437.83C1156.77,-426.55 1202.82,-412.45 1240.65,-400.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1241.58,-402.96 1247.13,-398.88 1240.25,-398.61 1241.58,-402.96"/>
+</g>
+<!-- p_crater -->
+<g id="node42" class="node">
+<title>p_crater</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M1375,-476.36C1375,-476.36 1252,-476.36 1252,-476.36 1246,-476.36 1240,-470.36 1240,-464.36 1240,-464.36 1240,-451.36 1240,-451.36 1240,-445.36 1246,-439.36 1252,-439.36 1252,-439.36 1375,-439.36 1375,-439.36 1381,-439.36 1387,-445.36 1387,-451.36 1387,-451.36 1387,-464.36 1387,-464.36 1387,-470.36 1381,-476.36 1375,-476.36"/>
+<text text-anchor="start" x="1252" y="-460.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">crater detection on the</text>
+<text text-anchor="start" x="1260.5" y="-450.46" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.50" fill="#1a1a1a">below_ground</text>
+<text text-anchor="start" x="1333.5" y="-450.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> cloud</text>
+</g>
+<!-- p_ransac&#45;&gt;p_crater -->
+<g id="edge43" class="edge">
+<title>p_ransac&#45;&gt;p_crater</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1148.01,-457.86C1175.93,-457.86 1206.25,-457.86 1233.17,-457.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1233.43,-460.14 1239.93,-457.86 1233.43,-455.59 1233.43,-460.14"/>
+</g>
+<!-- p_disc&#45;&gt;g_obst -->
+<g id="edge42" class="edge">
+<title>p_disc&#45;&gt;g_obst</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1413.3,-397.35C1432.32,-400.91 1452.25,-404.64 1471.3,-408.21"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1470.92,-410.45 1477.72,-409.41 1471.75,-405.98 1470.92,-410.45"/>
+</g>
+<!-- p_crater&#45;&gt;g_obst -->
+<g id="edge44" class="edge">
+<title>p_crater&#45;&gt;g_obst</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1387.32,-449.06C1413.37,-445.91 1443.2,-442.31 1471.14,-438.93"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1471.64,-441.16 1477.82,-438.13 1471.09,-436.65 1471.64,-441.16"/>
+</g>
+<!-- g_obst&#45;&gt;g_trav -->
+<g id="edge55" class="edge">
+<title>g_obst&#45;&gt;g_trav</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1664.9,-445.4C1773.39,-467.89 1958.95,-508.24 2116,-551.86 2136.62,-557.59 2158.93,-564.62 2178.79,-571.18"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2178.26,-573.41 2185.15,-573.3 2179.7,-569.09 2178.26,-573.41"/>
+</g>
+<!-- g_nav -->
+<g id="node45" class="node">
+<title>g_nav</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M910,-432.36C910,-432.36 750,-432.36 750,-432.36 744,-432.36 738,-426.36 738,-420.36 738,-420.36 738,-407.36 738,-407.36 738,-401.36 744,-395.36 750,-395.36 750,-395.36 910,-395.36 910,-395.36 916,-395.36 922,-401.36 922,-407.36 922,-407.36 922,-420.36 922,-420.36 922,-426.36 916,-432.36 910,-432.36"/>
+<text text-anchor="start" x="750" y="-416.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="786" y="-416.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> Nav2 wiring confirmed</text>
+<text text-anchor="start" x="755" y="-406.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">against the installed release</text>
+</g>
+<!-- n_ver&#45;&gt;g_nav -->
+<g id="edge46" class="edge">
+<title>n_ver&#45;&gt;g_nav</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M444.2,-414.66C528.32,-414.48 647.81,-414.24 731.24,-414.07"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="731.44,-416.34 737.94,-414.05 731.43,-411.79 731.44,-416.34"/>
+</g>
+<!-- g_nav&#45;&gt;n_foot -->
+<g id="edge47" class="edge">
+<title>g_nav&#45;&gt;n_foot</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M856.4,-432.69C881.44,-450.75 921.19,-478.12 958,-497.86 969.36,-503.96 981.86,-509.81 993.93,-515.06"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="993.33,-517.27 1000.2,-517.75 995.12,-513.09 993.33,-517.27"/>
+</g>
+<!-- g_nav&#45;&gt;m_pkg -->
+<g id="edge58" class="edge">
+<title>g_nav&#45;&gt;m_pkg</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M838.08,-395.17C854.6,-353.11 898.84,-249.09 958,-176.86 973.64,-157.77 994.51,-139.97 1012.66,-126.2"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1014.35,-127.78 1018.19,-122.07 1011.62,-124.14 1014.35,-127.78"/>
+</g>
+<!-- n_foot&#45;&gt;n_zone -->
+<g id="edge49" class="edge">
+<title>n_foot&#45;&gt;n_zone</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1138.63,-536.72C1231.13,-535.47 1379.39,-533.46 1476,-532.15"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1476.11,-534.43 1482.58,-532.06 1476.04,-529.88 1476.11,-534.43"/>
+</g>
+<!-- n_foot&#45;&gt;n_tune -->
+<g id="edge51" class="edge">
+<title>n_foot&#45;&gt;n_tune</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1118.28,-557.89C1155.8,-569.67 1203.31,-584.58 1241.95,-596.71"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1241.68,-599.01 1248.56,-598.79 1243.04,-594.67 1241.68,-599.01"/>
+</g>
+<!-- n_zone&#45;&gt;g_trav -->
+<g id="edge53" class="edge">
+<title>n_zone&#45;&gt;g_trav</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1661.03,-538.93C1786.66,-550.45 2016.38,-571.5 2144.97,-583.29"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2145.1,-585.59 2151.78,-583.91 2145.51,-581.06 2145.1,-585.59"/>
+</g>
+<!-- n_tune&#45;&gt;g_trav -->
+<g id="edge54" class="edge">
+<title>n_tune&#45;&gt;g_trav</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1399.77,-616.37C1573.1,-611.31 1965.31,-599.85 2145.18,-594.59"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2145.32,-596.86 2151.75,-594.4 2145.19,-592.31 2145.32,-596.86"/>
+</g>
+<!-- g_trav&#45;&gt;g_auto -->
+<g id="edge66" class="edge">
+<title>g_trav&#45;&gt;g_auto</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2254.53,-573.22C2292.76,-522.42 2398.73,-381.61 2441.38,-324.95"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2443.21,-326.29 2445.3,-319.73 2439.57,-323.56 2443.21,-326.29"/>
+</g>
+<!-- g_trav&#45;&gt;del_sep -->
+<g id="edge78" class="edge">
+<title>g_trav&#45;&gt;del_sep</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2254.2,-610.57C2292.3,-662.59 2399.5,-808.94 2441.91,-866.85"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2440.13,-868.27 2445.81,-872.17 2443.8,-865.58 2440.13,-868.27"/>
+</g>
+<!-- m_pkg&#45;&gt;m_cyc -->
+<g id="edge59" class="edge">
+<title>m_pkg&#45;&gt;m_cyc</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1148.03,-93.43C1240.44,-88.06 1381.14,-79.89 1474.55,-74.47"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1474.83,-76.73 1481.19,-74.08 1474.57,-72.19 1474.83,-76.73"/>
+</g>
+<!-- m_cyc&#45;&gt;m_tier -->
+<g id="edge61" class="edge">
+<title>m_cyc&#45;&gt;m_tier</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1662.72,-68.86C1673.38,-68.86 1684.29,-68.86 1695.03,-68.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1695.19,-71.14 1701.69,-68.86 1695.19,-66.59 1695.19,-71.14"/>
+</g>
+<!-- m_watch -->
+<g id="node53" class="node">
+<title>m_watch</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M2080.5,-219.86C2080.5,-219.86 1952.5,-219.86 1952.5,-219.86 1946.5,-219.86 1940.5,-213.86 1940.5,-207.86 1940.5,-207.86 1940.5,-191.86 1940.5,-191.86 1940.5,-185.86 1946.5,-179.86 1952.5,-179.86 1952.5,-179.86 2080.5,-179.86 2080.5,-179.86 2086.5,-179.86 2092.5,-185.86 2092.5,-191.86 2092.5,-191.86 2092.5,-207.86 2092.5,-207.86 2092.5,-213.86 2086.5,-219.86 2080.5,-219.86"/>
+<text text-anchor="start" x="1952.5" y="-203.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">stuck detection, mission</text>
+<text text-anchor="start" x="1960.5" y="-191.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">watchdog, safe abort</text>
+</g>
+<!-- m_cyc&#45;&gt;m_watch -->
+<g id="edge63" class="edge">
+<title>m_cyc&#45;&gt;m_watch</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1636.9,-88.93C1657.64,-95.38 1680.78,-102.49 1702,-108.86 1782.56,-133.04 1875.07,-159.77 1938.6,-177.96"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="1938.17,-180.21 1945.04,-179.81 1939.42,-175.83 1938.17,-180.21"/>
+</g>
+<!-- m_tier&#45;&gt;g_auto -->
+<g id="edge64" class="edge">
+<title>m_tier&#45;&gt;g_auto</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1881.07,-86.62C1989.17,-110.01 2176.18,-156.01 2327,-221.86 2362.82,-237.51 2400.87,-260.99 2426.96,-278.29"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2426,-280.39 2432.67,-282.11 2428.53,-276.6 2426,-280.39"/>
+</g>
+<!-- m_watch&#45;&gt;g_auto -->
+<g id="edge65" class="edge">
+<title>m_watch&#45;&gt;g_auto</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2092.73,-217.05C2169.91,-234.69 2289.91,-262.11 2371.46,-280.75"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2371.4,-283.07 2378.24,-282.3 2372.41,-278.63 2371.4,-283.07"/>
+</g>
+<!-- g_real -->
+<g id="node57" class="node">
+<title>g_real</title>
+<path fill="#d5e8d4" stroke="#d6b656" stroke-width="2.4" d="M2742,-671.36C2742,-671.36 2633,-671.36 2633,-671.36 2627,-671.36 2621,-665.36 2621,-659.36 2621,-659.36 2621,-646.36 2621,-646.36 2621,-640.36 2627,-634.36 2633,-634.36 2633,-634.36 2742,-634.36 2742,-634.36 2748,-634.36 2754,-640.36 2754,-646.36 2754,-646.36 2754,-659.36 2754,-659.36 2754,-665.36 2748,-671.36 2742,-671.36"/>
+<text text-anchor="start" x="2633" y="-655.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">GATE:</text>
+<text text-anchor="start" x="2669" y="-655.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> the sim cycle</text>
+<text text-anchor="start" x="2637.5" y="-645.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">repeats on regolith</text>
+</g>
+<!-- g_auto&#45;&gt;g_real -->
+<g id="edge72" class="edge">
+<title>g_auto&#45;&gt;g_real</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2464.31,-319.55C2473.27,-372.88 2505.93,-527.63 2594,-614.86 2600.39,-621.19 2607.98,-626.52 2616.02,-630.98"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2615.44,-633.24 2622.25,-634.23 2617.54,-629.21 2615.44,-633.24"/>
+</g>
+<!-- r_bag -->
+<g id="node56" class="node">
+<title>r_bag</title>
+<path fill="#d5e8d4" stroke="#82b366" stroke-width="1.6" d="M2308.5,-870.86C2308.5,-870.86 2170.5,-870.86 2170.5,-870.86 2164.5,-870.86 2158.5,-864.86 2158.5,-858.86 2158.5,-858.86 2158.5,-842.86 2158.5,-842.86 2158.5,-836.86 2164.5,-830.86 2170.5,-830.86 2170.5,-830.86 2308.5,-830.86 2308.5,-830.86 2314.5,-830.86 2320.5,-836.86 2320.5,-842.86 2320.5,-842.86 2320.5,-858.86 2320.5,-858.86 2320.5,-864.86 2314.5,-870.86 2308.5,-870.86"/>
+<text text-anchor="start" x="2170.5" y="-854.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">telemetry, rosbag capture</text>
+<text text-anchor="start" x="2191" y="-842.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">and replay tooling</text>
+</g>
+<!-- r_bring&#45;&gt;r_bag -->
+<g id="edge70" class="edge">
+<title>r_bring&#45;&gt;r_bag</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2116.04,-850.86C2127.88,-850.86 2139.9,-850.86 2151.55,-850.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2151.87,-853.14 2158.37,-850.86 2151.87,-848.59 2151.87,-853.14"/>
+</g>
+<!-- r_bring&#45;&gt;g_real -->
+<g id="edge71" class="edge">
+<title>r_bring&#45;&gt;g_real</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2079.77,-832.32C2102.5,-825.56 2128.41,-817.86 2152,-810.86 2318.97,-761.36 2515.36,-703.36 2617.27,-673.29"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2617.95,-675.46 2623.54,-671.44 2616.67,-671.1 2617.95,-675.46"/>
+</g>
+<!-- r_bag&#45;&gt;del_sep -->
+<g id="edge79" class="edge">
+<title>r_bag&#45;&gt;del_sep</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2320.8,-865.53C2332.34,-867.64 2344.34,-869.83 2356.25,-872"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2356.04,-874.28 2362.85,-873.21 2356.86,-869.8 2356.04,-874.28"/>
+</g>
+<!-- del_rdr -->
+<g id="node61" class="node">
+<title>del_rdr</title>
+<path fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" d="M2993,-825.36C2993,-825.36 2836,-825.36 2836,-825.36 2830,-825.36 2824,-819.36 2824,-813.36 2824,-813.36 2824,-800.36 2824,-800.36 2824,-794.36 2830,-788.36 2836,-788.36 2836,-788.36 2993,-788.36 2993,-788.36 2999,-788.36 3005,-794.36 3005,-800.36 3005,-800.36 3005,-813.36 3005,-813.36 3005,-819.36 2999,-825.36 2993,-825.36"/>
+<text text-anchor="start" x="2836" y="-809.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="bold" font-size="10.50" fill="#1a1a1a">DELIVER:</text>
+<text text-anchor="start" x="2892" y="-809.96" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a"> Robot Data Report</text>
+<text text-anchor="start" x="2875" y="-799.46" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.50" fill="#1a1a1a">— 29 Apr 2027</text>
+</g>
+<!-- r_bag&#45;&gt;del_rdr -->
+<g id="edge81" class="edge">
+<title>r_bag&#45;&gt;del_rdr</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2320.68,-845.62C2445.01,-837.49 2683.87,-821.88 2817.31,-813.15"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2817.64,-815.41 2823.98,-812.72 2817.34,-810.87 2817.64,-815.41"/>
+</g>
+<!-- g_real&#45;&gt;del_rdr -->
+<g id="edge80" class="edge">
+<title>g_real&#45;&gt;del_rdr</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2750.59,-671.54C2761.62,-676.85 2772.34,-683.52 2781,-691.86 2808.22,-718.06 2789.47,-742.99 2817,-768.86 2823.93,-775.38 2832.11,-780.82 2840.72,-785.35"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2839.91,-787.49 2846.75,-788.35 2841.94,-783.42 2839.91,-787.49"/>
+</g>
+<!-- g_real&#45;&gt;del_pol -->
+<g id="edge82" class="edge">
+<title>g_real&#45;&gt;del_pol</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2742.68,-671.41C2775.98,-682.8 2818.69,-697.42 2853.08,-709.19"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2852.51,-711.4 2859.4,-711.35 2853.99,-707.09 2852.51,-711.4"/>
+</g>
+<!-- g_real&#45;&gt;del_run -->
+<g id="edge85" class="edge">
+<title>g_real&#45;&gt;del_run</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2754.18,-652.86C2771.63,-652.86 2790.9,-652.86 2809.84,-652.86"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2810.29,-655.14 2816.79,-652.86 2810.29,-650.59 2810.29,-655.14"/>
+</g>
+<!-- del_drr&#45;&gt;d_teams -->
+<g id="edge76" class="edge">
+<title>del_drr&#45;&gt;d_teams</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M1442.01,-1084.2C1630.86,-1063.97 1980.43,-1026.51 2146.41,-1008.73"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="2146.98,-1010.96 2153.2,-1008 2146.5,-1006.43 2146.98,-1010.96"/>
+</g>
+<!-- del_sep&#45;&gt;d_comp -->
+<g id="edge86" class="edge">
+<title>del_sep&#45;&gt;d_comp</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2558.22,-894.98C2669.95,-897.01 2858.14,-891.98 3012,-845.86 3049.58,-834.6 3088.4,-812.55 3116.01,-794.76"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="3117.52,-796.48 3121.72,-791.03 3115.04,-792.67 3117.52,-796.48"/>
+</g>
+<!-- del_rdr&#45;&gt;d_comp -->
+<g id="edge87" class="edge">
+<title>del_rdr&#45;&gt;d_comp</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M3005.17,-792.23C3016.91,-790.32 3029.05,-788.33 3041.12,-786.37"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="3041.76,-788.57 3047.8,-785.27 3041.02,-784.08 3041.76,-788.57"/>
+</g>
+<!-- del_pol&#45;&gt;d_comp -->
+<g id="edge88" class="edge">
+<title>del_pol&#45;&gt;d_comp</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2988.18,-741.42C3004.94,-744.08 3023.15,-746.98 3041.18,-749.85"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="3041.04,-752.13 3047.81,-750.9 3041.75,-747.63 3041.04,-752.13"/>
+</g>
+<!-- del_run&#45;&gt;d_comp -->
+<g id="edge89" class="edge">
+<title>del_run&#45;&gt;d_comp</title>
+<path fill="none" stroke="#5a5a5a" stroke-width="1.05" d="M2964.53,-671.51C2979.88,-677.66 2996.77,-684.75 3012,-691.86 3044.73,-707.15 3080.61,-726.3 3108.17,-741.55"/>
+<polygon fill="#5a5a5a" stroke="#5a5a5a" stroke-width="1.05" points="3107.14,-743.58 3113.93,-744.75 3109.35,-739.6 3107.14,-743.58"/>
+</g>
+</g>
+
+
+<line x1="34" y1="1158" x2="3297" y2="1158" stroke="#dcdbd4" stroke-width="1"/>
+<text x="34" y="1182" font-size="14" font-weight="700" fill="#0b0b0b">The three that decide the season</text>
+<text x="34" y="1204" font-size="13" fill="#52514e"><tspan font-weight="700">1.</tspan> Isaac has never run. Until <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">probe_isaac_api.sh</tspan> clears, every simulation task behind it is a guess. &#160;&#160;&#160;<tspan font-weight="700">2.</tspan> The compute choice gates cuVSLAM, and cuVSLAM is the only SLAM path with a GPU story. &#160;&#160;&#160;<tspan font-weight="700">3.</tspan> There is no mission layer at all &#8212; <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">lunabot_mission</tspan> is a package that does not exist yet, and autonomy is where the points are.</text>
+<text x="34" y="1227" font-size="12" fill="#898781">The in-repo work queue is every <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">PLACEHOLDER</tspan>, <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">VERIFY</tspan> and <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">TODO(2027)</tspan> marker &#8212; 33 files carry one today. Milestone dates are the published NASA Lunabotics 2027 schedule; competition week is May 2027 at the Center for Space Education, KSC Visitor Complex, exact dates not yet released.</text>
+<text x="34" y="1246" font-size="12" fill="#898781">Confirm all of it against the guidebook when it lands on 3 September 2026 &#8212; the arena, the obstacle spec and the autonomy scoring tiers are placeholders until then.</text>
+</svg>

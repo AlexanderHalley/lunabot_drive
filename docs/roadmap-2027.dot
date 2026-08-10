@@ -1,0 +1,198 @@
+digraph lunabot2027 {
+  rankdir=LR;
+  pad="0.47,0.22";
+  bgcolor="#fcfcfb";
+  splines=spline;
+  overlap=false;
+  nodesep=0.55;
+  ranksep=0.5;
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10.5,
+        margin="0.17,0.11", penwidth=1.6, color="#82b366", fillcolor="#d5e8d4",
+        fontcolor="#1a1a1a"];
+  edge [color="#5a5a5a", penwidth=1.05, arrowsize=0.65];
+
+  // ---- node classes -------------------------------------------------------
+  // work    green fill / green border
+  // GATE    green fill / gold border   -- a proof point that unblocks work
+  // DELIVER blue  fill / blue border   -- an artifact that leaves the team
+  // YOU     yellow fill / gold border  -- only a human can close it
+  // DATE    purple fill / purple bdr   -- fixed, not ours to move
+  // input   grey fill                  -- state, or something we wait on
+
+  // ======================= inputs and fixed dates =========================
+  now      [fillcolor="#f5f5f5", color="#909090",
+            label=<<b>TODAY &#183; 10 Aug 2026</b><br/>stack builds, mock + sim CI green,<br/>no rover has ever followed a path>];
+  gpu      [fillcolor="#f5f5f5", color="#909090",
+            label=<the GPU / Isaac Sim machine<br/>is available>];
+  chassis  [fillcolor="#f5f5f5", color="#909090",
+            label=<2027 chassis fabricated<br/>and measurable>];
+  encoders [fillcolor="#f5f5f5", color="#909090",
+            label=<encoders fitted<br/>to the drivetrain>];
+
+  d_guide  [fillcolor="#e1d5e7", color="#9673a6",
+            label=<<b>3 SEP 2026</b><br/>guidebook released &#8212;<br/>the arena spec finally exists>];
+  d_teams  [fillcolor="#e1d5e7", color="#9673a6",
+            label=<<b>14 DEC 2026</b><br/>teams announced<br/>(design-review down-select)>];
+  d_comp   [fillcolor="#e1d5e7", color="#9673a6", penwidth=3,
+            label=<<b>MAY 2027 &#183; COMPETITION WEEK</b><br/>Center for Space Education, KSC<br/><font point-size="9">exact dates not yet published</font>>];
+
+  // ============================ YOU decisions =============================
+  y_compute [fillcolor="#fff2cc", color="#d6b656",
+             label=<<b>YOU:</b>&#160;pick the compute &#8212;<br/>Jetson or Pi 5<br/><font point-size="9">gates cuVSLAM entirely</font>>];
+  y_tier    [fillcolor="#fff2cc", color="#d6b656",
+             label=<<b>YOU:</b>&#160;pick the autonomy tier<br/>we are actually building for>];
+  y_backend [fillcolor="#fff2cc", color="#d6b656",
+             label=<<b>YOU:</b>&#160;sign off one SLAM<br/>backend and stop hedging>];
+  y_freeze  [fillcolor="#fff2cc", color="#d6b656",
+             label=<<b>YOU:</b>&#160;approve the code freeze<br/>&#8212; config-only after this>];
+  y_pol     [fillcolor="#fff2cc", color="#d6b656",
+             label=<<b>YOU:</b>&#160;sign off the<br/>Proof of Life run>];
+
+  // ============================== simulation ==============================
+  s_probe [label=<run&#160;<font face="Courier">probe_isaac_api.sh</font><br/>on the GPU machine>];
+  g_compat [color="#d6b656", penwidth=2.4,
+            label=<<b>GATE:</b>&#160;every VERIFY in<br/><font face="Courier">compat.py</font>&#160;resolved>];
+  s_head  [label=<Isaac scene builds<br/>and runs headless>];
+  g_sim   [color="#d6b656", penwidth=2.4,
+           label=<<b>GATE:</b>&#160;<font face="Courier">hw:=sim</font>&#160;drives against<br/>real Isaac, not the test double>];
+  s_arena [label=<arena rebuilt to the<br/>2027 guidebook spec>];
+  s_terr  [label=<terrain v2: slopes, craters,<br/>regolith friction>];
+  s_exc   [label=<excavation and berm<br/>physics in sim>];
+  s_score [label=<scoring harness on<br/><font face="Courier">/sim/ground_truth/odom</font>>];
+  g_simcyc [color="#d6b656", penwidth=2.4,
+            label=<<b>GATE:</b>&#160;a full mission cycle<br/>runs end to end in sim>];
+  doc_ver [fillcolor="#f5f5f5", color="#909090",
+           label=<record the Isaac version,<br/>delete the answered VERIFYs>];
+
+  // =============================== hardware ===============================
+  h_meas [label=<measure the chassis into<br/><font face="Courier">properties.xacro</font><br/>and&#160;<font face="Courier">controllers.yaml</font>>];
+  g_urdf [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;URDF and kinematics<br/>match the real rover>];
+  h_fb   [label=<<font face="Courier">use_motor_feedback: true</font>,<br/>publish&#160;<font face="Courier">/drive/status</font>>];
+  g_odom [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;/odom tracks a<br/>measured drive, not the command>];
+  h_exc  [label=<excavation actuators: URDF +<br/>a second ros2_control interface>];
+  g_exc  [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;excavation commanded<br/>from ROS on the bench>];
+  h_can  [label=<CAN watchdog, E-stop,<br/>fault recovery>];
+  g_stop [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;E-stop cuts motion<br/>from any state>];
+  doc_con [fillcolor="#f5f5f5", color="#909090",
+           label=<extend TOPIC_FRAME_CONTRACT.md<br/>to the excavation interfaces>];
+
+  // ================================ SLAM ==================================
+  l_cu   [label=<cuVSLAM: does NVIDIA's apt<br/>carry a Jazzy build at all?>];
+  l_rtab [label=<rtabmap tuned for low-texture,<br/>self-similar regolith>];
+  g_back [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;one SLAM backend<br/>chosen and pinned>];
+  l_imu  [label=<characterise the IMU &#8212;<br/>real noise into&#160;<font face="Courier">ekf.yaml</font>>];
+  l_ekf  [label=<switch to&#160;<font face="Courier">odom_source:=ekf</font>>];
+  g_ekf  [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;fused odom beats<br/>wheel odom under slip>];
+  l_reloc [label=<relocalisation after<br/>tracking loss>];
+  g_map  [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;the map survives<br/>a full competition run>];
+
+  // ============================= perception ===============================
+  p_ransac [label=<RANSAC ground plane replaces<br/>the flat-height stub>];
+  p_disc   [label=<boulder vs berm discrimination,<br/>a real confidence, not a constant>];
+  p_crater [label=<crater detection on the<br/><font face="Courier">below_ground</font>&#160;cloud>];
+  g_obst   [color="#d6b656", penwidth=2.4,
+            label=<<b>GATE:</b>&#160;the guidebook obstacle<br/>field is detected reliably>];
+
+  // ============================= navigation ===============================
+  n_ver  [label=<Nav2 VERIFY sweep: executables,<br/><font face="Courier">enable_stamped_cmd_vel</font>>];
+  g_nav  [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;Nav2 wiring confirmed<br/>against the installed release>];
+  n_foot [label=<costmap and footprint from<br/>the measured chassis>];
+  n_zone [label=<zone-aware layers: keep-out,<br/>excavation, construction>];
+  n_tune [label=<regolith tuning: accel limits,<br/>no spin-in-place recovery>];
+  g_trav [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;the rover crosses the<br/>obstacle field autonomously>];
+
+  // ========================== autonomy / mission ==========================
+  m_pkg  [label=<new package&#160;<font face="Courier">lunabot_mission</font><br/>+ behaviour-tree skeleton<br/><font point-size="9">nothing like this exists today</font>>];
+  m_cyc  [label=<the cycle: traverse, excavate,<br/>return, deposit>];
+  m_tier [label=<autonomy tiers mapped onto<br/>the scoring table>];
+  m_watch [label=<stuck detection, mission<br/>watchdog, safe abort>];
+  g_auto [color="#d6b656", penwidth=2.4,
+          label=<<b>GATE:</b>&#160;two full autonomous<br/>cycles, back to back>];
+
+  // ============================= real rover ===============================
+  r_bring [label=<real-rover bring-up:<br/><font face="Courier">check_stack.py --profile real</font>>];
+  r_bag   [label=<telemetry, rosbag capture<br/>and replay tooling>];
+  g_real  [color="#d6b656", penwidth=2.4,
+           label=<<b>GATE:</b>&#160;the sim cycle<br/>repeats on regolith>];
+
+  // ============================ deliverables ==============================
+  del_pmp [fillcolor="#dae8fc", color="#6c8ebf", penwidth=2,
+           label=<<b>DELIVER:</b>&#160;Project Management Plan,<br/>software sections &#8212; 30 Sep 2026>];
+  del_drr [fillcolor="#dae8fc", color="#6c8ebf", penwidth=2,
+           label=<<b>DELIVER:</b>&#160;Design Review Report &#8212;<br/>architecture + sim evidence &#8212; 20 Nov 2026>];
+  del_sep [fillcolor="#dae8fc", color="#6c8ebf", penwidth=2,
+           label=<<b>DELIVER:</b>&#160;Systems Engineering<br/>Paper &#8212; 30 Mar 2027>];
+  del_rdr [fillcolor="#dae8fc", color="#6c8ebf", penwidth=2,
+           label=<<b>DELIVER:</b>&#160;Robot Data Report<br/>&#8212; 29 Apr 2027>];
+  del_pol [fillcolor="#dae8fc", color="#6c8ebf", penwidth=2,
+           label=<<b>DELIVER:</b>&#160;Proof of Life<br/>review &#8212; 29 Apr 2027>];
+  del_run [fillcolor="#dae8fc", color="#6c8ebf", penwidth=2,
+           label=<<b>DELIVER:</b>&#160;competition runbook<br/>+ tagged, frozen build>];
+
+  // ================================ edges =================================
+  now -> s_probe; now -> p_ransac; now -> n_ver; now -> y_compute; now -> y_tier;
+  gpu -> s_probe;
+
+  s_probe -> g_compat -> s_head -> g_sim;
+  g_compat -> doc_ver;
+  d_guide -> s_arena;
+  g_sim -> s_arena -> s_terr -> s_exc -> g_simcyc;
+  s_arena -> s_score -> g_simcyc;
+  g_sim -> l_rtab;
+
+  chassis -> h_meas -> g_urdf;
+  encoders -> h_fb;
+  g_urdf -> h_fb -> g_odom;
+  g_urdf -> h_exc -> g_exc;
+  h_exc -> doc_con;
+  g_odom -> h_can -> g_stop;
+  g_exc -> s_exc;
+
+  y_compute -> l_cu -> g_back;
+  l_rtab -> g_back;
+  y_backend -> g_back;
+  encoders -> l_imu -> l_ekf;
+  g_odom -> l_ekf -> g_ekf;
+  g_back -> l_reloc -> g_map;
+  g_ekf -> g_map;
+
+  p_ransac -> p_disc -> g_obst;
+  p_ransac -> p_crater -> g_obst;
+  s_arena -> g_obst;
+
+  n_ver -> g_nav -> n_foot;
+  g_urdf -> n_foot -> n_zone;
+  g_urdf -> n_tune;
+  n_foot -> n_tune;
+  s_arena -> n_zone;
+  n_zone -> g_trav; n_tune -> g_trav; g_obst -> g_trav; g_map -> g_trav;
+
+  y_tier -> m_pkg; g_nav -> m_pkg;
+  m_pkg -> m_cyc; g_exc -> m_cyc;
+  m_cyc -> m_tier; y_tier -> m_tier;
+  m_cyc -> m_watch;
+  m_tier -> g_auto; m_watch -> g_auto; g_trav -> g_auto; g_simcyc -> g_auto;
+
+  g_stop -> r_bring; g_back -> r_bring;
+  r_bring -> r_bag;
+  r_bring -> g_real; g_auto -> g_real;
+
+  y_compute -> del_pmp;
+  g_sim -> del_drr; g_urdf -> del_drr;
+  del_drr -> d_teams;
+  d_teams -> del_sep; g_trav -> del_sep; r_bag -> del_sep;
+  g_real -> del_rdr; r_bag -> del_rdr;
+  g_real -> del_pol; y_pol -> del_pol;
+  y_freeze -> del_run; g_real -> del_run;
+
+  del_sep -> d_comp; del_rdr -> d_comp; del_pol -> d_comp; del_run -> d_comp;
+}
