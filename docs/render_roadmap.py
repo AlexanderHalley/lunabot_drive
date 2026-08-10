@@ -28,7 +28,7 @@ INK2 = '#52514e'
 MUTED = '#898781'
 RULE = '#dcdbd4'
 
-HEAD = 206
+HEAD = 246
 FOOT = 104
 
 SANS = 'system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif'
@@ -51,16 +51,62 @@ body = body.replace('font-family="Helvetica,sans-Serif"', f'font-family="{SANS}"
 body = body.replace('font-family="Courier,monospace"', f'font-family="{MONO}"')
 body = body.replace('font-family="Times,serif"', f'font-family="{SANS}"')
 
+
+# The left column is everything that exists today, held there by the rank=same
+# group in the .dot. Find its right edge so the built / not-written boundary can
+# be drawn as an actual line rather than left for the reader to infer.
+def right_edge_of(node_ids):
+    edge = 0.0
+    for nid in node_ids:
+        m_node = re.search(
+            r'<title>' + re.escape(nid) + r'</title>\s*<path[^>]*\sd="([^"]*)"',
+            raw,
+        )
+        if m_node is None:  # a node was renamed in the .dot but not here
+            continue
+        xs = [float(p.split(',')[0]) for p in re.findall(r'(-?[\d.]+,-?[\d.]+)', m_node.group(1))]
+        edge = max([edge] + xs)
+    return edge + 4  # graphviz translates the whole graph by 4
+
+
+BUILT = [
+    'b_ws',
+    'b_ctrl',
+    'b_can',
+    'b_mux',
+    'b_cam',
+    'b_nav',
+    'b_ci',
+    'b_docs',
+    'b_check',
+    'b_probe',
+    'b_urdf',
+    'b_rtab',
+    'b_boul',
+    'b_cuv',
+    'b_ekf',
+    'b_isaac',
+    'gpu',
+    'chassis',
+    'encoders',
+]
+DIVIDER = right_edge_of(BUILT) + 30
+BAND = 42  # room above the graph for the two column captions
+body = f'<g transform="translate(0,{BAND})">{body}</g>'
+
 o = []
 a = o.append
 a(
     f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
-    f'width="{W:.0f}" height="{H + HEAD + FOOT:.0f}" '
-    f'viewBox="0 {-HEAD} {W:.0f} {H + HEAD + FOOT:.0f}" '
+    f'width="{W:.0f}" height="{H + BAND + HEAD + FOOT:.0f}" '
+    f'viewBox="0 {-HEAD} {W:.0f} {H + BAND + HEAD + FOOT:.0f}" '
     f'font-family="{SANS}">'
 )
 a('<title>Lunabot 2027 - software roadmap</title>')
-a(f'<rect x="0" y="{-HEAD}" width="{W:.0f}" height="{H + HEAD + FOOT:.0f}" fill="{SURFACE}"/>')
+a(
+    f'<rect x="0" y="{-HEAD}" width="{W:.0f}" '
+    f'height="{H + BAND + HEAD + FOOT:.0f}" fill="{SURFACE}"/>'
+)
 
 # ------------------------------------------------------------------ header --
 a(
@@ -69,9 +115,9 @@ a(
 )
 a(
     f'<text x="34" y="{-HEAD + 82}" font-size="16" fill="{INK2}">'
-    f'Every piece of software that has to exist between today and competition week. '
-    f'Read it left to right; an arrow means the thing it points at cannot start '
-    f'until the thing behind it is done.</text>'
+    f'Everything the software has to reach between today and competition week. Read it '
+    f'left to right; an arrow means the thing it points at cannot start until the '
+    f'thing behind it is done.</text>'
 )
 a(
     f'<text x="34" y="{-HEAD + 105}" font-size="13.5" fill="{MUTED}">'
@@ -81,39 +127,95 @@ a(
 )
 
 # ------------------------------------------------------------------ legend --
-LEG = [
-    ('#d5e8d4', '#82b366', 1.6, 'work', 'a job somebody does'),
-    ('#d5e8d4', '#d6b656', 2.6, 'GATE', 'proof that unblocks what follows'),
-    ('#fff2cc', '#d6b656', 2.0, 'YOU', 'only a human closes it'),
-    ('#dae8fc', '#6c8ebf', 2.0, 'DELIVER', 'an artifact that leaves the team'),
-    ('#e1d5e7', '#9673a6', 2.0, 'date', 'fixed, not ours to move'),
-    ('#f5f5f5', '#909090', 1.6, 'input', 'state, or something we wait on'),
+# Two independent channels, so they get two rows. Conflating them is exactly
+# the misreading this legend exists to prevent.
+FILLS = [
+    ('#d5e8d4', 'done', 'built and trusted'),
+    ('#fff2cc', 'in progress', 'built, but known to be provisional'),
+    ('#ffffff', 'not started', 'nothing written yet'),
 ]
-lx = 34
-ly = -HEAD + 140
+KINDS = [
+    ('#9a9a94', 1.4, False, 'work', 'a job somebody does'),
+    (
+        '#d6b656',
+        2.6,
+        False,
+        'GATE',
+        'a proof point -- nothing behind it is real work until it clears',
+    ),
+    ('#b85450', 2.2, False, 'YOU', 'a decision no software closes'),
+    ('#6c8ebf', 2.2, False, 'DELIVER', 'an artifact that leaves the team'),
+    ('#9673a6', 2.2, False, 'date', 'fixed, not ours to move'),
+    ('#9a9a94', 1.4, True, 'WAITING', 'somebody else has to hand it to us'),
+]
+
+ly = -HEAD + 128
 a(
-    f'<line x1="34" y1="{ly - 14}" x2="{W - 34:.0f}" y2="{ly - 14}" '
+    f'<line x1="34" y1="{ly - 16}" x2="{W - 34:.0f}" y2="{ly - 16}" '
     f'stroke="{RULE}" stroke-width="1"/>'
 )
-for fill, stroke, pw, name, desc in LEG:
+
+
+def legend_caption(x, y, text):
     a(
-        f'<rect x="{lx}" y="{ly + 4}" width="30" height="19" rx="5" fill="{fill}" '
-        f'stroke="{stroke}" stroke-width="{pw}"/>'
+        f'<text x="{x}" y="{y}" font-size="11" font-weight="700" fill="{MUTED}" '
+        f'letter-spacing="0.7">{text}</text>'
     )
+
+
+def legend_entry(x, y, name, desc):
+    a(f'<text x="{x}" y="{y}" font-size="12.5" font-weight="700" fill="{INK}">{name}</text>')
+    a(f'<text x="{x}" y="{y + 15}" font-size="11.5" fill="{MUTED}">{desc}</text>')
+    return 48 + max(len(desc) * 6.3, len(name) * 8) + 30
+
+
+legend_caption(34, ly, 'FILL = PROGRESS')
+lx = 176
+for fill, name, desc in FILLS:
     a(
-        f'<text x="{lx + 38}" y="{ly + 13}" font-size="12.5" font-weight="700" '
-        f'fill="{INK}">{name}</text>'
+        f'<rect x="{lx}" y="{ly - 12}" width="30" height="19" rx="5" fill="{fill}" '
+        f'stroke="#9a9a94" stroke-width="1.4"/>'
     )
-    a(f'<text x="{lx + 38}" y="{ly + 28}" font-size="11.5" fill="{MUTED}">{desc}</text>')
-    lx += 48 + max(len(desc) * 6.3, len(name) * 8) + 34
+    lx += legend_entry(lx + 38, ly - 3, name, desc)
+
+legend_caption(34, ly + 40, 'BORDER = KIND')
+lx = 176
+for stroke, pw, dashed, name, desc in KINDS:
+    dash = ' stroke-dasharray="4 3"' if dashed else ''
+    a(
+        f'<rect x="{lx}" y="{ly + 28}" width="30" height="19" rx="5" fill="#ffffff" '
+        f'stroke="{stroke}" stroke-width="{pw}"{dash}/>'
+    )
+    lx += legend_entry(lx + 38, ly + 37, name, desc)
+
+# ------------------------------------------------------- built / not built --
+# A tinted band behind the left column and a rule at its edge. Everything to
+# the left of the rule exists in the tree today; everything to the right of it
+# is the season's work.
+a(
+    f'<rect x="0" y="0" width="{DIVIDER:.0f}" height="{H + BAND:.0f}" '
+    f'fill="#d5e8d4" fill-opacity="0.22"/>'
+)
+a(
+    f'<line x1="{DIVIDER:.0f}" y1="0" x2="{DIVIDER:.0f}" y2="{H + BAND:.0f}" '
+    f'stroke="#82b366" stroke-width="1.5" stroke-dasharray="7 5"/>'
+)
+a(
+    '<text x="34" y="26" font-size="14" font-weight="700" fill="#4a7a3a" '
+    'letter-spacing="0.8">ALREADY BUILT</text>'
+)
+a(
+    f'<text x="{DIVIDER + 22:.0f}" y="26" font-size="14" font-weight="700" '
+    f'fill="{MUTED}" letter-spacing="0.8">EVERYTHING STILL TO DO</text>'
+)
 
 # --------------------------------------------------------------- the graph --
 a(body)
 
 # ------------------------------------------------------------------ footer --
-fy = H + 34
+fy = H + BAND + 34
 a(
-    f'<line x1="34" y1="{H + 10:.0f}" x2="{W - 34:.0f}" y2="{H + 10:.0f}" '
+    f'<line x1="34" y1="{H + BAND + 10:.0f}" x2="{W - 34:.0f}" y2="{H + BAND + 10:.0f}" '
     f'stroke="{RULE}" stroke-width="1"/>'
 )
 a(
@@ -151,4 +253,4 @@ a('</svg>')
 
 with open(OUT, 'w') as f:
     f.write('\n'.join(o) + '\n')
-print(f'wrote {OUT}  {W:.0f}x{H + HEAD + FOOT:.0f}')
+print(f'wrote {OUT}  {W:.0f}x{H + BAND + HEAD + FOOT:.0f}')
