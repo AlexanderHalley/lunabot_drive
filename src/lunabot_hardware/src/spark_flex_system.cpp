@@ -8,7 +8,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,6 +25,13 @@ namespace
 {
 constexpr auto kLogger = "SparkFlexSystem";
 constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
+constexpr float kNaNf = std::numeric_limits<float>::quiet_NaN();
+
+/// Node name for the component's own node, which exists only to own the
+/// /drive/status publisher. Fixed rather than derived from info_.name so it
+/// is a legal node name whatever the ros2_control block is called.
+constexpr auto kStatusNodeName = "spark_flex_system";
+constexpr auto kStatusTopic = "/drive/status";
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -84,6 +93,8 @@ hardware_interface::CallbackReturn SparkFlexSystem::on_init(
   params_.max_duty_cycle = get_hardware_parameter("max_duty_cycle", 0.8);
   params_.gear_ratio = get_hardware_parameter("gear_ratio", 20.0);
   params_.ramp_rate = get_hardware_parameter("ramp_rate", 0.1);
+  params_.status_publish_rate = get_hardware_parameter("status_publish_rate", 20.0);
+  params_.command_timeout = get_hardware_parameter("command_timeout", 0.5);
 
   if (params_.max_wheel_rad_s <= 0.0) {
     RCLCPP_FATAL(
@@ -96,6 +107,7 @@ hardware_interface::CallbackReturn SparkFlexSystem::on_init(
   hw_commands_velocity_.assign(joint_count, kNaN);
   hw_states_position_.assign(joint_count, kNaN);
   hw_states_velocity_.assign(joint_count, kNaN);
+  last_commands_.assign(joint_count, kNaN);
   motors_.clear();
   motors_.reserve(joint_count);
 
@@ -200,7 +212,69 @@ hardware_interface::CallbackReturn SparkFlexSystem::on_configure(
   RCLCPP_INFO(
     rclcpp::get_logger(kLogger), "connected to %zu SparkFlex controllers on %s", motors_.size(),
     params_.can_interface.c_str());
+
+  start_status_publisher();
   return hardware_interface::CallbackReturn::SUCCESS;
+}
+
+void SparkFlexSystem::start_status_publisher()
+{
+  if (params_.status_publish_rate <= 0.0) {
+    RCLCPP_INFO(
+      rclcpp::get_logger(kLogger), "status_publish_rate is 0, so %s is not published",
+      kStatusTopic);
+    return;
+  }
+
+  // A hardware component is normally loaded by controller_manager, where
+  // rclcpp is long since initialised. It can also be loaded by a bare
+  // ResourceManager -- which is exactly what test_load_spark_flex_system does
+  // -- and constructing a node there throws rclcpp::ContextNotInitialized out
+  // of a lifecycle callback. Telemetry is not worth failing a transition
+  // over, so the check is here rather than a try/catch around the throw.
+  if (!rclcpp::ok()) {
+    RCLCPP_WARN(
+      rclcpp::get_logger(kLogger), "rclcpp is not initialised, so %s is not published",
+      kStatusTopic);
+    return;
+  }
+
+  status_node_ = std::make_shared<rclcpp::Node>(kStatusNodeName);
+  auto publisher =
+    status_node_->create_publisher<lunabot_msgs::msg::DriveStatus>(kStatusTopic, rclcpp::QoS(10));
+  status_publisher_ =
+    std::make_unique<realtime_tools::RealtimePublisher<lunabot_msgs::msg::DriveStatus>>(publisher);
+
+  // Everything that cannot change after configuration is written once, here.
+  // publish_status() then touches only the fields that vary, which is what
+  // keeps it allocation-free in the control loop: the motors vector is sized
+  // now and never resized again.
+  auto & msg = status_publisher_->msg_;
+  msg.can_interface = params_.can_interface;
+  msg.motors.resize(motors_.size());
+  for (std::size_t i = 0; i < motors_.size(); ++i) {
+    auto & motor = msg.motors[i];
+    motor.joint_name = motors_[i].config().joint_name;
+    motor.can_id = static_cast<std::uint8_t>(motors_[i].config().can_id);
+
+    // NaN, not zero, and not a sentinel. MotorStatus.msg's rule is that a
+    // field the controller cannot report is NaN and the consumer checks --
+    // so a plot of bus voltage shows a gap rather than a convincing 0 V.
+    //
+    // These four stay NaN for now whatever use_motor_feedback says, because
+    // SparkFlexMotor exposes no getter for any of them. Wiring one is the
+    // same job as wiring read_velocity(); see docs/HARDWARE_CAN.md.
+    motor.velocity = kNaNf;
+    motor.position = kNaNf;
+    motor.bus_voltage = kNaNf;
+    motor.output_current = kNaNf;
+    motor.temperature = kNaNf;
+    motor.fault_bits = 0;
+  }
+
+  RCLCPP_INFO(
+    rclcpp::get_logger(kLogger), "publishing %s at %.1f Hz", kStatusTopic,
+    params_.status_publish_rate);
 }
 
 hardware_interface::CallbackReturn SparkFlexSystem::on_activate(
@@ -233,6 +307,14 @@ hardware_interface::CallbackReturn SparkFlexSystem::on_activate(
   std::fill(hw_commands_velocity_.begin(), hw_commands_velocity_.end(), 0.0);
   std::fill(hw_states_position_.begin(), hw_states_position_.end(), 0.0);
   std::fill(hw_states_velocity_.begin(), hw_states_velocity_.end(), 0.0);
+  std::fill(last_commands_.begin(), last_commands_.end(), 0.0);
+
+  // Both clocks are learned from the first write() rather than seeded here:
+  // on_activate has no time argument, and an rclcpp::Time default-constructs
+  // against the system clock, which cannot be subtracted from a ROS-time
+  // stamp without throwing.
+  have_command_time_ = false;
+  have_status_time_ = false;
 
   for (auto & motor : motors_) {
     motor.stop();
@@ -260,6 +342,10 @@ hardware_interface::CallbackReturn SparkFlexSystem::on_deactivate(
 hardware_interface::CallbackReturn SparkFlexSystem::on_cleanup(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
+  // Publisher before node: it holds a shared_ptr to a publisher created from
+  // that node, and RealtimePublisher's destructor joins its own thread.
+  status_publisher_.reset();
+  status_node_.reset();
   motors_.clear();
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -331,15 +417,27 @@ hardware_interface::return_type SparkFlexSystem::read(
 }
 
 hardware_interface::return_type SparkFlexSystem::write(
-  const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
+  const rclcpp::Time & time, const rclcpp::Duration & /*period*/)
 {
   if (!active_) {
     return hardware_interface::return_type::OK;
   }
 
+  bool commanded = !have_command_time_;
   for (std::size_t i = 0; i < motors_.size(); ++i) {
     const double command = std::isfinite(hw_commands_velocity_[i]) ? hw_commands_velocity_[i] : 0.0;
     motors_[i].set_velocity(command);
+
+    // "The drivetrain was asked to do something" -- see publish_status() for
+    // why that is the strongest statement available here, and why it is not
+    // the same as "a command arrived".
+    commanded |= (command != 0.0) || (command != last_commands_[i]);
+    last_commands_[i] = command;
+  }
+
+  if (commanded) {
+    last_command_time_ = time;
+    have_command_time_ = true;
   }
 
   // The heartbeat the SparkFlex controllers need roughly every 50 ms.
@@ -356,7 +454,90 @@ hardware_interface::return_type SparkFlexSystem::write(
     motor.heartbeat();
   }
 
+  publish_status(time);
+
   return hardware_interface::return_type::OK;
+}
+
+// ---------------------------------------------------------------------------
+// Telemetry
+// ---------------------------------------------------------------------------
+
+void SparkFlexSystem::publish_status(const rclcpp::Time & time)
+{
+  if (!status_publisher_) {
+    return;
+  }
+
+  const double status_period = 1.0 / params_.status_publish_rate;
+  if (have_status_time_ && (time - last_status_time_).seconds() < status_period) {
+    return;
+  }
+
+  // trylock() and not lock(): this runs in the control loop, ten milliseconds
+  // of which also has to carry a CAN write and a heartbeat to four motor
+  // controllers. A dropped status sample is invisible on a plot; a late
+  // heartbeat faults the drivetrain.
+  if (!status_publisher_->trylock()) {
+    return;
+  }
+
+  last_status_time_ = time;
+  have_status_time_ = true;
+
+  // Only the fields that vary are touched from here on. can_interface, the
+  // joint names and the CAN ids were written once in start_status_publisher()
+  // -- assigning a std::string every cycle is the one thing in this function
+  // that could allocate.
+  auto & msg = status_publisher_->msg_;
+  msg.header.stamp = time;
+  msg.motor_feedback_active = params_.use_motor_feedback;
+
+  // ============ WHAT time_since_last_command CAN AND CANNOT MEAN ============
+  // A ros2_control command interface is a bare double in shared memory. It
+  // carries no timestamp and no writer identity, so a controller writing the
+  // same value every cycle and a controller that has died are byte-identical
+  // from in here. There is no way to measure "seconds since a command
+  // arrived", and reporting a number that claims to be that would be the
+  // same class of lie as reporting echoed commands as measured velocity.
+  //
+  // What is measurable is the last cycle in which the drivetrain was asked
+  // to move -- a non-zero command, or any change of command. So this is
+  // seconds since the rover was last asked to do something, and its useful
+  // reading is the one dashboards actually want: a rising value means
+  // nothing is driving this robot.
+  //
+  // The cost of the definition is one false positive: an operator holding a
+  // deliberate, sustained zero looks the same as a dead controller. That is
+  // the correct trade -- the failure it does catch is silent, and the one it
+  // confuses is not.
+  // =========================================================================
+  msg.time_since_last_command =
+    have_command_time_ ? static_cast<float>((time - last_command_time_).seconds()) : 0.0F;
+
+  // The hardware layer has no watchdog of its own any more -- cmd_vel_timeout
+  // in diff_drive_controller replaced it, and command_timeout defaults to the
+  // same 0.5 s. So this reports the controller's watchdog as seen from below:
+  // the outputs are zero and have been for longer than the controller would
+  // have tolerated silence. See docs/HARDWARE_CAN.md.
+  msg.watchdog_triggered = msg.time_since_last_command > params_.command_timeout;
+
+  for (std::size_t i = 0; i < motors_.size(); ++i) {
+    auto & motor = msg.motors[i];
+    motor.applied_duty_cycle = static_cast<float>(motors_[i].applied_duty_cycle());
+
+    // Only when the numbers are measurements. With use_motor_feedback false,
+    // hw_states_* hold the commanded velocity echoed back, and copying that
+    // into a field called `velocity` would put a fabricated number on a
+    // telemetry topic whose whole purpose is to be trusted. It stays NaN,
+    // as MotorStatus.msg says it must.
+    if (params_.use_motor_feedback) {
+      motor.velocity = static_cast<float>(hw_states_velocity_[i]);
+      motor.position = static_cast<float>(hw_states_position_[i]);
+    }
+  }
+
+  status_publisher_->unlockAndPublish();
 }
 
 }  // namespace lunabot_hardware

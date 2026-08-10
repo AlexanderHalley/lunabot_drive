@@ -31,6 +31,17 @@ ekf_node:
     publish_tf: true          # owns odom -> base_link when odom_source:=ekf
     publish_acceleration: false
 
+    # Publishes the filter's own state onto /diagnostics, where
+    # diagnostics.launch.py's aggregator groups it under Localization and
+    # Foxglove's Diagnostics panel draws it with no further setup.
+    #
+    # Worth the cost here specifically: the two failures this filter has are
+    # both silent. A sensor that stops arriving is dropped after
+    # sensor_timeout with the filter carrying on regardless, and a message
+    # whose frame_id the filter cannot transform is discarded entirely. Both
+    # give a pose that is merely wrong. print_diagnostics is what says so.
+    print_diagnostics: true
+
     map_frame: map
     odom_frame: odom
     base_link_frame: base_link
