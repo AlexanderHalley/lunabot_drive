@@ -17,8 +17,16 @@
 #include "hardware_interface/types/hardware_interface_return_values.hpp"
 #include "lunabot_hardware/spark_flex_motor.hpp"
 #include "lunabot_hardware/visibility_control.h"
+#include "lunabot_msgs/msg/drive_status.hpp"
 #include "rclcpp/macros.hpp"
+#include "rclcpp/node.hpp"
+#include "rclcpp/time.hpp"
 #include "rclcpp_lifecycle/state.hpp"
+// NOTE ON THE HEADER NAME: `.h`, not `.hpp`. realtime_tools renamed its
+// headers after Jazzy; on Jazzy (realtime_tools 3.x) only the `.h` form
+// exists, and ros2_controllers' own diff_drive_controller includes it that
+// way. Switching to `.hpp` is part of a distro bump, not a tidy-up.
+#include "realtime_tools/realtime_publisher.h"
 
 namespace lunabot_hardware
 {
@@ -107,6 +115,18 @@ private:
     double max_duty_cycle = 0.8;
     double gear_ratio = 20.0;
     double ramp_rate = 0.1;
+
+    /// Hz for /drive/status. 0 disables the publisher entirely.
+    ///
+    /// Deliberately far below update_rate: this is a telemetry topic for
+    /// plots and dashboards, not a control path, and publishing four motors
+    /// at 100 Hz costs bandwidth that the Pi's DDS is already short of.
+    double status_publish_rate = 20.0;
+
+    /// Seconds of unchanging, zero command after which DriveStatus reports
+    /// watchdog_triggered. Matches diff_drive_controller's cmd_vel_timeout,
+    /// which is the watchdog that actually fires -- see publish_status().
+    double command_timeout = 0.5;
   };
 
   Parameters params_;
@@ -123,6 +143,43 @@ private:
   /// True once on_activate has run. Guards write() against touching a bus
   /// that has been cleaned up.
   bool active_ = false;
+
+  // ==================== /drive/status ====================
+  // A hardware component has no node of its own, so this one makes one. The
+  // alternative -- exporting bus voltage and temperature as extra state
+  // interfaces and reading them from a controller_interface broadcaster --
+  // is the more orthodox shape, and it was not chosen: those are not
+  // per-joint control quantities, nothing claims them, and a broadcaster
+  // would have to be spawned and kept in step with a hardware component that
+  // may not even be the one loaded (mock and sim export no such interfaces).
+  //
+  // The publisher is realtime_tools' rather than a plain rclcpp one because
+  // publish_status() is called from write(), which runs in the control loop.
+  // trylock() means a busy DDS stack drops a status message instead of
+  // stretching a cycle that has a 10 ms budget and a CAN heartbeat in it.
+  std::shared_ptr<rclcpp::Node> status_node_;
+  std::unique_ptr<realtime_tools::RealtimePublisher<lunabot_msgs::msg::DriveStatus>>
+    status_publisher_;
+
+  /// Command values as of the previous write(), to detect a controller that
+  /// has stopped changing what it asks for.
+  std::vector<double> last_commands_;
+
+  /// When the drivetrain was last asked to do something. See publish_status()
+  /// for what "asked" can and cannot mean down here.
+  rclcpp::Time last_command_time_;
+  rclcpp::Time last_status_time_;
+  bool have_command_time_ = false;
+  bool have_status_time_ = false;
+
+  /// Create the node, the publisher and the constant half of the message.
+  /// Never fails the transition: telemetry is not worth refusing to
+  /// configure over.
+  void start_status_publisher();
+
+  /// Fill and send one DriveStatus, at most status_publish_rate times a
+  /// second. No-op when the publisher was never created.
+  void publish_status(const rclcpp::Time & time);
 
   double get_hardware_parameter(const std::string & name, double fallback) const;
   bool get_hardware_parameter(const std::string & name, bool fallback) const;

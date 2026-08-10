@@ -4,6 +4,13 @@
 # sentinel like -1. Consumers must check. In particular: with
 # use_motor_feedback:=false the SparkFlexSystem does not read the bus at all,
 # so every measured field here is NaN.
+#
+# AS SHIPPED, only applied_duty_cycle carries a number. velocity and position
+# follow use_motor_feedback; bus_voltage, output_current, temperature and
+# fault_bits stay NaN/0 unconditionally, because SparkFlexMotor exposes no
+# getter for any of them yet. A plot of bus voltage is therefore an empty
+# plot rather than a convincing flat line at 0 V, which is the point of the
+# convention. See docs/HARDWARE_CAN.md.
 
 # The ros2_control joint this motor drives, e.g. "front_left_wheel_joint".
 string joint_name

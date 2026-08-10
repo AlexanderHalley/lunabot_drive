@@ -77,6 +77,21 @@
           <param name="max_duty_cycle">${max_duty_cycle}</param>
           <param name="gear_ratio">${gear_ratio}</param>
           <param name="ramp_rate">${ramp_rate}</param>
+
+          <!--
+            Telemetry, not control. SparkFlexSystem publishes
+            lunabot_msgs/DriveStatus on /drive/status at this rate, which is
+            deliberately far below the 100 Hz control loop: it feeds plots
+            and dashboards, and four motors at 100 Hz is bandwidth the Pi's
+            DDS does not have spare. 0 turns the publisher off.
+
+            command_timeout is what DriveStatus.watchdog_triggered compares
+            against, and it matches cmd_vel_timeout in controllers.yaml on
+            purpose - that is the watchdog it is reporting on. Change one,
+            change the other.
+          -->
+          <param name="status_publish_rate">20.0</param>
+          <param name="command_timeout">0.5</param>
         </hardware>
       </xacro:if>
 

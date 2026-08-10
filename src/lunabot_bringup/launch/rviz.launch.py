@@ -27,11 +27,13 @@ ARGUMENTS = [
     DeclareLaunchArgument(
         'rviz_config',
         default_value='slam',
-        choices=['description', 'slam'],
+        choices=['description', 'slam', 'nav'],
         description=(
             'description = model and TF only, fixed frame base_link. '
             'slam = map, cloud and detections, fixed frame map (shows nothing '
-            'until a SLAM backend is publishing map -> odom).'
+            'until a SLAM backend is publishing map -> odom). '
+            'nav = costmaps, plans and footprint, for nav:=true; also needs a '
+            'SLAM backend, for the same reason.'
         ),
     ),
 ]

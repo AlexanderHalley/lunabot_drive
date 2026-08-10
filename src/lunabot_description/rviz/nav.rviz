@@ -1,0 +1,210 @@
+# Navigation view: costmaps, plans, footprint.
+#
+# For `robot.launch.py nav:=true slam:=rtabmap rviz:=true rviz_config:=nav`.
+#
+# slam.rviz answers "where is the robot and what can it see". This answers
+# "what does Nav2 think", which is a different question with different
+# topics -- and until this file existed, answering it meant adding six
+# displays by hand on every run.
+#
+# Fixed frame is `map`, so nothing appears until a SLAM backend publishes
+# map -> odom. If the robot is missing, check that before checking Nav2.
+#
+# WHAT TO LOOK AT WHEN NAV2 REFUSES TO MOVE, in order:
+#   1. Global Costmap black everywhere    -> no /map. rtabmap is not producing
+#                                            a grid; check Grid/3D in
+#                                            rtabmap.yaml.
+#   2. Costmaps present, no Global Plan   -> planner_server rejected the goal.
+#                                            Usually the goal is in inflated
+#                                            space, or lifecycle_manager never
+#                                            activated the planner.
+#   3. Global Plan but no Local Plan      -> the controller is not producing
+#                                            commands. DWB's motion model
+#                                            against a skid-steer, or a
+#                                            /cmd_vel chain that is not
+#                                            TwistStamped end to end.
+#   4. Both plans, rover still            -> twist_mux. Teleop outranks
+#                                            navigation, so a joystick with a
+#                                            stuck deadman holds the bus.
+#
+# NOTE: RViz rewrites this file wholesale when you hit Save, stripping every
+# comment. Save to a scratch file and port the diff by hand.
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /GlobalCostmap1
+        - /LocalCostmap1
+        - /GlobalPlan1
+      Splitter Ratio: 0.5
+    Tree Height: 640
+  - Class: rviz_common/Views
+    Name: Views
+  # Nav2's own panel: lifecycle startup/shutdown and a goal button. Comes from
+  # nav2_rviz_plugins, which lunabot_navigation depends on. If that package is
+  # missing RViz logs "Failed to load panel" and carries on -- every display
+  # below still works, only the buttons are gone.
+  - Class: nav2_rviz_plugins/Navigation 2
+    Name: Navigation 2
+
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Background Color: 30; 30; 34
+    Fixed Frame: map
+    Frame Rate: 30
+  Displays:
+    # The static layer's input: rtabmap's occupancy grid. Drawn under the
+    # costmaps so the inflation is visible on top of it.
+    - Class: rviz_default_plugins/Map
+      Name: Map
+      Enabled: true
+      Topic:
+        Value: /map
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.7
+      Color Scheme: map
+
+    # Costmaps are latched: nav2_costmap_2d's publisher is TRANSIENT_LOCAL, so
+    # a volatile subscription here shows an empty grid until the next full
+    # publish -- once a second for the global costmap, which reads as "Nav2 is
+    # not running". Same trap as /robot_description and /map.
+    - Class: rviz_default_plugins/Map
+      Name: GlobalCostmap
+      Enabled: true
+      Topic:
+        Value: /global_costmap/costmap
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.3
+      Color Scheme: costmap
+
+    - Class: rviz_default_plugins/Map
+      Name: LocalCostmap
+      Enabled: true
+      Topic:
+        Value: /local_costmap/costmap
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.6
+      Color Scheme: costmap
+
+    - Class: rviz_default_plugins/RobotModel
+      Name: RobotModel
+      Enabled: true
+      Description Topic:
+        Value: /robot_description
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 1
+      Visual Enabled: true
+      Collision Enabled: false
+
+    # The footprint Nav2 actually plans with, padded, as opposed to the one
+    # written in nav2_params.yaml. Both are placeholders taken from
+    # properties.xacro; seeing the padded box against the model is how you
+    # catch them having drifted apart.
+    - Class: rviz_default_plugins/Polygon
+      Name: Footprint
+      Enabled: true
+      Topic:
+        Value: /local_costmap/published_footprint
+        Reliability Policy: Reliable
+      Color: 0; 200; 90
+      Alpha: 1
+
+    - Class: rviz_default_plugins/Path
+      Name: GlobalPlan
+      Enabled: true
+      Topic:
+        Value: /plan
+        Reliability Policy: Reliable
+      Color: 0; 170; 255
+      Line Style: Lines
+      Alpha: 1
+
+    # DWB's chosen trajectory for the current cycle. The gap between this and
+    # GlobalPlan is the controller disagreeing with the planner, which on a
+    # skid-steer is the expected place for trouble to show up first.
+    - Class: rviz_default_plugins/Path
+      Name: LocalPlan
+      Enabled: true
+      Topic:
+        Value: /local_plan
+        Reliability Policy: Reliable
+      Color: 255; 200; 0
+      Line Style: Lines
+      Alpha: 1
+
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: true
+      Show Axes: true
+      Show Arrows: false
+      Marker Scale: 0.4
+      # map, odom and base_link only. The drift between the first two is what
+      # matters here; the camera frames are slam.rviz's business.
+      Frames:
+        All Enabled: false
+        map:
+          Value: true
+        odom:
+          Value: true
+        base_link:
+          Value: true
+
+    # What the costmaps are marking from, at the source. Off by default: the
+    # costmaps above already show its effect, and the cloud is the most
+    # expensive display in this file.
+    - Class: rviz_default_plugins/PointCloud2
+      Name: PointCloud
+      Enabled: false
+      Topic:
+        Value: /oak_d/points
+        Reliability Policy: Best Effort
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: AxisColor
+      Axis: Z
+      Decay Time: 0
+
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Boulders
+      Enabled: true
+      Topic:
+        Value: /perception/debug/markers
+        Reliability Policy: Reliable
+
+  Global Status:
+    Enabled: true
+
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
+
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 12
+      Pitch: 0.9
+      Yaw: 2.4
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Target Frame: base_link
+    Saved: ~
+
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 900
+  Width: 1600

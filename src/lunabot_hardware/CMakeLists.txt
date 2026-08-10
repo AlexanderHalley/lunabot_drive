@@ -10,6 +10,10 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   pluginlib
   rclcpp
   rclcpp_lifecycle
+  # /drive/status: the message, and the publisher that can be called from
+  # write() without allocating or blocking the control loop.
+  lunabot_msgs
+  realtime_tools
 )
 
 find_package(ament_cmake REQUIRED)
