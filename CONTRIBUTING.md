@@ -112,6 +112,22 @@ not just what — the diff already says what.
 
 Each commit should build and pass tests on its own.
 
+## Pull requests
+
+GitHub fills the description from
+[`.github/pull_request_template.md`](.github/pull_request_template.md). It is the rules above as a
+checklist — the contract, the constants that live in two files, sim/real parity — plus one section
+that is not a rule anywhere else:
+
+**Say what you did not run.** Most of this workspace cannot be exercised on the machine you wrote
+it on: `hw:=real` needs a CAN bus, `hw:=sim` needs Isaac and a GPU, and the camera needs a camera.
+That is expected and fine. What is not fine is a PR that reads as though it were all verified. An
+unrun test named in the description costs a review comment; an unrun test not named there costs a
+field failure.
+
+Delete any section of the template that does not apply. An empty heading is worse than a missing
+one.
+
 ## Adding a package
 
 1. `src/<name>/` with `package.xml` and `CMakeLists.txt`.
