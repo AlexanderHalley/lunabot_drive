@@ -93,7 +93,9 @@ Start here, in this order:
 
 Skeleton. Every package builds and the mock stack drives, but the robot dimensions in
 `lunabot_description` are placeholders, the boulder detector is a geometric stub with no
-classifier, and the cuVSLAM backend is scaffolding pending an Isaac ROS release for Jazzy. Nav2
+classifier — it segments against a RANSAC-fitted ground plane, so slopes are handled, but nothing
+in it distinguishes a rock from any other lump — and the cuVSLAM backend is scaffolding pending an
+Isaac ROS release for Jazzy. Nav2
 now starts and is wired to the contract, but nothing has been tuned and no rover has followed a
 path. Search the tree for `PLACEHOLDER`, `TODO(2027)` and `VERIFY` — those markers are the work
 queue.

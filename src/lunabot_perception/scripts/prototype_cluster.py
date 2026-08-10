@@ -14,7 +14,7 @@ thing runs at 10 Hz on an embedded board, and prototyping in Python then
 rewriting in February is the trap this repo is trying to avoid.
 
 What this IS for: deciding whether an idea is worth implementing at all.
-Trying a RANSAC ground fit, a different clustering approach, or a shape
+Trying a different clustering approach, an oriented bounding box, or a shape
 descriptor takes minutes here and an afternoon in C++.
 
 Once an idea works, port it into cloud_segmentation.cpp and add a case to
