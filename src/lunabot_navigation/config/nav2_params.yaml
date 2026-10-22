@@ -45,7 +45,15 @@ bt_navigator:
     robot_base_frame: base_link
     odom_topic: /odom
     bt_loop_duration: 10
-    default_server_timeout: 20
+    # ms a server gets to ACKNOWLEDGE a request before the tree gives up on
+    # the whole goal. Nav2's 20 ms default aborted the first sim goal mid-
+    # drive ("Timed out while waiting for action server to acknowledge goal
+    # request for compute_path_to_pose") with Isaac and rtabmap loading the
+    # CPU; so did 200 ms, for follow_path (load 12 on 16 threads). A Jetson
+    # under SLAM load is no better. The only cost of 1 s is noticing a dead
+    # server a second later.
+    default_server_timeout: 1000
+    wait_for_service_timeout: 1000
 
 
 controller_server:
@@ -97,11 +105,51 @@ controller_server:
       min_vel_y: 0.0
       acc_lim_y: 0.0
 
+      # DWB's own speed cap on top of max_vel_x; left at its default it is
+      # 0.55 and the two drift apart.
+      max_speed_xy: 0.5
+      min_speed_xy: 0.0
+
       xy_goal_tolerance: 0.20
       yaw_goal_tolerance: 0.30
       # Rotating in place is expensive on regolith -- it scrubs, throws up
       # dust, and produces the worst possible odometry. Prefer arcs.
       stateful: true
+
+      # Trajectory rollout.
+      vx_samples: 20
+      vtheta_samples: 20
+      sim_time: 1.7
+      linear_granularity: 0.05
+      angular_granularity: 0.025
+      transform_tolerance: 0.2
+      trans_stopped_velocity: 0.25
+      short_circuit_trajectory_evaluation: true
+
+      # ======================= CRITICS =======================
+      # REQUIRED. Without a critics list controller_server refuses to
+      # configure ("No critics defined for FollowPath"), the lifecycle manager
+      # aborts, and none of Nav2 comes up -- which is how this file shipped
+      # until the first sim run. The set and weights are Nav2's long-standing
+      # DWB defaults: a starting point, not a tuning for regolith.
+      critics:
+        - RotateToGoal
+        - Oscillation
+        - BaseObstacle
+        - GoalAlign
+        - PathAlign
+        - PathDist
+        - GoalDist
+      BaseObstacle.scale: 0.02
+      PathAlign.scale: 32.0
+      PathAlign.forward_point_distance: 0.1
+      GoalAlign.scale: 24.0
+      GoalAlign.forward_point_distance: 0.1
+      PathDist.scale: 32.0
+      GoalDist.scale: 24.0
+      RotateToGoal.scale: 32.0
+      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.lookahead_time: -1.0
 
 
 local_costmap:

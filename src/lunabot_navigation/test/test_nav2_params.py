@@ -331,3 +331,22 @@ def test_every_managed_node_is_configured():
     configured = set(params())
     for node in started_nodes():
         assert node in configured, f'{node} is started but has no parameters'
+
+
+def test_every_dwb_controller_has_critics():
+    """A DWB controller without critics cannot configure, so Nav2 never starts.
+
+    controller_server throws "No critics defined" in on_configure, the
+    lifecycle manager aborts the whole bringup, and every Nav2 node sits
+    unconfigured. Nothing else in CI notices: the launch description is fine.
+    """
+    controller = params()['controller_server']['ros__parameters']
+    for name in controller['controller_plugins']:
+        plugin = controller[name]
+        if plugin['plugin'] != 'dwb_core::DWBLocalPlanner':
+            continue
+        critics = plugin.get('critics') or []
+        assert critics, f'{name}: DWB with no critics list'
+        assert plugin['max_speed_xy'] <= plugin['max_vel_x'] + 1e-9, (
+            f'{name}: max_speed_xy above max_vel_x'
+        )

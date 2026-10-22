@@ -54,6 +54,11 @@ ARGUMENTS = [
         description="Start boulder detection against Isaac's point cloud.",
     ),
     DeclareLaunchArgument(
+        'nav',
+        default_value='false',
+        description='Start Nav2. Needs slam:=rtabmap for the map frame, as in robot.launch.py.',
+    ),
+    DeclareLaunchArgument(
         'rviz',
         default_value='true',
         description='Start RViz2.',
@@ -113,6 +118,7 @@ def _robot_stack(condition=None):
             'camera': 'false',
             'slam': LaunchConfiguration('slam'),
             'perception': LaunchConfiguration('perception'),
+            'nav': LaunchConfiguration('nav'),
             'teleop': LaunchConfiguration('teleop'),
             'odom_source': LaunchConfiguration('odom_source'),
             'rviz': LaunchConfiguration('rviz'),
