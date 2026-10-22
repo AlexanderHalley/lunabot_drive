@@ -161,9 +161,13 @@ def test_ekf_does_not_fuse_absolute_pose_from_wheel_odometry():
     params = yaml.safe_load((CONFIG_DIR / 'ekf.yaml').read_text())['ekf_node']['ros__parameters']
     x, y, z, roll, pitch, yaw = params['odom0_config'][:6]
     assert not any([x, y, z, roll, pitch, yaw]), 'wheel odometry pose must not be fused'
-    # vx and vyaw are the two channels that carry real information.
+    # vx is the one wheel channel that carries real information. vyaw does
+    # not: skid-steer scrub means the rover turns a fraction of what the
+    # wheels say (48% in place, 3% in an arc, measured in Isaac), so rotation
+    # comes from the gyro alone.
     assert params['odom0_config'][6] is True, 'vx should be fused'
-    assert params['odom0_config'][11] is True, 'vyaw should be fused'
+    assert params['odom0_config'][11] is False, 'wheel vyaw must not be fused: skid-steer scrubs'
+    assert params['imu0_config'][11] is True, 'the gyro must supply vyaw'
 
 
 def test_controller_wheel_names_match_the_urdf():

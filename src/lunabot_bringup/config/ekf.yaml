@@ -52,14 +52,20 @@ ekf_node:
     # Matrix layout: x, y, z / roll, pitch, yaw / vx, vy, vz / vroll, vpitch,
     # vyaw / ax, ay, az.
     #
-    # Only vx and vyaw are taken. Absolute pose is deliberately NOT fused:
+    # Only vx is taken. NOT vyaw: a skid-steer's wheel yaw rate is the
+    # commanded one, and the rover achieves a fraction of it -- measured in
+    # Isaac on the 2027 geometry, 48% turning in place and 3% in an arc. Fused,
+    # it fights the gyro and the heading drifts by radians in a few seconds.
+    # Rotation comes from the IMU alone.
+    #
+    # Absolute pose is deliberately NOT fused:
     # this odometry integrates its own velocity, so fusing its pose would
     # feed the filter the same information twice and make it overconfident in
     # a number that is fabricated.
     odom0_config: [false, false, false,
                    false, false, false,
                    true,  false, false,
-                   false, false, true,
+                   false, false, false,
                    false, false, false]
     odom0_differential: false
     odom0_relative: false
