@@ -56,7 +56,7 @@
             <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
             <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
           </Sequence>
-          <BackUp name="BackUpRecovery" backup_dist="0.40" backup_speed="0.15"/>
+          <BackUp name="BackUpRecovery" backup_dist="0.15" backup_speed="0.10"/>
           <Wait name="WaitRecovery" wait_duration="3.0"/>
         </RoundRobin>
       </ReactiveFallback>

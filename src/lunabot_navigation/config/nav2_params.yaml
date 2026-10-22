@@ -218,6 +218,16 @@ global_costmap:
       resolution: 0.05
       track_unknown_space: true
 
+      # A ROLLING window, not one sized by the static layer. Sized by
+      # rtabmap's /map, the costmap only covers what the camera has seen --
+      # about 2 m at the start -- and a goal across the arena is rejected as
+      # GOAL_OUTSIDE_MAP (planner error 204) before anything is planned. 16 m
+      # covers a whole competition arena (8.14 m x 4.57 m UCF lane) from
+      # anywhere inside it; the static layer still copies rtabmap's map in.
+      rolling_window: true
+      width: 16
+      height: 16
+
       footprint: "[[0.46, 0.322], [0.46, -0.322], [-0.46, -0.322], [-0.46, 0.322]]"
       footprint_padding: 0.05
 
@@ -278,10 +288,12 @@ planner_server:
       # cannot follow; larger wastes the arena.
       minimum_turning_radius: 1.5
 
-      # Reversing costs a little more than driving forward. Kept low because
-      # reversing is how this rover turns round; raise it while the only
-      # camera faces forward and the rover reverses into unobserved space.
-      reverse_penalty: 1.5
+      # Reversing costs more than driving forward. Not prohibitive: reversing
+      # is how this rover turns round. But the only camera faces forward, so
+      # every reverse leg runs into space the costmaps have never seen -- in
+      # the walled arena that meant backing into the wall behind the start.
+      # Lower it again once the rear D455 is fitted.
+      reverse_penalty: 2.5
       change_penalty: 0.0
       non_straight_penalty: 1.2
       cost_penalty: 3.0

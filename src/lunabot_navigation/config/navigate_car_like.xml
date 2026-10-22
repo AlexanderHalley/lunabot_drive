@@ -21,7 +21,8 @@
      nav_to_pose_with_consistent_replanning_and_if_path_becomes_invalid.xml.
   2. No Spin recovery. In sand this rover digs in rather than rotates (the 2026
      field fact; lunabot_sim/robot/soil.py), so a spin recovery only burns time
-     and buries the wheels. Backing up is the recovery that actually works.
+     and buries the wheels. Backing up is the recovery that actually works, kept
+     to 15 cm: the only camera faces forward, so it reverses blind.
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -58,7 +59,7 @@
             <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
             <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
           </Sequence>
-          <BackUp name="BackUpRecovery" backup_dist="0.40" backup_speed="0.15"/>
+          <BackUp name="BackUpRecovery" backup_dist="0.15" backup_speed="0.10"/>
           <Wait name="WaitRecovery" wait_duration="3.0"/>
         </RoundRobin>
       </ReactiveFallback>
