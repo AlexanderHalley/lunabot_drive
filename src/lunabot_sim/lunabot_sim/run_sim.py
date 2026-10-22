@@ -59,6 +59,13 @@ def parse_args(argv=None):
         action='store_false',
         help='Run as fast as the GPU allows instead of pacing to real time.',
     )
+    parser.add_argument(
+        '--no-sand',
+        dest='sand',
+        action='store_false',
+        help='Plain PhysX friction under the wheels instead of the sand model '
+        '(robot/soil.py). For comparison only: it pivots, and barely arcs.',
+    )
     parser.add_argument('--domain-id', type=int, default=42, help='ROS_DOMAIN_ID for the bridge.')
     parser.add_argument(
         '--ground-truth',
@@ -117,7 +124,7 @@ def main(argv=None) -> int:
 def _run(args, simulation_app) -> int:
     from lunabot_sim import compat
     from lunabot_sim.graphs import camera, clock, ground_truth, imu, joints
-    from lunabot_sim.robot import articulation, importer
+    from lunabot_sim.robot import articulation, importer, traction
     from lunabot_sim.scene import arena
 
     logger.info('Isaac Sim version: %s', compat.isaac_version())
@@ -158,6 +165,7 @@ def _run(args, simulation_app) -> int:
     _place_on_ground(robot_path, Path(args.urdf))
     articulation.configure(articulation_path, robot_path=robot_path)
     articulation.set_solver_iterations(articulation_path)
+    wheel_paths = traction.make_wheels_frictionless(robot_path) if args.sand else None
 
     camera_prim = _find_camera_prim(articulation_path, Path(args.urdf))
     imu_prim = _create_imu_sensor(articulation_path)
@@ -172,6 +180,11 @@ def _run(args, simulation_app) -> int:
     ground_truth.build(articulation_path, domain_id=args.domain_id)
 
     world.reset()
+    if wheel_paths is not None:
+        # After reset: the tensor views need a running physics scene.
+        traction.SandTraction(
+            world, articulation_path, wheel_paths, traction.wheel_radius(Path(args.urdf))
+        )
     logger.info('running. /clock is live -- start the ROS bringup now.')
 
     running = True

@@ -106,10 +106,24 @@ from a different place in sim than on the robot. Sim would stop being a test of 
 
 ## What the scene contains
 
-**Terrain** — a flat ground plane with a regolith physics material. The friction coefficients
-(0.7 static, 0.6 dynamic) are the most consequential numbers in the whole sim: **skid-steer turning
-is controlled friction failure**, so these determine whether a `wheel_separation_multiplier` tuned
-in sim means anything on regolith. Calibrate them against measured turning on the real rover.
+**Terrain** — a flat ground plane with a regolith physics material (0.7 static, 0.6 dynamic). The
+wheels do **not** use that friction: they ride on a sand model instead.
+
+**Wheels on sand** (`robot/soil.py`, applied by `robot/traction.py`). The 2026 rover could not turn
+on the spot in sand at all, yet drove wide arcs; the 2027 chassis has nearly the same
+wheelbase/track ratio. PhysX friction is isotropic Coulomb and cannot do that: any sideways scrub
+meets the full μN, so a wide arc is resisted as hard as a pivot (Isaac gave 48% of the commanded yaw
+in place, 3% in an arc — backwards). So the wheel colliders get a zero-friction material, PhysX only
+holds the rover up, and every physics step a tyre-style model applies traction (from slip ratio) and
+side force (from slip angle) at each contact point. A pivot puts every wheel at ~48° slip angle at
+any yaw rate, side force saturates, and the rover stays put while the wheels dig; a wide arc has
+small slip angles and turns. Calibrated to: **no pivot at all, tightest achieved arc ≈ 1.5 m** — an
+assumed number until the real one is measured. `test/test_soil.py` pins this down in CI.
+`run_isaac_sim.sh --no-sand` puts plain PhysX friction back, for comparison.
+
+Limits: flat ground only (contact = wheel centre within r + 2 cm of z = 0), load split evenly over
+the wheels on the ground, no grouser geometry (grousers are in the traction numbers), and wheels
+have no grip on boulders.
 
 **Boulders** — seeded rejection sampling, `numpy.random.default_rng(seed)`. Same seed, same scene,
 every time. That determinism is what makes "did that change help?" answerable at all; evaluating a

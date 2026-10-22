@@ -5,7 +5,8 @@
 #   src/lunabot_sim/scripts/run_isaac_sim.sh --scene default --seed 7
 #
 # --headless drops the viewport. --no-realtime stops pacing the sim to real
-# time (see RealTimePacer in run_sim.py).
+# time (see RealTimePacer in run_sim.py). --no-sand puts plain PhysX friction
+# back under the wheels instead of the sand model (robot/soil.py).
 #
 # This script is the seam between two Python environments that must not mix:
 #
@@ -31,6 +32,7 @@ SCENE="default"
 SEED=0
 HEADLESS=""
 REALTIME=""
+SAND=""
 DOMAIN_ID="${ROS_DOMAIN_ID:-42}"
 CACHE_DIR="${LUNABOT_SIM_CACHE:-${HOME}/.cache/lunabot_sim}"
 
@@ -46,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     --domain-id) DOMAIN_ID="$2"; shift 2 ;;
     --headless)  HEADLESS="--headless"; shift ;;
     --no-realtime) REALTIME="--no-realtime"; shift ;;
+    --no-sand)   SAND="--no-sand"; shift ;;
     -h|--help)   usage 0 ;;
     *) echo "unknown argument: $1" >&2; usage 1 ;;
   esac
@@ -103,4 +106,5 @@ exec "${ISAAC_SIM_PATH}/python.sh" -m lunabot_sim.run_sim \
   --seed "${SEED}" \
   --domain-id "${DOMAIN_ID}" \
   ${HEADLESS} \
-  ${REALTIME}
+  ${REALTIME} \
+  ${SAND}

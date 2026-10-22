@@ -204,9 +204,9 @@ sun behind the rover is not a detector.
 
 Worth stating plainly, because a green checklist invites the opposite conclusion:
 
-- **The friction numbers are unmeasured.** `static_friction: 0.7` decides whether a
-  `wheel_separation_multiplier` tuned in sim means anything on regolith. Skid-steer turning is
-  controlled friction failure. Calibrate against measured turning on the real rover.
+- **The sand model's turning is calibrated to an assumption.** `SoilConfig` (robot/soil.py) gives no
+  pivot and a ~1.5 m tightest arc; the pivot is a 2026 field fact, the 1.5 m is a guess. Measure the
+  real rover's tightest arc in sand (loaded and empty) and refit `alpha_0`.
 - **The robot dimensions are placeholders.** Everything above passes with the wrong wheel radius;
   it just measures the wrong robot.
 - **The boulder detector is a geometric stub.** It reports lumps above a plane. Scoring it against
