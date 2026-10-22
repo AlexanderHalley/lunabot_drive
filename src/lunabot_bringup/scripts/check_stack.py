@@ -339,11 +339,14 @@ class StackChecker(Node):
         )
 
         if self._args.slam != 'none':
+            published = ('map', 'odom') in dynamic_edges
             results.append(
                 Result(
                     'map -> odom is published',
-                    ('map', 'odom') in dynamic_edges,
-                    f'slam:={self._args.slam} is running but nothing publishes map -> odom',
+                    published,
+                    ''
+                    if published
+                    else f'slam:={self._args.slam} is running but nothing publishes map -> odom',
                 )
             )
 
