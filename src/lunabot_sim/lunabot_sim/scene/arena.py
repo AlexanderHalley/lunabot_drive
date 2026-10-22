@@ -47,13 +47,21 @@ class SceneConfig:
     seed: int = 0
 
 
-def scene_config(name: str = 'default', seed: int = 0, markings: bool = True) -> SceneConfig:
-    """The scene for a layout name: 'ucf' (default), 'ksc' or 'open'."""
+def scene_config(
+    name: str = 'default', seed: int = 0, markings: bool = True, light: str = 'arena'
+) -> SceneConfig:
+    """The scene for a layout name ('ucf' default, 'ksc', 'open') and lighting preset."""
     try:
         layout = layout_module.LAYOUTS[name]
     except KeyError:
         raise ValueError(
             f'unknown scene {name!r}; choose from {sorted(layout_module.LAYOUTS)}'
+        ) from None
+    try:
+        lighting_config = lighting.LIGHTING_PRESETS[light]
+    except KeyError:
+        raise ValueError(
+            f'unknown lighting {light!r}; choose from {sorted(lighting.LIGHTING_PRESETS)}'
         ) from None
 
     arena = boulders_module.ArenaConfig()
@@ -68,7 +76,9 @@ def scene_config(name: str = 'default', seed: int = 0, markings: bool = True) ->
             start_zone_x=floor.x_min,
             keep_outs=layout.keep_outs(),
         )
-    return SceneConfig(arena=arena, layout=layout, markings=markings, seed=seed)
+    return SceneConfig(
+        arena=arena, layout=layout, lighting=lighting_config, markings=markings, seed=seed
+    )
 
 
 def build(world, config: SceneConfig, ground_truth_path: Path | None = None):

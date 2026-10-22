@@ -54,6 +54,12 @@ def parse_args(argv=None):
         help="Arena layout: 'ucf' (default), 'ksc' (approximate) or 'open' (no walls).",
     )
     parser.add_argument(
+        '--lighting',
+        default='arena',
+        help="'arena' (default: indoor, soft, readable) or 'lunar' (low sun, black "
+        'shadows; for stress-testing perception).',
+    )
+    parser.add_argument(
         '--no-markings',
         dest='markings',
         action='store_false',
@@ -160,7 +166,9 @@ def _run(args, simulation_app) -> int:
     )
 
     # ---- Scene ----
-    config = arena.scene_config(args.scene, seed=args.seed, markings=args.markings)
+    config = arena.scene_config(
+        args.scene, seed=args.seed, markings=args.markings, light=args.lighting
+    )
     ground_truth_path = Path(
         args.ground_truth or (Path(args.urdf).parent / f'ground_truth_seed{args.seed}.json')
     )
@@ -191,6 +199,8 @@ def _run(args, simulation_app) -> int:
     ground_truth.build(articulation_path, domain_id=args.domain_id)
 
     world.reset()
+    if not args.headless:
+        _frame_viewport(config.layout)
     if wheel_paths is not None:
         # After reset: the tensor views need a running physics scene.
         traction.SandTraction(
@@ -219,6 +229,25 @@ def _run(args, simulation_app) -> int:
             pacer.wait()
 
     return 0
+
+
+def _frame_viewport(layout) -> None:
+    """Point the GUI camera at the arena: behind and above the start, looking down it.
+
+    Isaac otherwise opens wherever its default camera happens to be, which
+    for this scene is a corner view of a wall.
+    """
+    import numpy as np
+    from isaacsim.core.utils.viewports import set_camera_view
+
+    floor = layout.floor
+    if floor is None:  # open scene: frame the rock field ahead of the spawn
+        eye, target = (-3.0, -3.0, 3.0), (3.0, 0.0, 0.0)
+    else:
+        (cx, cy), (length, _) = floor.centre, floor.size
+        eye = (floor.x_min - 0.35 * length, cy - 0.45 * length, 0.55 * length)
+        target = (cx, cy, 0.0)
+    set_camera_view(eye=np.array(eye), target=np.array(target))
 
 
 class RealTimePacer:

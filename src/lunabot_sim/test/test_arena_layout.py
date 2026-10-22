@@ -117,3 +117,23 @@ def test_ground_truth_carries_the_layout():
     truth = to_ground_truth([], 1, config.arena, config.layout.to_dict())
     assert truth['layout']['name'] == 'ucf'
     assert truth['layout']['berm_target']['x_min'] == UCF.berm_target.x_min
+
+
+def test_the_default_lighting_is_the_indoor_arena():
+    """The competition runs indoors: high, soft light with real ambient fill."""
+    light = arena.scene_config('ucf').lighting
+    assert light.sun_elevation_deg >= 45.0
+    assert light.ambient_intensity > 100.0
+
+
+def test_the_lunar_lighting_stays_harsh():
+    """Kept for stress-testing perception: low sun, next to no fill."""
+    light = arena.scene_config('ucf', light='lunar').lighting
+    assert light.sun_elevation_deg <= 10.0
+    assert light.ambient_intensity < 10.0
+
+
+def test_an_unknown_lighting_says_what_exists():
+    with pytest.raises(ValueError, match='arena'):
+        arena.scene_config('ucf', light='disco')
+

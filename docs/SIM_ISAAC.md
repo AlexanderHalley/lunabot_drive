@@ -157,9 +157,17 @@ In a walled arena they stay 0.3 m inside the walls and out of the start zone, th
 a geometry one, and convex meshes cost the solver dearly for detail nobody measures. Large ones are
 static; small ones can be shoved.
 
-**Lighting** — this is the part that actually breaks perception, which is why it is in the skeleton
-rather than being polish. A single distant light at ~8° elevation with the sun's true 0.53° angular
-diameter, and near-zero ambient. On an airless body there is no atmospheric scattering, so shadows
+**Lighting** — `--lighting` picks a preset (`scene/lighting.py`):
+
+- **`arena`** (default): the competition runs **indoors** (UCF regolith bin, KSC Artemis Arena), so
+  a high soft key light (65°, 20° wide source) with real ambient fill — short soft shadows,
+  everything readable. Brighter washed the light-grey regolith out to white and hid the rocks.
+- **`lunar`**: the harsh case below, for stress-testing perception.
+
+With the GUI open the viewport camera starts behind and above the start, looking down the arena.
+
+The `lunar` preset is the part that actually breaks perception. A single distant light at ~8°
+elevation with the sun's true 0.53° angular diameter, and near-zero ambient. On an airless body there is no atmospheric scattering, so shadows
 are **genuinely black**: a boulder's shadow is a hole in the point cloud, not a dark patch in it.
 
 A detector tuned under a default dome light will look excellent and then fail in the arena. Vary

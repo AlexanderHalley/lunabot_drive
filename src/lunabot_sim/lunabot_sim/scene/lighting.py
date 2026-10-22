@@ -4,11 +4,16 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT.
 
-"""Lunar lighting.
+"""Scene lighting: indoor competition arena (default) or lunar.
 
-The visually important part of the sim, and the part that actually breaks
-perception algorithms -- which is exactly why it belongs in the skeleton
-rather than being polish added later.
+PRESETS, picked with run_sim.py --lighting:
+
+  arena  The default. The competition runs INDOORS -- the UCF regolith bin
+         and the KSC Artemis Arena are both inside buildings, under overhead
+         lights -- so this is a high, soft key light with real ambient fill.
+         Short soft shadows, everything readable. Closest to competition day.
+  lunar  The harsh case below: low sun, black shadows. For stress-testing
+         perception, not for watching the rover drive.
 
 Three things make lighting lunar:
 
@@ -21,8 +26,8 @@ Three things make lighting lunar:
   3. High contrast between lit and unlit surfaces, well beyond what
      auto-exposure handles gracefully.
 
-A detector tuned under a default Isaac dome light will look excellent and then
-fail completely in the arena. Tuning it under this is the point.
+A detector tuned only under soft light will look excellent and then fail
+under this. Test perception under both.
 """
 
 from __future__ import annotations
@@ -88,3 +93,25 @@ def build(config: LightingConfig, prim_path: str = '/World/Lighting'):
     dome.CreateColorAttr(Gf.Vec3f(*config.ambient_colour))
 
     return sun, dome
+
+
+LIGHTING_PRESETS = {
+    'arena': LightingConfig(
+        # High and soft: overhead lights in a hall, not a sun at the horizon.
+        # The azimuth only decides which way the short shadows lean.
+        sun_elevation_deg=65.0,
+        sun_azimuth_deg=135.0,
+        # Not brighter: at 3000 + 1000 fill the grey regolith rendered nearly
+        # white and rocks barely stood out from the ground -- bad for a person
+        # and worse for feature-based SLAM, which needs the contrast.
+        sun_intensity=2000.0,
+        # Wide source -> soft-edged shadows, as from a ceiling of lamps.
+        sun_angular_diameter_deg=20.0,
+        # Strong fill: the real arenas are well lit, so shadowed faces stay
+        # clearly visible.
+        ambient_intensity=350.0,
+        ambient_colour=(0.92, 0.92, 0.95),
+    ),
+    'lunar': LightingConfig(),
+}
+
