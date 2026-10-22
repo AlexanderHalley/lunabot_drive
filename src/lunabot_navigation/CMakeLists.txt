@@ -8,6 +8,11 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+install(
+  PROGRAMS scripts/curvature_limiter.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # ruff owns Python, clang-format owns C++, both via pre-commit. Skip the
@@ -34,6 +39,10 @@ if(BUILD_TESTING)
   # earns its keep is that no Nav2 node publishes to /cmd_vel, which belongs
   # to twist_mux -- which is exactly what nav2_bringup's own launch file does.
   ament_add_pytest_test(test_navigation_launch test/test_navigation_launch.py)
+
+  # The curvature limiter's clamp, and that it never commands tighter than the
+  # planner plans. Pure Python; the node imports rclpy only in main().
+  ament_add_pytest_test(test_curvature_limiter test/test_curvature_limiter.py)
 endif()
 
 ament_package()

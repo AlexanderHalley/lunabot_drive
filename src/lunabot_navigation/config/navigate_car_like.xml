@@ -1,0 +1,67 @@
+<!--
+  Copyright 2027 Lunabot
+
+  Use of this source code is governed by an MIT-style
+  license that can be found in the LICENSE file or at
+  https://opensource.org/licenses/MIT.
+-->
+<!--
+  Navigate-to-pose for a rover that CANNOT TURN ON THE SPOT.
+
+  Based on Nav2's navigate_w_recovery_and_replanning_only_if_path_becomes_invalid.xml,
+  with two changes:
+
+  1. Replan every 10 s, or at once when the goal changes or the path stops
+     being valid; not at 1 Hz. Hybrid-A* paths carry cusps (forward/reverse
+     switches); a fresh plan every second can move or flip them mid-manoeuvre
+     and the rover dithers. But NEVER replanning is worse: after a failed
+     approach and a back-up, the old path is still "valid" and the rover
+     retries the identical approach until it runs out of retries (seen in
+     Isaac). The 10 s timer is Nav2's own
+     nav_to_pose_with_consistent_replanning_and_if_path_becomes_invalid.xml.
+  2. No Spin recovery. In sand this rover digs in rather than rotates (the 2026
+     field fact; lunabot_sim/robot/soil.py), so a spin recovery only burns time
+     and buries the wheels. Backing up is the recovery that actually works.
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence>
+        <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+        <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
+        <RateController hz="1.0" name="RateControllerComputePathToPose">
+          <RecoveryNode number_of_retries="1" name="RecoveryComputePathToPose">
+            <Fallback name="FallbackComputePathToPose">
+              <ReactiveSequence name="CheckIfNewPathNeeded">
+                <Inverter>
+                  <PathExpiringTimer seconds="10" path="{path}"/>
+                </Inverter>
+                <Inverter>
+                  <GlobalUpdatedGoal/>
+                </Inverter>
+                <IsPathValid path="{path}"/>
+              </ReactiveSequence>
+              <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+            </Fallback>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="RecoveryFollowPath">
+          <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="FallbackRecoveries">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <BackUp name="BackUpRecovery" backup_dist="0.40" backup_speed="0.15"/>
+          <Wait name="WaitRecovery" wait_duration="3.0"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

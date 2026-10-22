@@ -73,8 +73,8 @@ NAV2_NODES = (
         'package': 'nav2_controller',
         'executable': 'controller_server',
         'name': 'controller_server',
-        # Into the smoother, not onto the bus.
-        'remappings': [('cmd_vel', 'cmd_vel_nav_unsmoothed')],
+        # Into the curvature limiter, then the smoother -- not onto the bus.
+        'remappings': [('cmd_vel', 'cmd_vel_nav_unlimited')],
     },
     {
         'package': 'nav2_planner',
@@ -105,6 +105,19 @@ NAV2_NODES = (
         ],
     },
 )
+
+# Not a lifecycle node, so not in NAV2_NODES: it holds no state worth
+# managing and must simply be there whenever the controller is. It never
+# turns tighter than the rover can (scripts/curvature_limiter.py).
+CURVATURE_LIMITER = {
+    'package': 'lunabot_navigation',
+    'executable': 'curvature_limiter.py',
+    'name': 'curvature_limiter',
+    'remappings': [
+        ('cmd_vel_in', 'cmd_vel_nav_unlimited'),
+        ('cmd_vel_out', 'cmd_vel_nav_unsmoothed'),
+    ],
+}
 
 # Derived, not restated. An unmanaged lifecycle node sits in `unconfigured`
 # forever, producing no output and no error -- so "started but not managed"
@@ -145,9 +158,24 @@ def generate_launch_description():
     #
     # The rewrite REPLACES keys, it does not add them: every ros__parameters
     # block in nav2_params.yaml states use_sim_time for this to bite.
+    #
+    # The behaviour tree paths are rewritten the same way: bt_navigator needs it
+    # absolute, and only the launch file knows where the package installed.
     params = RewrittenYaml(
         source_file=LaunchConfiguration('params_file'),
-        param_rewrites={'use_sim_time': use_sim_time},
+        param_rewrites={
+            'use_sim_time': use_sim_time,
+            'default_nav_to_pose_bt_xml': PathJoinSubstitution(
+                [FindPackageShare('lunabot_navigation'), 'config', 'navigate_car_like.xml']
+            ),
+            'default_nav_through_poses_bt_xml': PathJoinSubstitution(
+                [
+                    FindPackageShare('lunabot_navigation'),
+                    'config',
+                    'navigate_through_poses_car_like.xml',
+                ]
+            ),
+        },
         convert_types=True,
     )
 
@@ -160,7 +188,7 @@ def generate_launch_description():
             parameters=[params],
             remappings=node['remappings'],
         )
-        for node in NAV2_NODES
+        for node in NAV2_NODES + (CURVATURE_LIMITER,)
     ]
 
     manager = Node(

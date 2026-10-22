@@ -54,6 +54,14 @@ bt_navigator:
     # server a second later.
     default_server_timeout: 1000
     wait_for_service_timeout: 1000
+    # The *_car_like.xml trees: replan only when the path goes invalid, and
+    # no Spin recovery. BOTH must be set: bt_navigator loads the
+    # through-poses tree at configure too, and Nav2's default calls Spin,
+    # which no longer exists -- Nav2 then fails to come up at all.
+    # The values are placeholders: navigation.launch.py rewrites them to the
+    # installed absolute paths.
+    default_nav_to_pose_bt_xml: "navigate_car_like.xml"
+    default_nav_through_poses_bt_xml: "navigate_through_poses_car_like.xml"
 
 
 controller_server:
@@ -76,80 +84,77 @@ controller_server:
     min_x_velocity_threshold: 0.05
     min_theta_velocity_threshold: 0.10
 
+    # A K-turn stops at every cusp, so "no progress for 10 s" (the default)
+    # trips mid-manoeuvre.
+    progress_checker_plugins: ["progress_checker"]
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.3
+      movement_time_allowance: 15.0
+
+    # Loose on yaw: the rover cannot correct heading in place, so a tight yaw
+    # tolerance means a K-turn at every goal. The planner already arrives
+    # close to the goal heading.
+    goal_checker_plugins: ["goal_checker"]
+    goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.5
+      stateful: true
+
     # Nav2's output. twist_mux arbitrates between this and teleop, and teleop
     # wins -- see lunabot_bringup/config/twist_mux.yaml.
     controller_plugins: ["FollowPath"]
 
     FollowPath:
-      # DWB. Chosen as a starting point because it is well understood, not
-      # because it is right for this robot: its motion model assumes commanded
-      # velocity is achieved, which on loose regolith it is not. Regulated
-      # Pure Pursuit is the obvious alternative to evaluate.
-      plugin: "dwb_core::DWBLocalPlanner"
+      # Regulated Pure Pursuit: follow the Hybrid-A* path, forwards AND
+      # backwards. The rover cannot turn on the spot in sand (2026 field fact,
+      # modelled in lunabot_sim/robot/soil.py), so it is driven like a car:
+      # the planner bakes the turning radius into the path, and this only
+      # tracks it.
+      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
 
-      # MUST stay consistent with diff_drive_controller's limits in
-      # lunabot_bringup/config/controllers.yaml. Nav2 commanding beyond what
-      # the controller will accept produces silent clamping and a robot that
-      # does not follow its plan.
-      max_vel_x: 0.5
-      min_vel_x: -0.2
-      max_vel_theta: 1.0
-      min_speed_theta: -1.0
-      acc_lim_x: 1.0
-      acc_lim_theta: 2.0
-      decel_lim_x: -1.0
-      decel_lim_theta: -2.0
+      # The 2027 design's top speed. MUST stay within diff_drive_controller's
+      # limits in lunabot_bringup/config/controllers.yaml, and equal to the
+      # smoother's below (tests enforce both).
+      desired_linear_vel: 0.3
 
-      # Skid-steer: no lateral motion at all.
-      max_vel_y: 0.0
-      min_vel_y: 0.0
-      acc_lim_y: 0.0
+      # Pure pursuit steers at a point this far down the path. Too short and
+      # it chases curvature the rover cannot achieve; too long and it cuts
+      # corners into obstacles.
+      lookahead_dist: 0.8
+      min_lookahead_dist: 0.5
+      max_lookahead_dist: 1.5
+      lookahead_time: 2.0
+      use_velocity_scaled_lookahead_dist: true
 
-      # DWB's own speed cap on top of max_vel_x; left at its default it is
-      # 0.55 and the two drift apart.
-      max_speed_xy: 0.5
-      min_speed_xy: 0.0
+      # NEVER turn in place: it digs the wheels in instead. allow_reversing
+      # follows the cusps of a Reeds-Shepp path, and Nav2 refuses it unless
+      # rotate-to-heading is off.
+      use_rotate_to_heading: false
+      allow_reversing: true
+      rotate_to_heading_angular_vel: 0.5  # unused while the above is false
+      max_angular_accel: 2.0
 
-      xy_goal_tolerance: 0.20
-      yaw_goal_tolerance: 0.30
-      # Rotating in place is expensive on regolith -- it scrubs, throws up
-      # dust, and produces the worst possible odometry. Prefer arcs.
-      stateful: true
+      # Slow down where the path bends tighter than the rover can turn, so it
+      # scrubs through rather than ploughing on. Same radius as the planner's
+      # minimum_turning_radius (tested).
+      use_regulated_linear_velocity_scaling: true
+      regulated_linear_scaling_min_radius: 1.5
+      regulated_linear_scaling_min_speed: 0.10
+      use_cost_regulated_linear_velocity_scaling: false
 
-      # Trajectory rollout.
-      vx_samples: 20
-      vtheta_samples: 20
-      sim_time: 1.7
-      linear_granularity: 0.05
-      angular_granularity: 0.025
+      # Above min_x_velocity_threshold, or the last few cm never happen.
+      min_approach_linear_velocity: 0.08
+      approach_velocity_scaling_dist: 0.6
+
+      use_collision_detection: true
+      # Seconds of the commanded arc that must be clear. The arc is straight-
+      # ish while the rover is still turning onto a curving path, so a long
+      # horizon sees obstacles the path itself steers clear of.
+      max_allowed_time_to_collision_up_to_carrot: 1.0
       transform_tolerance: 0.2
-      trans_stopped_velocity: 0.25
-      short_circuit_trajectory_evaluation: true
-
-      # ======================= CRITICS =======================
-      # REQUIRED. Without a critics list controller_server refuses to
-      # configure ("No critics defined for FollowPath"), the lifecycle manager
-      # aborts, and none of Nav2 comes up -- which is how this file shipped
-      # until the first sim run. The set and weights are Nav2's long-standing
-      # DWB defaults: a starting point, not a tuning for regolith.
-      critics:
-        - RotateToGoal
-        - Oscillation
-        - BaseObstacle
-        - GoalAlign
-        - PathAlign
-        - PathDist
-        - GoalDist
-      BaseObstacle.scale: 0.02
-      PathAlign.scale: 32.0
-      PathAlign.forward_point_distance: 0.1
-      GoalAlign.scale: 24.0
-      GoalAlign.forward_point_distance: 0.1
-      PathDist.scale: 32.0
-      GoalDist.scale: 24.0
-      RotateToGoal.scale: 32.0
-      RotateToGoal.slowing_factor: 5.0
-      RotateToGoal.lookahead_time: -1.0
+      interpolate_curvature_after_goal: false
 
 
 local_costmap:
@@ -225,19 +230,33 @@ global_costmap:
         map_subscribe_transient_local: true
 
       obstacle_layer:
-        plugin: "nav2_costmap_2d::ObstacleLayer"
+        # VOXEL, not the 2D ObstacleLayer. The camera looks DOWN over a
+        # low boulder at the ground behind it; in 2D the clearing ray to
+        # each of those ground points runs through the boulder's cell and
+        # erases it. The global costmap then held no obstacles at all and
+        # the planner drove straight at the rock (only rtabmap's /map, via
+        # the static layer, had been hiding that). Same as local_costmap.
+        plugin: "nav2_costmap_2d::VoxelLayer"
         observation_sources: pointcloud
         pointcloud:
           topic: /oak_d/points
           data_type: "PointCloud2"
           obstacle_max_range: 2.0
           raytrace_max_range: 2.0
+          min_obstacle_height: 0.05
+          max_obstacle_height: 1.0
           marking: true
           clearing: true
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.40
+        # >= the padded footprint's circumscribed radius (0.63 m), which
+        # lets Smac collision-check by centre cost and only fall back to the
+        # full footprint near obstacles. Well beyond it, so cost keeps
+        # falling off past the footprint and Hybrid-A* leaves room: a rover
+        # that cannot turn quickly lags its path, and a path that grazes the
+        # inscribed zone has the follower stop for "collision ahead".
+        inflation_radius: 1.0
         cost_scaling_factor: 3.0
 
 
@@ -247,13 +266,48 @@ planner_server:
     expected_planner_frequency: 1.0
     planner_plugins: ["GridBased"]
     GridBased:
-      plugin: "nav2_navfn_planner::NavfnPlanner"
+      # Hybrid-A* with Reeds-Shepp motion: paths a car-like rover can drive,
+      # including reversing and K-turns. Navfn planned holonomic paths and left
+      # the controller to find turns the rover cannot make.
+      plugin: "nav2_smac_planner::SmacPlannerHybrid"
+      motion_model_for_search: "REEDS_SHEPP"
+
+      # The tightest arc the rover actually achieves in sand. ASSUMED 1.5 m
+      # (unmeasured; Isaac's sand model is calibrated to the same number --
+      # lunabot_sim/robot/soil.py). Smaller than reality gives paths the rover
+      # cannot follow; larger wastes the arena.
+      minimum_turning_radius: 1.5
+
+      # Reversing costs a little more than driving forward. Kept low because
+      # reversing is how this rover turns round; raise it while the only
+      # camera faces forward and the rover reverses into unobserved space.
+      reverse_penalty: 1.5
+      change_penalty: 0.0
+      non_straight_penalty: 1.2
+      cost_penalty: 3.0
+      retrospective_penalty: 0.015
+
       tolerance: 0.30
-      # A holonomic-ish planner on a skid-steer. Acceptable because the local
-      # controller does the work of following the path; revisit if paths turn
-      # out to be unfollowable.
-      use_astar: false
       allow_unknown: true
+      downsample_costmap: false
+      angle_quantization_bins: 72
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 3.0
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 5.0
+      lookup_table_size: 20.0
+      cache_obstacle_heuristic: false
+      debug_visualizations: false
+
+      smooth_path: true
+      smoother:
+        max_iterations: 1000
+        w_smooth: 0.3
+        w_data: 0.2
+        tolerance: 1.0e-10
+        do_refinement: true
+        refinement_num: 2
 
 
 behavior_server:
@@ -265,20 +319,14 @@ behavior_server:
     local_frame: odom
     global_frame: map
     robot_base_frame: base_link
-    behavior_plugins: ["spin", "backup", "wait"]
-    spin:
-      plugin: "nav2_behaviors::Spin"
+    # No spin. The rover cannot turn on the spot in sand -- it digs in -- so
+    # a spin recovery only buries the wheels. navigate_car_like.xml does not
+    # call one either (tested).
+    behavior_plugins: ["backup", "wait"]
     backup:
       plugin: "nav2_behaviors::BackUp"
     wait:
       plugin: "nav2_behaviors::Wait"
-    # Recovery behaviours are the ones most likely to be actively harmful
-    # here: spinning in place on regolith digs the rover in and destroys what
-    # little odometry there is. Consider removing spin entirely once there is
-    # field data.
-    max_rotational_vel: 0.5
-    min_rotational_vel: 0.2
-    rotational_acc_lim: 2.0
 
 
 velocity_smoother:
@@ -290,9 +338,23 @@ velocity_smoother:
     enable_stamped_cmd_vel: true
     smoothing_frequency: 20.0
     feedback: "OPEN_LOOP"
-    max_velocity: [0.5, 0.0, 1.0]
-    min_velocity: [-0.2, 0.0, -1.0]
+    # Symmetric in x: Regulated Pure Pursuit reverses at its forward speed,
+    # and a lower reverse cap here would change the curvature of every
+    # reverse leg (angular is computed for the uncapped speed).
+    max_velocity: [0.3, 0.0, 1.0]
+    min_velocity: [-0.3, 0.0, -1.0]
     max_accel: [1.0, 0.0, 2.0]
     max_decel: [-1.0, 0.0, -2.0]
     odom_topic: /odom
     odom_duration: 0.1
+
+
+curvature_limiter:
+  ros__parameters:
+    use_sim_time: false
+    # The tightest radius COMMANDED. Not the planner's 1.5 m: a commanded arc
+    # comes out wider in sand (Isaac: commanded 1.0 m drives ~1.5 m), and
+    # below ~0.5 m commanded the rover stalls with its wheels spinning --
+    # which is what this node exists to prevent. See
+    # scripts/curvature_limiter.py.
+    min_turning_radius: 1.0

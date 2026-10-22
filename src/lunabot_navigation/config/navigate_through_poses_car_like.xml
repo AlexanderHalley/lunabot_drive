@@ -1,0 +1,65 @@
+<!--
+  Copyright 2027 Lunabot
+
+  Use of this source code is governed by an MIT-style
+  license that can be found in the LICENSE file or at
+  https://opensource.org/licenses/MIT.
+-->
+<!--
+  Navigate-through-poses for a rover that CANNOT TURN ON THE SPOT.
+
+  Nav2's navigate_through_poses_w_replanning_and_recovery.xml with the same two
+  changes as navigate_car_like.xml: replan every 10 s or when the goals change
+  or the path goes invalid (Hybrid-A* cusps must not move mid-manoeuvre, but a
+  failed approach must get a fresh plan), and no Spin
+  recovery (in sand the rover digs in instead; lunabot_sim/robot/soil.py).
+
+  bt_navigator loads this tree at configure time even if nothing ever sends a
+  through-poses goal, and Nav2's default calls Spin; with no spin server the
+  whole of Nav2 fails to come up.
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence>
+        <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+        <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
+        <RateController hz="1.0" name="RateControllerComputePathThroughPoses">
+          <RecoveryNode number_of_retries="1" name="RecoveryComputePathThroughPoses">
+            <Fallback name="FallbackComputePathThroughPoses">
+              <ReactiveSequence name="CheckIfNewPathNeeded">
+                <Inverter>
+                  <PathExpiringTimer seconds="10" path="{path}"/>
+                </Inverter>
+                <Inverter>
+                  <GlobalUpdatedGoal/>
+                </Inverter>
+                <IsPathValid path="{path}"/>
+              </ReactiveSequence>
+              <Sequence>
+                <RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="0.7"/>
+                <ComputePathThroughPoses goals="{goals}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+              </Sequence>
+            </Fallback>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="RecoveryFollowPath">
+          <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="FallbackRecoveries">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <BackUp name="BackUpRecovery" backup_dist="0.40" backup_speed="0.15"/>
+          <Wait name="WaitRecovery" wait_duration="3.0"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

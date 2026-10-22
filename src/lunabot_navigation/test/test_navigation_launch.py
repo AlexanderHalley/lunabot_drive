@@ -86,7 +86,8 @@ def test_every_declared_node_is_constructed(module, description):
     Pinning the count as well catches a node quietly dropped from the
     comprehension.
     """
-    assert len(nodes(description)) == len(module.NAV2_NODES) + 1  # + lifecycle_manager
+    # + curvature_limiter (not lifecycle-managed) + lifecycle_manager
+    assert len(nodes(description)) == len(module.NAV2_NODES) + 2
 
 
 def test_nav2_never_publishes_to_cmd_vel(module):
@@ -122,16 +123,19 @@ def test_only_the_smoother_publishes_the_nav_topic(module):
 
 
 def test_the_smoother_consumes_what_the_others_produce(module):
-    """The smoother's input topic matches what the controller publishes.
+    """controller -> curvature limiter -> smoother, and recoveries -> smoother.
 
-    The internal hop has to match at both ends or the chain is two disconnected halves, each of
-    which looks healthy on its own.
+    Each internal hop has to match at both ends or the chain is two disconnected halves, each of
+    which looks healthy on its own. The controller must NOT bypass the limiter: that is the rover
+    being commanded into turns it cannot make.
     """
     by_name = {node['name']: node for node in module.NAV2_NODES}
     smoother_input = dict(by_name['velocity_smoother']['remappings'])[BUS_TOPIC]
+    limiter = dict(module.CURVATURE_LIMITER['remappings'])
 
-    for name in ['controller_server', 'behavior_server']:
-        assert dict(by_name[name]['remappings'])[BUS_TOPIC] == smoother_input
+    assert dict(by_name['controller_server']['remappings'])[BUS_TOPIC] == limiter['cmd_vel_in']
+    assert limiter['cmd_vel_out'] == smoother_input
+    assert dict(by_name['behavior_server']['remappings'])[BUS_TOPIC] == smoother_input
 
 
 def test_every_node_is_managed(module):

@@ -31,6 +31,10 @@ import yaml
 
 PKG = Path(__file__).resolve().parent.parent
 PARAMS = PKG / 'config' / 'nav2_params.yaml'
+BEHAVIOR_TREES = {
+    'default_nav_to_pose_bt_xml': PKG / 'config' / 'navigate_car_like.xml',
+    'default_nav_through_poses_bt_xml': PKG / 'config' / 'navigate_through_poses_car_like.xml',
+}
 
 # Sibling packages in the same colcon src/ tree. These reads are the point of
 # the file: a copy that cannot see its original cannot be checked against it.
@@ -224,38 +228,39 @@ def test_velocity_limits_stay_within_the_controller():
     Nav2 commanding beyond diff_drive_controller's limits is clamped silently, giving a robot that
     does not follow its own plan and no message anywhere saying why.
 
-    Within, not equal: Nav2 is allowed to be more conservative, and currently is -- it plans at
-    half the controller's ceiling.
+    Within, not equal: Nav2 is allowed to be more conservative, and currently is.
+    Regulated Pure Pursuit has one speed and no acceleration limits of its own,
+    so the smoother's limits are the ones checked against the controller.
     """
     limits = load(CONTROLLERS)['diff_drive_controller']['ros__parameters']
     follow = node_params('controller_server')['FollowPath']
+    smoother = node_params('velocity_smoother')
 
-    assert follow['max_vel_x'] <= limits['linear.x.max_velocity']
-    assert follow['min_vel_x'] >= limits['linear.x.min_velocity']
-    assert follow['acc_lim_x'] <= limits['linear.x.max_acceleration']
+    assert follow['desired_linear_vel'] <= limits['linear.x.max_velocity']
+    assert smoother['max_velocity'][0] <= limits['linear.x.max_velocity']
+    assert smoother['min_velocity'][0] >= limits['linear.x.min_velocity']
+    assert smoother['max_accel'][0] <= limits['linear.x.max_acceleration']
 
-    assert follow['max_vel_theta'] <= limits['angular.z.max_velocity']
-    assert follow['min_speed_theta'] >= limits['angular.z.min_velocity']
-    assert follow['acc_lim_theta'] <= limits['angular.z.max_acceleration']
+    assert smoother['max_velocity'][2] <= limits['angular.z.max_velocity']
+    assert smoother['min_velocity'][2] >= limits['angular.z.min_velocity']
+    assert smoother['max_accel'][2] <= limits['angular.z.max_acceleration']
 
 
 def test_the_smoother_agrees_with_the_controller():
-    """velocity_smoother's limits must not exceed the controller's.
+    """velocity_smoother's limits match what the path follower asks for.
 
     velocity_smoother is the last thing to touch a command, so its limits are the ones that
-    actually apply.
-
-    Set above the controller's they do nothing; set below they quietly become the real limits and
-    the tuning happens in the wrong file.
+    actually apply. Set below the follower's speed they quietly become the real limit -- and
+    because pure pursuit computes the turn rate for its OWN speed, capping the speed alone
+    changes the curvature the rover drives. Reversing is checked too: allow_reversing drives
+    backwards at the same speed.
     """
     follow = node_params('controller_server')['FollowPath']
     smoother = node_params('velocity_smoother')
 
-    assert smoother['max_velocity'][0] == follow['max_vel_x']
-    assert smoother['max_velocity'][2] == follow['max_vel_theta']
-    assert smoother['min_velocity'][0] == follow['min_vel_x']
-    assert smoother['max_accel'][0] == follow['acc_lim_x']
-    assert smoother['max_accel'][2] == follow['acc_lim_theta']
+    assert smoother['max_velocity'][0] == follow['desired_linear_vel']
+    if follow.get('allow_reversing'):
+        assert smoother['min_velocity'][0] == -follow['desired_linear_vel']
 
 
 def test_nothing_asks_the_skid_steer_to_move_sideways():
@@ -264,14 +269,70 @@ def test_nothing_asks_the_skid_steer_to_move_sideways():
     A differential drive has no such axis, and a non-zero limit invites a planner to produce
     paths the robot cannot follow.
     """
-    follow = node_params('controller_server')['FollowPath']
     smoother = node_params('velocity_smoother')
 
-    assert follow['max_vel_y'] == 0.0
-    assert follow['min_vel_y'] == 0.0
-    assert follow['acc_lim_y'] == 0.0
     assert smoother['max_velocity'][1] == 0.0
     assert smoother['min_velocity'][1] == 0.0
+    assert smoother['max_accel'][1] == 0.0
+
+
+def test_the_rover_is_never_asked_to_turn_on_the_spot():
+    """It cannot: in sand the wheels dig in instead (2026 field fact).
+
+    Three places could still ask for it -- the path follower rotating to a
+    heading, the planner's motion model, and a Spin recovery in either the
+    behaviour server or the behaviour tree. A turn in place that cannot happen
+    shows up as a rover that sits still with its wheels spinning until Nav2
+    declares no progress.
+    """
+    follow = node_params('controller_server')['FollowPath']
+    planner = node_params('planner_server')['GridBased']
+    behaviors = node_params('behavior_server')
+
+    assert follow['use_rotate_to_heading'] is False
+    assert planner['plugin'] == 'nav2_smac_planner::SmacPlannerHybrid'
+    assert planner['motion_model_for_search'] in ('REEDS_SHEPP', 'DUBIN')
+    for name in behaviors['behavior_plugins']:
+        assert behaviors[name]['plugin'] != 'nav2_behaviors::Spin', name
+    for tree in BEHAVIOR_TREES.values():
+        assert '<Spin' not in tree.read_text(), tree.name
+
+
+def test_reverse_legs_can_be_followed():
+    """Reeds-Shepp paths reverse; the follower must too, or the cusps are dead ends."""
+    follow = node_params('controller_server')['FollowPath']
+    planner = node_params('planner_server')['GridBased']
+    if planner['motion_model_for_search'] == 'REEDS_SHEPP':
+        assert follow['allow_reversing'] is True
+
+
+def test_planner_and_follower_agree_on_the_turning_radius():
+    """One number, stated twice: the tightest arc the rover achieves in sand.
+
+    The planner must not plan tighter than it, and the follower slows down
+    where the path bends tighter than it. If they disagree, either the paths
+    are unfollowable or the rover crawls through bends it could drive.
+    """
+    follow = node_params('controller_server')['FollowPath']
+    planner = node_params('planner_server')['GridBased']
+    assert follow['regulated_linear_scaling_min_radius'] == pytest.approx(
+        planner['minimum_turning_radius']
+    )
+
+
+@pytest.mark.parametrize('key', sorted(BEHAVIOR_TREES))
+def test_every_behaviour_tree_is_ours(key):
+    """bt_navigator names our trees, which ship in config/.
+
+    Both, not just navigate-to-pose: bt_navigator loads the through-poses tree
+    at configure as well, and Nav2's default calls the Spin server that this
+    configuration does not start -- so Nav2 refuses to come up at all. The
+    launch file rewrites each value to an absolute path; this checks the name
+    and that the file exists to be installed.
+    """
+    navigator = node_params('bt_navigator')
+    assert Path(navigator[key]).name == BEHAVIOR_TREES[key].name
+    assert BEHAVIOR_TREES[key].is_file()
 
 
 @pytest.mark.parametrize('node', VELOCITY_PUBLISHERS)
@@ -306,6 +367,23 @@ def test_observation_ranges_do_not_exceed_the_camera():
 
     # The costmap layers nest their sources a level below ros__parameters, so
     # a walk that stops at the block finds nothing and passes. It did.
+    assert checked == 2, f'expected both costmaps to be checked, checked {checked}'
+
+
+def test_camera_obstacles_are_cleared_in_3d():
+    """Every layer fed by the tilted camera must be a VoxelLayer.
+
+    A 2D ObstacleLayer clears along the ray to every point, projected flat.
+    The camera looks down over a 26 cm boulder at the ground beyond it, so
+    those rays erase the boulder as fast as it is marked: the global costmap
+    sat empty and Hybrid-A* planned straight through the rock.
+    """
+    checked = 0
+    for path, block in blocks():
+        for name, layer in block.items():
+            if isinstance(layer, dict) and 'observation_sources' in layer:
+                assert layer['plugin'] == 'nav2_costmap_2d::VoxelLayer', f'{path}/{name}'
+                checked += 1
     assert checked == 2, f'expected both costmaps to be checked, checked {checked}'
 
 
