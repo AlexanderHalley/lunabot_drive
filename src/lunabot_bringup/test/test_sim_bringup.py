@@ -222,7 +222,9 @@ class TestSimBringup(unittest.TestCase):
         )
         descriptions = [m.data for m in self.collect('/robot_description', String, 60.0, qos=qos)]
 
-        mock = [d for d in descriptions if 'mock_components/GenericSystem' in d]
+        # Match the <plugin> element, not the bare name: the ros2_control xacro
+        # lists all three plugins in a comment, and xacro keeps comments.
+        mock = [d for d in descriptions if '<plugin>mock_components/GenericSystem</plugin>' in d]
         self.assertFalse(
             mock,
             f'{len(mock)} of {len(descriptions)} descriptions on this graph name the MOCK '
@@ -230,7 +232,11 @@ class TestSimBringup(unittest.TestCase):
             'passed hardware:=sim, and that no other stack is on this ROS_DOMAIN_ID.',
         )
 
-        sim = [d for d in descriptions if 'topic_based_ros2_control/TopicBasedSystem' in d]
+        sim = [
+            d
+            for d in descriptions
+            if '<plugin>topic_based_ros2_control/TopicBasedSystem</plugin>' in d
+        ]
         self.assertTrue(sim, 'no /robot_description selected the sim hardware plugin')
 
         # The topic names the double and the graphs both hardcode.
