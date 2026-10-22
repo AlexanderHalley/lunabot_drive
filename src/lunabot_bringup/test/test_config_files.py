@@ -346,3 +346,17 @@ def test_teleop_deadman_is_required():
     """
     params = yaml.safe_load((CONFIG_DIR / 'teleop_switch_pro.yaml').read_text())
     assert params['teleop_twist_joy_node']['ros__parameters']['require_enable_button'] is True
+
+
+def test_teleop_uses_separate_controls():
+    """Driving and turning are different axes; deadman and turbo different buttons.
+
+    Either collision makes the rover undrivable in a way that looks like a
+    controller fault: one stick that both drives and turns, or a turbo that
+    is always on because it is the deadman.
+    """
+    params = yaml.safe_load((CONFIG_DIR / 'teleop_switch_pro.yaml').read_text())[
+        'teleop_twist_joy_node'
+    ]['ros__parameters']
+    assert params['axis_linear']['x'] != params['axis_angular']['yaw']
+    assert params['enable_button'] != params['enable_turbo_button']

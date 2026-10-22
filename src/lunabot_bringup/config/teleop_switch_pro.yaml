@@ -13,14 +13,17 @@ teleop_twist_joy_node:
   ros__parameters:
     # ==================== Axes ====================
     # Left stick vertical drives forward/back, right stick horizontal turns.
-    # Verify indices against your controller and driver version:
+    # Under the hid-nintendo kernel driver (Ubuntu, Jetson, Pi): axis 0/1 =
+    # left stick X/Y, 2/3 = right stick X/Y. Yaw on 2, not 0 -- 0 is the LEFT
+    # stick, and the 2026 team found and fixed that on the real controller
+    # (proof_of_life c243353). Verify against your controller and driver:
     #   ros2 topic echo /joy
     # They differ between the hid-nintendo kernel driver and userspace
     # drivers, and between wired and Bluetooth connections.
     axis_linear:
       x: 1
     axis_angular:
-      yaw: 0
+      yaw: 2
 
     # ==================== Speed ====================
     # Half scale on the normal profile. These are m/s and rad/s and feed
@@ -43,7 +46,8 @@ teleop_twist_joy_node:
     # (0.5 s) stops the rover.
     require_enable_button: true
     enable_button: 5
-    enable_turbo_button: 4
+    # L under hid-nintendo is button 6, not 4 (2026 fix 657459e, measured).
+    enable_turbo_button: 6
 
     # Publish only while the enable button is held, rather than streaming
     # zeros. twist_mux then sees the teleop input drop out entirely, which is
