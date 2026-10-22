@@ -29,13 +29,13 @@ GRAPHS_DIR = Path(__file__).resolve().parent.parent / 'lunabot_sim' / 'graphs'
 
 
 def node_types_created_by_the_graphs():
-    """Every compat.og_node_type('X') / core_node_type('X') in graphs/.
+    """Every compat.og_node_type / core_node_type / sensor_node_type('X') in graphs/.
 
     Read out of the source rather than by importing and calling build(),
     because build() needs a running simulator. ast means a renamed node type
     cannot slip past by being spelled differently.
     """
-    bridge, core = set(), set()
+    bridge, core, sensor = set(), set(), set()
 
     for path in sorted(GRAPHS_DIR.glob('*.py')):
         tree = ast.parse(path.read_text())
@@ -51,19 +51,21 @@ def node_types_created_by_the_graphs():
                 bridge.add(name)
             elif node.func.attr == 'core_node_type':
                 core.add(name)
+            elif node.func.attr == 'sensor_node_type':
+                sensor.add(name)
 
-    return bridge, core
+    return bridge, core, sensor
 
 
 def test_the_graphs_create_something():
     """Guards against the ast walk silently matching nothing."""
-    bridge, core = node_types_created_by_the_graphs()
+    bridge, core, _ = node_types_created_by_the_graphs()
     assert bridge, f'found no og_node_type calls under {GRAPHS_DIR}'
     assert core, f'found no core_node_type calls under {GRAPHS_DIR}'
 
 
 def test_probe_checks_every_bridge_node_the_graphs_create():
-    bridge, _ = node_types_created_by_the_graphs()
+    bridge, _, _ = node_types_created_by_the_graphs()
     missing = bridge - set(probe.REQUIRED_BRIDGE_NODES)
     assert not missing, (
         f'graphs/ creates {sorted(missing)}, which the probe does not check. '
@@ -73,7 +75,7 @@ def test_probe_checks_every_bridge_node_the_graphs_create():
 
 
 def test_probe_checks_every_core_node_the_graphs_create():
-    _, core = node_types_created_by_the_graphs()
+    _, core, _ = node_types_created_by_the_graphs()
     missing = core - set(probe.REQUIRED_CORE_NODES)
     assert not missing, (
         f'graphs/ creates {sorted(missing)}, which the probe does not check. '
@@ -81,10 +83,23 @@ def test_probe_checks_every_core_node_the_graphs_create():
     )
 
 
+def test_probe_checks_every_sensor_node_the_graphs_create():
+    _, _, sensor = node_types_created_by_the_graphs()
+    missing = sensor - set(probe.REQUIRED_SENSOR_NODES)
+    assert not missing, (
+        f'graphs/ creates {sorted(missing)}, which the probe does not check. '
+        'Add them to probe.REQUIRED_SENSOR_NODES.'
+    )
+
+
 def test_the_probe_checks_nothing_the_graphs_do_not_use():
     """The other direction: a stale name makes the probe fail on a good install."""
-    bridge, core = node_types_created_by_the_graphs()
-    stale = (set(probe.REQUIRED_BRIDGE_NODES) - bridge) | (set(probe.REQUIRED_CORE_NODES) - core)
+    bridge, core, sensor = node_types_created_by_the_graphs()
+    stale = (
+        (set(probe.REQUIRED_BRIDGE_NODES) - bridge)
+        | (set(probe.REQUIRED_CORE_NODES) - core)
+        | (set(probe.REQUIRED_SENSOR_NODES) - sensor)
+    )
     assert not stale, (
         f'the probe checks {sorted(stale)}, which nothing in graphs/ creates. '
         'A name kept after the code stopped using it turns a passing install into '

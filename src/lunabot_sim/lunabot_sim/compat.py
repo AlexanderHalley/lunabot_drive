@@ -19,13 +19,22 @@ instead of archaeological.
     omni.importer.urdf                isaacsim.asset.importer.urdf
     omni.isaac.sensor                 isaacsim.sensors.physics
 
-============================ VERIFY ============================
-Every string in this file is a best-effort reconstruction and has NOT been
-checked against a running Isaac install. The direction of the renames is
-right; the exact node-type strings and the URDF importer's Python entry point
-changed more than once.
+6.0 deprecated isaacsim.core.api (World, scene objects) and
+isaacsim.sensors.physics in favour of isaacsim.core.experimental.* and
+isaacsim.sensors.experimental.physics. The deprecated extensions still ship in
+extsDeprecated/, on the search path but not enabled, so World is enabled here
+before it is imported. Moving off them is its own job.
 
-To pin them down, in a running Isaac session:
+============================ VERIFIED ============================
+Probed against Isaac Sim 6.2.0 (6.2.0-rc.14+release.52805), 2026-10-21,
+Ubuntu 24.04, ROS 2 Jazzy. Every candidate listed FIRST below resolved there.
+The older candidates are kept for 4.5/5.x and were never probed.
+
+The URDF importer was rewritten in 6.x (URDFImporter converts to a USD file);
+robot/importer.py handles that, and the old kit-command API is gone.
+
+On a new version, re-run scripts/probe_isaac_api.sh before anything else.
+To pin a miss down by hand, in a running Isaac session:
   - OmniGraph node types: open the OmniGraph editor, select a node, read the
     type from the property panel.
   - Extension IDs: Window > Extensions, or
@@ -46,9 +55,19 @@ logger = logging.getLogger(__name__)
 ROS2_BRIDGE_EXTENSIONS = ('isaacsim.ros2.bridge', 'omni.isaac.ros2_bridge')
 URDF_IMPORTER_EXTENSIONS = ('isaacsim.asset.importer.urdf', 'omni.importer.urdf')
 
+# Deprecated in 6.0, still shipped and enabled on demand. See the docstring.
+WORLD_EXTENSIONS = ('isaacsim.core.api', 'omni.isaac.core')
+
+# The IMU sensor authoring class. 6.x: IMU.create(path) in the experimental
+# module. 4.5/5.x: IMUSensor(prim_path=...) in the module that 6.0 deprecated.
+IMU_SENSOR_MODULES = ('isaacsim.sensors.experimental.physics',)
+LEGACY_IMU_SENSOR_MODULES = ('isaacsim.sensors.physics', 'omni.isaac.sensor')
+
 # OmniGraph node-type prefixes. Must match whichever bridge extension loaded.
 OG_PREFIXES = ('isaacsim.ros2.bridge', 'omni.isaac.ros2_bridge')
 OG_CORE_PREFIXES = ('isaacsim.core.nodes', 'omni.isaac.core_nodes')
+# IsaacReadIMU is registered by the sensor extension, not core nodes.
+OG_SENSOR_PREFIXES = ('isaacsim.sensors.physics', 'omni.isaac.sensor')
 
 
 class IsaacCompatError(RuntimeError):
@@ -95,8 +114,32 @@ def get_simulation_app_class():
 
 
 def get_world_class():
-    """World / simulation context. Safe only after SimulationApp exists."""
-    return import_first(('isaacsim.core.api', 'omni.isaac.core'), 'World')
+    """World / simulation context. Safe only after SimulationApp exists.
+
+    On 6.x the extension is deprecated and off until enabled; on 4.5/5.x it is
+    already on, and enabling it again is a no-op. A failure to enable is left
+    for import_first to report, since its error names every candidate.
+    """
+    try:
+        enable_extension(WORLD_EXTENSIONS)
+    except IsaacCompatError as exc:
+        logger.warning('%s', exc)
+    return import_first(WORLD_EXTENSIONS, 'World')
+
+
+def create_imu_sensor(path: str) -> str:
+    """Create an IMU sensor prim at `path`. Returns the prim path actually used.
+
+    6.x auto-numbers the path if it is taken, so the returned path is the one
+    the IMU graph must read.
+    """
+    try:
+        imu_class = import_first(IMU_SENSOR_MODULES, 'IMU')
+    except IsaacCompatError:
+        imu_sensor_class = import_first(LEGACY_IMU_SENSOR_MODULES, 'IMUSensor')
+        imu_sensor_class(prim_path=path, name=path.rsplit('/', 1)[-1], translation=(0.0, 0.0, 0.0))
+        return path
+    return str(imu_class.create(path).paths[0])
 
 
 def enable_extension(name_candidates: tuple[str, ...]) -> str:
@@ -149,6 +192,12 @@ def enable_ros2_bridge() -> str:
 def core_node_type(name: str) -> str:
     """Qualify a non-ROS Isaac OmniGraph node type (clock reads, odometry)."""
     return f'{_active_core_prefix or OG_CORE_PREFIXES[0]}.{name}'
+
+
+def sensor_node_type(name: str) -> str:
+    """Qualify a physics-sensor OmniGraph node type (IsaacReadIMU)."""
+    legacy = _active_core_prefix is not None and not _active_core_prefix.startswith('isaacsim')
+    return f'{OG_SENSOR_PREFIXES[1] if legacy else OG_SENSOR_PREFIXES[0]}.{name}'
 
 
 def isaac_version() -> str:

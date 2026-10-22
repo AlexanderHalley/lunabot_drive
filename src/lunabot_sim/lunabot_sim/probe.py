@@ -57,9 +57,10 @@ REQUIRED_CORE_NODES = (
     'IsaacArticulationController',
     'IsaacComputeOdometry',
     'IsaacCreateRenderProduct',
-    'IsaacReadIMU',
     'IsaacReadSimulationTime',
 )
+
+REQUIRED_SENSOR_NODES = ('IsaacReadIMU',)
 
 # ROS2CameraHelper's `type` input selects what the helper publishes.
 # graphs/camera.py hardcodes these three and marks them VERIFY.
@@ -153,6 +154,7 @@ def run(report: Report | None = None) -> Report:
     _probe_environment(report)
     bridge_extension = _probe_extensions(report)
     _probe_node_types(report, bridge_extension)
+    _probe_world(report)
     _probe_imu_sensor(report)
     _probe_urdf_importer(report)
     return report
@@ -245,6 +247,7 @@ def _probe_node_types(report: Report, bridge_extension: str | None) -> None:
     """
     required = [(name, compat.og_node_type(name)) for name in REQUIRED_BRIDGE_NODES]
     required += [(name, compat.core_node_type(name)) for name in REQUIRED_CORE_NODES]
+    required += [(name, compat.sensor_node_type(name)) for name in REQUIRED_SENSOR_NODES]
 
     if bridge_extension is None:
         report.add(
@@ -307,58 +310,73 @@ def _probe_node_types_by_creation(report: Report, required) -> None:
     # another API this probe exists because nobody has verified.
 
 
-def _probe_imu_sensor(report: Report) -> None:
-    """run_sim.py creates an IMUSensor; the module holding it moved in 4.5."""
-    candidates = ('isaacsim.sensors.physics', 'omni.isaac.sensor')
+def _probe_world(report: Report) -> None:
+    """run_sim.py builds everything on a World; 6.0 deprecated its extension."""
     try:
-        compat.import_first(candidates, 'IMUSensor')
-        report.add('IMUSensor class', OK, ' or '.join(candidates))
+        compat.get_world_class()
+        report.add('World class', OK, ' or '.join(compat.WORLD_EXTENSIONS))
     except compat.IsaacCompatError as exc:
         report.add(
-            'IMUSensor class',
+            'World class',
             MISSING,
             str(exc).splitlines()[0],
-            'run_sim.py::_create_imu_sensor. Without it there is no /oak_d/imu/data, '
-            'so rtabmap loses its gravity constraint and the EKF loses its only real '
-            'motion measurement.',
+            'compat.WORLD_EXTENSIONS. If the deprecated extension is finally gone, '
+            'run_sim.py and scene/ need porting to isaacsim.core.experimental.',
         )
 
 
-def _probe_urdf_importer(report: Report) -> None:
-    """Which of the two importer API shapes robot/importer.py can use.
+def _probe_imu_sensor(report: Report) -> None:
+    """run_sim.py creates the IMU through compat.create_imu_sensor."""
+    for modules, attribute in (
+        (compat.IMU_SENSOR_MODULES, 'IMU'),
+        (compat.LEGACY_IMU_SENSOR_MODULES, 'IMUSensor'),
+    ):
+        try:
+            compat.import_first(modules, attribute)
+            report.add('IMU sensor class', OK, f'{" or ".join(modules)}.{attribute}')
+            return
+        except compat.IsaacCompatError:
+            continue
+    report.add(
+        'IMU sensor class',
+        MISSING,
+        'neither the 6.x IMU nor the legacy IMUSensor resolved',
+        'compat.create_imu_sensor. Without it there is no /oak_d/imu/data, '
+        'so rtabmap loses its gravity constraint and the EKF loses its only real '
+        'motion measurement.',
+    )
 
-    Both are tried there, in order. Knowing WHICH one this install has turns a
-    failed import into a one-line answer instead of two stack traces.
+
+def _probe_urdf_importer(report: Report) -> None:
+    """Which importer API robot/importer.py will use.
+
+    6.x: URDFImporter, which converts to a USD file. 4.5/5.x: kit commands.
     """
+    try:
+        compat.import_first(compat.URDF_IMPORTER_EXTENSIONS, 'URDFImporter')
+        report.add('URDFImporter class', OK, 'robot/importer.py uses the 6.x USD conversion')
+        return
+    except compat.IsaacCompatError:
+        pass
+
     try:
         import omni.kit.commands
 
         commands = set(omni.kit.commands.get_commands())
-        for command in ('URDFCreateImportConfig', 'URDFParseAndImportFile'):
-            if command in commands:
-                report.add(f'kit command {command}', OK)
-            else:
-                near = sorted(c for c in commands if 'URDF' in c.upper())
-                report.add(
-                    f'kit command {command}',
-                    MISSING,
-                    'not registered',
-                    f'URDF-ish commands present: {near}'
-                    if near
-                    else 'robot/importer.py, which falls back to the legacy interface below.',
-                )
     except Exception as exc:  # noqa: BLE001
-        report.add('kit commands', UNKNOWN, f'could not list: {exc}')
+        report.add('URDF importer', UNKNOWN, f'could not list kit commands: {exc}')
+        return
 
-    try:
-        compat.import_first(compat.URDF_IMPORTER_EXTENSIONS, '_urdf')
-        report.add('legacy urdf interface', OK, 'acquire_urdf_interface path is available')
-    except compat.IsaacCompatError:
-        report.add(
-            'legacy urdf interface',
-            UNKNOWN,
-            'not available; the kit command path above is the only one',
-        )
+    if {'URDFCreateImportConfig', 'URDFParseAndImportFile'} <= commands:
+        report.add('URDF kit commands', OK, 'robot/importer.py uses the 4.5/5.x commands')
+        return
+    near = sorted(c for c in commands if 'URDF' in c.upper())
+    report.add(
+        'URDF importer',
+        MISSING,
+        'neither URDFImporter nor the URDF kit commands are available',
+        f'URDF-ish commands present: {near}' if near else 'robot/importer.py.',
+    )
 
 
 def main(argv=None) -> int:
@@ -379,16 +397,23 @@ def main(argv=None) -> int:
     simulation_app_class = compat.get_simulation_app_class()
     simulation_app = simulation_app_class({'headless': True})
 
+    # Report BEFORE close(). Isaac 6.x launches Kit with fastShutdown, and
+    # close() then ends the process outright: nothing after it runs, and the
+    # exit status is whatever close() is handed -- 0 unless told otherwise.
+    exit_code = 1
     try:
         report = run()
+        print(report.to_text(), flush=True)
+        if args.json:
+            Path(args.json).write_text(report.to_json())
+            print(f'findings written to {args.json}', flush=True)
+        exit_code = report.exit_code()
     finally:
-        simulation_app.close()
-
-    print(report.to_text())
-    if args.json:
-        Path(args.json).write_text(report.to_json())
-        print(f'findings written to {args.json}')
-    return report.exit_code()
+        try:
+            simulation_app.close(exit_code=exit_code)
+        except TypeError:  # 4.5/5.x: no exit_code, and close() returns
+            simulation_app.close()
+    return exit_code
 
 
 if __name__ == '__main__':

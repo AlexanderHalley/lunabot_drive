@@ -34,6 +34,8 @@ import signal
 import sys
 from pathlib import Path
 
+import numpy as np
+
 logging.basicConfig(
     level=logging.INFO, format='[%(levelname)s] [lunabot_sim.%(module)s] %(message)s'
 )
@@ -85,13 +87,24 @@ def main(argv=None) -> int:
         }
     )
 
+    # 6.x close() ends the process (fast shutdown), so the traceback has to be
+    # logged before it and the exit status passed into it. Otherwise a failed
+    # startup prints nothing and exits 0.
+    exit_code = 1
     try:
-        return _run(args, simulation_app)
+        exit_code = _run(args, simulation_app)
+    except Exception:
+        logger.exception('lunabot_sim failed')
+        raise
     finally:
         # Always close, including on exception. A leaked SimulationApp holds
         # the GPU and the next run fails to start for unrelated-looking
         # reasons.
-        simulation_app.close()
+        try:
+            simulation_app.close(exit_code=exit_code)
+        except TypeError:  # 4.5/5.x: no exit_code, and close() returns
+            simulation_app.close()
+    return exit_code
 
 
 def _run(args, simulation_app) -> int:
@@ -104,6 +117,15 @@ def _run(args, simulation_app) -> int:
 
     bridge = compat.enable_ros2_bridge()
     logger.info('ROS 2 bridge extension: %s', bridge)
+
+    # ---- Robot, part 1 ----
+    # 6.x converts the URDF to USD by opening the result as the stage, so it
+    # runs before anything is built, and a fresh stage replaces it after.
+    robot_usd = importer.convert_urdf(Path(args.urdf))
+    if robot_usd is not None:
+        import omni.usd
+
+        omni.usd.get_context().new_stage()
 
     world_class = compat.get_world_class()
     world = world_class(
@@ -120,12 +142,16 @@ def _run(args, simulation_app) -> int:
     placed = arena.build(world, config, ground_truth_path)
     logger.info('scene "%s" seed %d: %d boulders', args.scene, args.seed, len(placed))
 
-    # ---- Robot ----
-    articulation_path = importer.import_urdf(Path(args.urdf))
-    articulation.configure(articulation_path)
+    # ---- Robot, part 2 ----
+    robot_path = '/World/Lunabot'
+    if robot_usd is not None:
+        articulation_path = importer.add_to_stage(robot_usd, robot_path)
+    else:
+        articulation_path = importer.import_urdf(Path(args.urdf), robot_path)
+    articulation.configure(articulation_path, robot_path=robot_path)
     articulation.set_solver_iterations(articulation_path)
 
-    camera_prim = _find_camera_prim(articulation_path)
+    camera_prim = _find_camera_prim(articulation_path, Path(args.urdf))
     imu_prim = _create_imu_sensor(articulation_path)
 
     # ---- ROS 2 graphs ----
@@ -150,23 +176,28 @@ def _run(args, simulation_app) -> int:
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
 
+    # render=True even headless. It is what runs Kit's app update, and the
+    # update is what evaluates the OnPlaybackTick graphs: with render=False
+    # physics steps, the timeline plays, and not one ROS message is published.
+    # Headless only drops the window.
     while running and simulation_app.is_running():
-        world.step(render=not args.headless)
+        world.step(render=True)
 
     return 0
 
 
-def _find_camera_prim(articulation_path: str) -> str:
-    """Locate the camera prim the URDF's optical frame corresponds to.
+def _find_camera_prim(articulation_path: str, urdf_path: Path) -> str:
+    """The camera prim for the OAK-D's RGB optical frame, created if absent.
 
-    VERIFY: importer.py merges fixed joints, so the optical frames may not
-    survive as prims. If this raises, either create a Camera prim explicitly
-    at the right pose, or set merge_fixed_joints False and pay the solver
-    cost. The frame_id published on the image topics comes from the graph
-    configuration, not from this prim's name, so the pose is what matters.
+    The URDF has no camera sensor tag, and importer.py merges fixed joints, so
+    the optical frames do not survive as prims. A Camera is created under the
+    articulation root at the optical frame's pose, read from the URDF's own
+    joint chain so the mount position stays defined in one place. The
+    frame_id on the image topics comes from the graph configuration, not from
+    this prim's name, so only the pose matters.
     """
     import omni.usd
-    from pxr import Usd, UsdGeom
+    from pxr import Gf, Usd, UsdGeom
 
     stage = omni.usd.get_context().get_stage()
     root = stage.GetPrimAtPath(articulation_path)
@@ -176,31 +207,73 @@ def _find_camera_prim(articulation_path: str) -> str:
             logger.info('using camera prim %s', prim.GetPath())
             return str(prim.GetPath())
 
-    raise RuntimeError(
-        f'no camera prim under {articulation_path}. URDF has no camera sensor tag, so one '
-        'must be created explicitly -- see _find_camera_prim in run_sim.py.'
+    transform = _urdf_frame_transform(urdf_path, 'base_link', CAMERA_OPTICAL_FRAME)
+    # ROS optical frame: +Z forward, +Y down. USD camera: -Z forward, +Y up.
+    # The same frame, turned 180 degrees about X.
+    transform = transform @ np.diag([1.0, -1.0, -1.0, 1.0])
+
+    path = f'{articulation_path}/oak_d_camera'
+    camera = UsdGeom.Camera.Define(stage, path)
+    # Gf matrices are row-vector: the transpose of the column-vector form.
+    camera.AddTransformOp().Set(Gf.Matrix4d(transform.T.tolist()))
+    logger.info('created camera prim %s at the %s pose', path, CAMERA_OPTICAL_FRAME)
+    return path
+
+
+CAMERA_OPTICAL_FRAME = 'oak_d_rgb_camera_optical_frame'
+
+
+def _urdf_frame_transform(urdf_path: Path, parent: str, child: str):
+    """4x4 transform of `child` in `parent`, composed along the URDF's joints."""
+    import xml.etree.ElementTree as ET
+
+    joints = {}
+    # findall, not iter: <ros2_control> also has <joint> elements, without links.
+    for joint in ET.parse(urdf_path).getroot().findall('joint'):
+        origin = joint.find('origin')
+        attrib = origin.attrib if origin is not None else {}
+        xyz = [float(v) for v in attrib.get('xyz', '0 0 0').split()]
+        rpy = [float(v) for v in attrib.get('rpy', '0 0 0').split()]
+        joints[joint.find('child').get('link')] = (joint.find('parent').get('link'), xyz, rpy)
+
+    transform = np.eye(4)
+    link = child
+    while link != parent:
+        if link not in joints:
+            raise RuntimeError(f'{child} is not below {parent} in {urdf_path}')
+        link, xyz, rpy = joints[link]
+        transform = _origin_matrix(xyz, rpy) @ transform
+    return transform
+
+
+def _origin_matrix(xyz, rpy):
+    """URDF <origin>: translate, then fixed-axis roll-pitch-yaw (Rz @ Ry @ Rx)."""
+    roll, pitch, yaw = rpy
+    cr, sr, cp, sp, cy, sy = (
+        np.cos(roll), np.sin(roll), np.cos(pitch), np.sin(pitch), np.cos(yaw), np.sin(yaw)
     )
+    matrix = np.eye(4)
+    matrix[:3, :3] = np.array(
+        [
+            [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+            [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+            [-sp, cp * sr, cp * cr],
+        ]
+    )
+    matrix[:3, 3] = xyz
+    return matrix
 
 
 def _create_imu_sensor(articulation_path: str) -> str:
     """Attach an IMU sensor at the camera's IMU frame.
 
-    VERIFY: the IMU sensor API moved from omni.isaac.sensor to
-    isaacsim.sensors.physics in 4.5.
+    The API differs across versions; compat.create_imu_sensor resolves it.
+    6.x samples every physics step and has no frequency setting, so the real
+    BNO086's 400 Hz is not reproduced -- the IMU runs at the physics rate.
     """
     from lunabot_sim import compat
 
-    imu_sensor_class = compat.import_first(
-        ('isaacsim.sensors.physics', 'omni.isaac.sensor'), 'IMUSensor'
-    )
-
-    path = f'{articulation_path}/oak_d_imu'
-    imu_sensor_class(
-        prim_path=path,
-        name='oak_d_imu',
-        frequency=400,  # matches the real BNO086 configuration
-        translation=(0.0, 0.0, 0.0),
-    )
+    path = compat.create_imu_sensor(f'{articulation_path}/oak_d_imu')
     logger.info('created IMU sensor at %s', path)
     return path
 

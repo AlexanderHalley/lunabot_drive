@@ -83,15 +83,18 @@ def build(world, config: TerrainConfig, prim_path: str = '/World/Terrain'):
     from isaacsim.core.api.materials import PhysicsMaterial, PreviewSurface
     from isaacsim.core.api.objects import GroundPlane
 
+    # Materials go BESIDE the ground prim, not under it. Creating a child first
+    # makes prim_path exist, and GroundPlane then takes it for an existing
+    # ground, looks for its Plane child, finds none, and fails on a None path.
     physics_material = PhysicsMaterial(
-        prim_path=f'{prim_path}/PhysicsMaterial',
+        prim_path=f'{prim_path}Materials/PhysicsMaterial',
         static_friction=config.static_friction,
         dynamic_friction=config.dynamic_friction,
         restitution=config.restitution,
     )
 
     visual_material = PreviewSurface(
-        prim_path=f'{prim_path}/VisualMaterial',
+        prim_path=f'{prim_path}Materials/VisualMaterial',
         color=np.array(config.albedo),
         roughness=config.roughness,
         metallic=config.metallic,

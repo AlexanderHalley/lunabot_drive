@@ -11,11 +11,18 @@ xacro the first time someone changed a wheel diameter. `.gitignore` blocks `*.us
 
 ## Running it
 
-> **First time on this machine?** Run
+> **Verified on Isaac Sim 6.2.0** (2026-10-21, Ubuntu 24.04, Jazzy, RTX 5070 Ti): the probe passes,
+> Isaac publishes every topic below, and `check_stack.py --profile sim --slam rtabmap --drive`
+> passes 18/18 with `/odom` tracking ground truth to about a centimetre.
+>
+> **First time on this machine, or a new Isaac version?** Run
 > [`scripts/probe_isaac_api.sh`](../src/lunabot_sim/scripts/probe_isaac_api.sh) before anything
-> else and work through [`SIM_ACCEPTANCE.md`](SIM_ACCEPTANCE.md). Every version-sensitive string
-> below is unverified until that probe has passed once, and each one fails at a different point in
-> startup with an error that names the symbol rather than the rename.
+> else and work through [`SIM_ACCEPTANCE.md`](SIM_ACCEPTANCE.md). Each version-sensitive string
+> fails at a different point in startup with an error that names the symbol rather than the
+> rename.
+>
+> Isaac 6.x asks for the NVIDIA license on first run. Each user accepts it themselves, with
+> `OMNI_KIT_ACCEPT_EULA=YES` in their own environment -- never in this repo.
 
 **Two processes, Isaac first.**
 
@@ -154,12 +161,27 @@ Isaac Sim 4.5 renamed essentially every namespace:
 | URDF importer | `omni.importer.urdf` | `isaacsim.asset.importer.urdf` |
 | IMU sensor | `omni.isaac.sensor` | `isaacsim.sensors.physics` |
 
+**Isaac Sim 6.x** changed three more things, all handled in `compat.py` and `robot/importer.py`:
+
+- `isaacsim.core.api` (`World`, the scene objects) and `isaacsim.sensors.physics` are
+  **deprecated** in favour of `isaacsim.core.experimental.*`. They still ship in `extsDeprecated/`,
+  so `World` is enabled on demand. The IMU uses the new `isaacsim.sensors.experimental.physics.IMU`;
+  its `IsaacReadIMU` OmniGraph node is `isaacsim.sensors.physics.IsaacReadIMU`. Porting `World` and
+  `scene/` to the experimental API is outstanding.
+- **The URDF importer was rewritten.** `URDFImporter` converts the URDF to a USD file
+  (`~/.cache/lunabot_sim/usd/`) and opens it as the stage, so the conversion runs before the World
+  exists and the result is referenced in at `/World/Lunabot`. The asset puts links under
+  `Geometry/` and joints under `Physics/`, and the articulation root is
+  `/World/Lunabot/Geometry/base_link`.
+- `SimulationApp.close()` ends the process (Kit fast shutdown). Anything after it never runs, and
+  the exit status is the `exit_code` passed to it.
+
 Everything version-sensitive is resolved in **`lunabot_sim/compat.py`**, once, at startup — and
 when resolution fails the error names every candidate tried. `ISAAC_VERSION` is logged on every
 run, because the first question about any Isaac bug is which version produced it.
 
-> **Treat every one of those strings as unverified.** The direction of the renames is right; the
-> exact OmniGraph node types and the URDF importer's Python entry point changed more than once.
+> **Only the 6.2.0 names have been verified.** The 4.5/5.x fallbacks in `compat.py` have never
+> run.
 > To pin them down in a running session: read node types from the OmniGraph editor's property
 > panel, and extension IDs from Window → Extensions. Fix them in `compat.py` and nowhere else.
 
@@ -170,6 +192,16 @@ a 22.04-only build means revisiting the Jazzy decision.
 ---
 
 ## Known rough edges
+
+**Isaac runs, `/clock` never appears, and nothing errors.** Two ways to get this, both fixed and
+both silent. A graph needs the `execution` evaluator in the simulation pipeline stage
+(`graphs/context.py`): an on-demand stage never evaluates, and the `push` evaluator does not
+follow `execIn` connections. And the main loop must call `world.step(render=True)` even headless,
+because the app update is what evaluates the graphs.
+
+**The rover sits about 2.5 cm low.** Ground truth puts `base_link` at z = 0.075 m against a
+0.1 m wheel radius. Not investigated yet. Suspect contact offsets, or the URDF's inertia estimates,
+which 6.x no longer lets the importer recompute.
 
 **The rover does not move at all, and nothing errors.** The first thing to check, and it is a
 configured parameter rather than a mystery. `TopicBasedSystem::write()` skips publishing when the
@@ -203,10 +235,12 @@ this first.
 is why the boulder detector consumes the point cloud rather than the depth image, and why
 `depth_normalizer_node` runs on hardware only.
 
-**No camera prim, import fails.** `importer.py` merges fixed joints, so the URDF's optical frames
-may not survive as prims. Either create a `Camera` prim explicitly at the right pose, or set
-`merge_fixed_joints` to false and pay the solver cost. The `frame_id` on the image topics comes
-from the graph configuration, not from the prim name, so only the pose matters.
+**The camera prim is created, not imported.** The URDF has no camera sensor and `importer.py`
+merges fixed joints, so `run_sim.py` creates a `Camera` under the articulation root at the
+`oak_d_rgb_camera_optical_frame` pose, composed from the URDF's own joints. The `frame_id` on the
+image topics comes from the graph configuration, not the prim name.
+
+**The IMU runs at the physics rate, not 400 Hz.** The 6.x IMU sensor has no frequency setting.
 
 **Real-time factor below ~0.3 makes teleop unusable.** `controller_manager` runs at 100 Hz against
 the simulated clock, so everything scales together and stays correct — it is just unpleasant to
@@ -246,8 +280,8 @@ the plumbing and no test at all of whether the rover can climb a slope.
 ### What still needs the real thing
 
 `compat.py`, `graphs/*.py`, `robot/importer.py`, `robot/articulation.py`, and the scene builders'
-Isaac imports have never executed. That is what the acceptance run is for, and it now has an order
-of operations and a pass/fail criterion per step:
+Isaac imports run only inside Isaac, so CI cannot catch a regression in them. Re-run the acceptance
+steps after changing any of them:
 
 - **[`SIM_ACCEPTANCE.md`](SIM_ACCEPTANCE.md)** — the day-one checklist
 - `src/lunabot_sim/scripts/probe_isaac_api.sh` — resolves every `VERIFY` in `compat.py` against a

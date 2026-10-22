@@ -34,13 +34,19 @@ def create_graph(path: str, keys, nodes, values=None, connections=None):
     """
     import omni.graph.core as og
 
+    # An action graph, evaluated every simulation frame. OnPlaybackTick (see
+    # playback_tick_node) then fires only while the simulation is playing --
+    # not OnTick, which also fires while paused and produces sensor messages
+    # stamped with a clock that is not advancing.
+    #
+    # Both settings matter, and both fail silently: an ONDEMAND pipeline
+    # stage never evaluates unless something asks it to, and the 'push'
+    # evaluator does not follow execIn/execOut connections. Either one gives
+    # a graph that is built, valid, and publishes nothing.
     graph_spec = {
         'graph_path': path,
-        # ON_PLAYBACK_TICK: evaluate only while the simulation is playing.
-        # Not ON_TICK, which also fires while paused and produces sensor
-        # messages stamped with a clock that is not advancing.
-        'evaluator_name': 'push',
-        'pipeline_stage': og.GraphPipelineStage.GRAPH_PIPELINE_STAGE_ONDEMAND,
+        'evaluator_name': 'execution',
+        'pipeline_stage': og.GraphPipelineStage.GRAPH_PIPELINE_STAGE_SIMULATION,
     }
 
     spec = {keys.CREATE_NODES: nodes}

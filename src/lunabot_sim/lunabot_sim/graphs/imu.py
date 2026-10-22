@@ -28,9 +28,8 @@ def build(
 ):
     """Read an IMU sensor prim and publish it as sensor_msgs/Imu.
 
-    VERIFY: the IMU sensor moved between omni.isaac.sensor and
-    isaacsim.sensors.physics across versions, and the sensor prim must be
-    created before this graph reads it -- see run_sim.py.
+    The sensor prim must be created before this graph reads it -- see
+    compat.create_imu_sensor, called from run_sim.py.
     """
     import omni.graph.core as og
 
@@ -44,7 +43,7 @@ def build(
             context.playback_tick_node(),
             ctx_node,
             context.simulation_time_node(),
-            ('ReadImu', compat.core_node_type('IsaacReadIMU')),
+            ('ReadImu', compat.sensor_node_type('IsaacReadIMU')),
             ('PublishImu', compat.og_node_type('ROS2PublishImu')),
         ],
         values=ctx_values

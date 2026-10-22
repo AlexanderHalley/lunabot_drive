@@ -43,7 +43,12 @@ WHEEL_JOINTS = (
 )
 
 
-def configure(articulation_path: str, max_effort: float = 40.0, damping: float = 1.0e4):
+def configure(
+    articulation_path: str,
+    max_effort: float = 40.0,
+    damping: float = 1.0e4,
+    robot_path: str | None = None,
+):
     """Set every wheel joint to velocity drive.
 
     max_effort is the joint's torque limit from properties.xacro. Too low and
@@ -53,6 +58,10 @@ def configure(articulation_path: str, max_effort: float = 40.0, damping: float =
     damping is the velocity-drive gain. High, because a low value gives a
     drive that tracks the commanded velocity so sluggishly that the control
     loop looks broken. Stiffness stays at zero -- see the module docstring.
+
+    robot_path is where to search for the joints, when that is not under the
+    articulation root: the 6.x importer puts links under <robot>/Geometry and
+    joints under <robot>/Physics, beside each other.
     """
     import omni.usd
     from pxr import UsdPhysics
@@ -60,15 +69,16 @@ def configure(articulation_path: str, max_effort: float = 40.0, damping: float =
     stage = omni.usd.get_context().get_stage()
     configured = []
 
+    search_root = robot_path or articulation_path
     for joint_name in WHEEL_JOINTS:
-        prim = _find_joint(stage, articulation_path, joint_name)
+        prim = _find_joint(stage, search_root, joint_name)
         if prim is None:
             logger.error(
                 'joint %s not found under %s. Wheel names must match the URDF exactly; '
                 'note that merge_fixed_joints in importer.py removes FIXED joints only, '
                 'so a missing revolute joint is a real mismatch.',
                 joint_name,
-                articulation_path,
+                search_root,
             )
             continue
 
