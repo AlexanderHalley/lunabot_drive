@@ -15,8 +15,10 @@
   <!-- ament_python, and the ONLY package in the workspace that is. The
        deliverable here is an importable Python module with real logic in it,
        which is where setup.py earns its keep; everywhere else a bare
-       install(DIRECTORY) in CMake is one line and never drifts. -->
-  <buildtool_depend>ament_python</buildtool_depend>
+       install(DIRECTORY) in CMake is one line and never drifts.
+       The build type is declared by <build_type> in <export>, not by a
+       buildtool_depend: rosdep has no `ament_python` key, so listing one
+       makes `rosdep install` fail for the whole workspace. -->
 
   <!-- NO ROS RUNTIME DEPENDENCIES, deliberately.
        This package is executed by Isaac Sim's embedded Python, which is not
