@@ -32,8 +32,8 @@ import yaml
 PKG = Path(__file__).resolve().parent.parent
 PARAMS = PKG / 'config' / 'nav2_params.yaml'
 BEHAVIOR_TREES = {
-    'default_nav_to_pose_bt_xml': PKG / 'config' / 'navigate_car_like.xml',
-    'default_nav_through_poses_bt_xml': PKG / 'config' / 'navigate_through_poses_car_like.xml',
+    'default_nav_to_pose_bt_xml': PKG / 'config' / 'navigate_to_pose.xml',
+    'default_nav_through_poses_bt_xml': PKG / 'config' / 'navigate_through_poses.xml',
 }
 
 # Sibling packages in the same colcon src/ tree. These reads are the point of
@@ -276,48 +276,76 @@ def test_nothing_asks_the_skid_steer_to_move_sideways():
     assert smoother['max_accel'][1] == 0.0
 
 
-def test_the_rover_is_never_asked_to_turn_on_the_spot():
-    """It cannot: in sand the wheels dig in instead (2026 field fact).
+HYBRID = 'nav2_smac_planner::SmacPlannerHybrid'
 
-    Three places could still ask for it -- the path follower rotating to a
-    heading, the planner's motion model, and a Spin recovery in either the
-    behaviour server or the behaviour tree. A turn in place that cannot happen
-    shows up as a rover that sits still with its wheels spinning until Nav2
-    declares no progress.
+
+def test_turning_in_place_is_all_or_nothing():
+    """Either the rover turns on the spot everywhere Nav2 might ask, or nowhere.
+
+    A grid planner (anything but Hybrid-A*) draws corners only a pivot can
+    follow, so the follower must rotate to heading and the curvature limiter
+    must be off. Hybrid-A* with a turning radius means a rover that cannot
+    pivot: then nothing may rotate in place -- not the follower, not a Spin
+    recovery. Mixing the two gives a rover that sits with its wheels spinning
+    until Nav2 declares no progress.
     """
     follow = node_params('controller_server')['FollowPath']
     planner = node_params('planner_server')['GridBased']
+    limiter = node_params('curvature_limiter')
     behaviors = node_params('behavior_server')
+    spins = any(behaviors[n]['plugin'] == 'nav2_behaviors::Spin' for n in behaviors['behavior_plugins'])
 
-    assert follow['use_rotate_to_heading'] is False
-    assert planner['plugin'] == 'nav2_smac_planner::SmacPlannerHybrid'
-    assert planner['motion_model_for_search'] in ('REEDS_SHEPP', 'DUBIN')
-    for name in behaviors['behavior_plugins']:
-        assert behaviors[name]['plugin'] != 'nav2_behaviors::Spin', name
-    for tree in BEHAVIOR_TREES.values():
-        assert '<Spin' not in tree.read_text(), tree.name
+    if planner['plugin'] == HYBRID:
+        assert follow['use_rotate_to_heading'] is False
+        assert not spins
+        assert limiter['min_turning_radius'] > 0.0
+    else:
+        assert follow['use_rotate_to_heading'] is True
+        assert limiter['min_turning_radius'] == 0.0
+
+
+def test_rotate_to_heading_and_reversing_are_not_both_on():
+    """Nav2 refuses the combination at configure, and nothing else starts."""
+    follow = node_params('controller_server')['FollowPath']
+    assert not (follow['use_rotate_to_heading'] and follow.get('allow_reversing', False))
+
+
+@pytest.mark.parametrize('key', sorted(BEHAVIOR_TREES))
+def test_every_behaviour_a_tree_calls_is_served(key):
+    """A tree calling Spin with no spin server stops Nav2 coming up at all.
+
+    bt_navigator loads both trees at configure and waits for every action
+    server they name; seen in Isaac when Spin was removed from the server but
+    Nav2's default through-poses tree still called it.
+    """
+    behaviors = node_params('behavior_server')
+    served = {behaviors[n]['plugin'].split('::')[-1] for n in behaviors['behavior_plugins']}
+    tree = BEHAVIOR_TREES[key].read_text()
+    for behaviour in ('Spin', 'BackUp', 'Wait', 'DriveOnHeading', 'AssistedTeleop'):
+        if f'<{behaviour}' in tree:
+            assert behaviour in served, f'{BEHAVIOR_TREES[key].name} calls {behaviour}'
 
 
 def test_reverse_legs_can_be_followed():
     """Reeds-Shepp paths reverse; the follower must too, or the cusps are dead ends."""
     follow = node_params('controller_server')['FollowPath']
     planner = node_params('planner_server')['GridBased']
-    if planner['motion_model_for_search'] == 'REEDS_SHEPP':
+    if planner.get('motion_model_for_search') == 'REEDS_SHEPP':
         assert follow['allow_reversing'] is True
 
 
 def test_planner_and_follower_agree_on_the_turning_radius():
-    """One number, stated twice: the tightest arc the rover achieves in sand.
+    """With Hybrid-A*, one number stated twice: the tightest arc in sand.
 
     The planner must not plan tighter than it, and the follower slows down
-    where the path bends tighter than it. If they disagree, either the paths
-    are unfollowable or the rover crawls through bends it could drive.
+    where the path bends tighter than it.
     """
     follow = node_params('controller_server')['FollowPath']
     planner = node_params('planner_server')['GridBased']
-    assert follow['regulated_linear_scaling_min_radius'] == pytest.approx(
-        planner['minimum_turning_radius']
-    )
+    if planner['plugin'] == HYBRID:
+        assert follow['regulated_linear_scaling_min_radius'] == pytest.approx(
+            planner['minimum_turning_radius']
+        )
 
 
 @pytest.mark.parametrize('key', sorted(BEHAVIOR_TREES))

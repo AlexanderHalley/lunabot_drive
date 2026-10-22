@@ -54,14 +54,13 @@ bt_navigator:
     # server a second later.
     default_server_timeout: 1000
     wait_for_service_timeout: 1000
-    # The *_car_like.xml trees: replan only when the path goes invalid, and
-    # no Spin recovery. BOTH must be set: bt_navigator loads the
-    # through-poses tree at configure too, and Nav2's default calls Spin,
-    # which no longer exists -- Nav2 then fails to come up at all.
+    # Our trees (config/navigate_*.xml): replan every 10 s or when the path
+    # goes invalid, and only the recoveries behavior_server runs. BOTH must
+    # be set: bt_navigator loads the through-poses tree at configure too.
     # The values are placeholders: navigation.launch.py rewrites them to the
     # installed absolute paths.
-    default_nav_to_pose_bt_xml: "navigate_car_like.xml"
-    default_nav_through_poses_bt_xml: "navigate_through_poses_car_like.xml"
+    default_nav_to_pose_bt_xml: "navigate_to_pose.xml"
+    default_nav_through_poses_bt_xml: "navigate_through_poses.xml"
 
 
 controller_server:
@@ -92,14 +91,13 @@ controller_server:
       required_movement_radius: 0.3
       movement_time_allowance: 15.0
 
-    # Loose on yaw: the rover cannot correct heading in place, so a tight yaw
-    # tolerance means a K-turn at every goal. The planner already arrives
-    # close to the goal heading.
+    # RPP turns on the spot to the goal heading at the end, so yaw can be
+    # held reasonably tight now that the rover pivots.
     goal_checker_plugins: ["goal_checker"]
     goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.5
+      yaw_goal_tolerance: 0.3
       stateful: true
 
     # Nav2's output. twist_mux arbitrates between this and teleop, and teleop
@@ -107,11 +105,11 @@ controller_server:
     controller_plugins: ["FollowPath"]
 
     FollowPath:
-      # Regulated Pure Pursuit: follow the Hybrid-A* path, forwards AND
-      # backwards. The rover cannot turn on the spot in sand (2026 field fact,
-      # modelled in lunabot_sim/robot/soil.py), so it is driven like a car:
-      # the planner bakes the turning radius into the path, and this only
-      # tracks it.
+      # Regulated Pure Pursuit, turning on the spot to face the path first.
+      # The six-wheel drop-centre pivots (lunabot_sim/robot/soil.py, Isaac
+      # turn tests: ~99% of commanded yaw rate on rigid ground), so this is
+      # the ordinary differential-drive setup. Driving forward only also keeps
+      # the forward camera looking where the rover goes.
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
 
       # The 2027 design's top speed. MUST stay within diff_drive_controller's
@@ -120,27 +118,23 @@ controller_server:
       desired_linear_vel: 0.3
 
       # Pure pursuit steers at a point this far down the path. Too short and
-      # it chases curvature the rover cannot achieve; too long and it cuts
-      # corners into obstacles.
-      lookahead_dist: 0.8
-      min_lookahead_dist: 0.5
-      max_lookahead_dist: 1.5
-      lookahead_time: 2.0
+      # it weaves; too long and it cuts corners into obstacles.
+      lookahead_dist: 0.6
+      min_lookahead_dist: 0.4
+      max_lookahead_dist: 1.2
+      lookahead_time: 1.5
       use_velocity_scaled_lookahead_dist: true
 
-      # NEVER turn in place: it digs the wheels in instead. allow_reversing
-      # follows the cusps of a Reeds-Shepp path, and Nav2 refuses it unless
-      # rotate-to-heading is off.
-      use_rotate_to_heading: false
-      allow_reversing: true
-      rotate_to_heading_angular_vel: 0.5  # unused while the above is false
+      # Turn in place to face the path whenever it heads off more than 45 deg.
+      # Nav2 refuses rotate-to-heading together with allow_reversing.
+      use_rotate_to_heading: true
+      rotate_to_heading_min_angle: 0.785
+      rotate_to_heading_angular_vel: 0.6  # under the design's 0.7 rad/s
       max_angular_accel: 2.0
+      allow_reversing: false
 
-      # Slow down where the path bends tighter than the rover can turn, so it
-      # scrubs through rather than ploughing on. Same radius as the planner's
-      # minimum_turning_radius (tested).
       use_regulated_linear_velocity_scaling: true
-      regulated_linear_scaling_min_radius: 1.5
+      regulated_linear_scaling_min_radius: 0.9
       regulated_linear_scaling_min_speed: 0.10
       use_cost_regulated_linear_velocity_scaling: false
 
@@ -149,13 +143,9 @@ controller_server:
       approach_velocity_scaling_dist: 0.6
 
       use_collision_detection: true
-      # Seconds of the commanded arc that must be clear. The arc is straight-
-      # ish while the rover is still turning onto a curving path, so a long
-      # horizon sees obstacles the path itself steers clear of.
       max_allowed_time_to_collision_up_to_carrot: 1.0
       transform_tolerance: 0.2
       interpolate_curvature_after_goal: false
-
 
 local_costmap:
   local_costmap:
@@ -276,50 +266,30 @@ planner_server:
     expected_planner_frequency: 1.0
     planner_plugins: ["GridBased"]
     GridBased:
-      # Hybrid-A* with Reeds-Shepp motion: paths a car-like rover can drive,
-      # including reversing and K-turns. Navfn planned holonomic paths and left
-      # the controller to find turns the rover cannot make.
-      plugin: "nav2_smac_planner::SmacPlannerHybrid"
-      motion_model_for_search: "REEDS_SHEPP"
-
-      # The tightest arc the rover actually achieves in sand. ASSUMED 1.5 m
-      # (unmeasured; Isaac's sand model is calibrated to the same number --
-      # lunabot_sim/robot/soil.py). Smaller than reality gives paths the rover
-      # cannot follow; larger wastes the arena.
-      minimum_turning_radius: 1.5
-
-      # Reversing costs more than driving forward. Not prohibitive: reversing
-      # is how this rover turns round. But the only camera faces forward, so
-      # every reverse leg runs into space the costmaps have never seen -- in
-      # the walled arena that meant backing into the wall behind the start.
-      # Lower it again once the rear D455 is fitted.
-      reverse_penalty: 2.5
-      change_penalty: 0.0
-      non_straight_penalty: 1.2
-      cost_penalty: 3.0
-      retrospective_penalty: 0.015
-
+      # Smac 2D: grid A* for a rover that can turn on the spot. The six-wheel
+      # drop-centre (2026-10-22) pivots on its middle axle, so paths need no
+      # turning radius and no reverse legs: the follower turns in place to
+      # face each one, and the forward camera looks where the rover goes.
+      #
+      # Before that the four-wheeler could not pivot in sand and this was
+      # Hybrid-A* with Reeds-Shepp motion and a 1.5 m minimum radius (git
+      # c1b4379). Go back to it if field tests show the pivot does not hold:
+      # test_nav2_params.py checks whichever is configured.
+      plugin: "nav2_smac_planner::SmacPlanner2D"
       tolerance: 0.30
       allow_unknown: true
       downsample_costmap: false
-      angle_quantization_bins: 72
-      analytic_expansion_ratio: 3.5
-      analytic_expansion_max_length: 3.0
+      cost_travel_multiplier: 2.0  # keeps paths off the inflated edges of rocks
       max_iterations: 1000000
       max_on_approach_iterations: 1000
-      max_planning_time: 5.0
-      lookup_table_size: 20.0
-      cache_obstacle_heuristic: false
-      debug_visualizations: false
+      max_planning_time: 2.0
+      use_final_approach_orientation: false
 
-      smooth_path: true
       smoother:
         max_iterations: 1000
         w_smooth: 0.3
         w_data: 0.2
         tolerance: 1.0e-10
-        do_refinement: true
-        refinement_num: 2
 
 
 behavior_server:
@@ -331,14 +301,20 @@ behavior_server:
     local_frame: odom
     global_frame: map
     robot_base_frame: base_link
-    # No spin. The rover cannot turn on the spot in sand -- it digs in -- so
-    # a spin recovery only buries the wheels. navigate_car_like.xml does not
-    # call one either (tested).
-    behavior_plugins: ["backup", "wait"]
+    # Spin is back with the six-wheel drop-centre: turning in place is what
+    # lets the forward-only camera look around after a failure. Every
+    # behaviour a tree calls must be listed here, or Nav2 does not start
+    # (tested).
+    behavior_plugins: ["spin", "backup", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
     backup:
       plugin: "nav2_behaviors::BackUp"
     wait:
       plugin: "nav2_behaviors::Wait"
+    max_rotational_vel: 0.6
+    min_rotational_vel: 0.2
+    rotational_acc_lim: 2.0
 
 
 velocity_smoother:
@@ -350,11 +326,9 @@ velocity_smoother:
     enable_stamped_cmd_vel: true
     smoothing_frequency: 20.0
     feedback: "OPEN_LOOP"
-    # Symmetric in x: Regulated Pure Pursuit reverses at its forward speed,
-    # and a lower reverse cap here would change the curvature of every
-    # reverse leg (angular is computed for the uncapped speed).
-    max_velocity: [0.3, 0.0, 1.0]
-    min_velocity: [-0.3, 0.0, -1.0]
+    # Reverse only ever comes from the BackUp recovery now (0.10 m/s).
+    max_velocity: [0.3, 0.0, 0.7]
+    min_velocity: [-0.15, 0.0, -0.7]
     max_accel: [1.0, 0.0, 2.0]
     max_decel: [-1.0, 0.0, -2.0]
     odom_topic: /odom
@@ -364,9 +338,9 @@ velocity_smoother:
 curvature_limiter:
   ros__parameters:
     use_sim_time: false
-    # The tightest radius COMMANDED. Not the planner's 1.5 m: a commanded arc
-    # comes out wider in sand (Isaac: commanded 1.0 m drives ~1.5 m), and
-    # below ~0.5 m commanded the rover stalls with its wheels spinning --
-    # which is what this node exists to prevent. See
-    # scripts/curvature_limiter.py.
-    min_turning_radius: 1.0
+    # 0 = pass everything through: the six-wheel drop-centre turns on the
+    # spot. It stays in the chain so the four-wheel behaviour can be put back
+    # with one number if the pivot fails in the field: 1.0 m was right for
+    # the four-wheeler (commanded 1.0 m drove ~1.5 m; tighter stalled with
+    # the wheels spinning). See scripts/curvature_limiter.py.
+    min_turning_radius: 0.0

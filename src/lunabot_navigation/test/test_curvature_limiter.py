@@ -52,13 +52,18 @@ def test_zero_radius_disables_the_limit():
 
 
 def test_the_limit_is_no_tighter_than_the_planner_plans():
-    """The limiter clamps COMMANDS; the planner plans ACHIEVED arcs.
+    """The limiter clamps COMMANDS; a Hybrid-A* planner plans ACHIEVED arcs.
 
     A commanded arc comes out wider in sand (Isaac: commanded 1.0 m drives
     ~1.5 m), so the command limit sits below the planner's radius -- but never
-    above it, or the rover could not follow its own paths.
+    above it, or the rover could not follow its own paths. With a grid
+    planner the rover pivots and the limiter must be off
+    (test_nav2_params.py::test_turning_in_place_is_all_or_nothing).
     """
     config = yaml.safe_load(PARAMS.read_text())
     command = config['curvature_limiter']['ros__parameters']['min_turning_radius']
-    planned = config['planner_server']['ros__parameters']['GridBased']['minimum_turning_radius']
-    assert 0.0 < command <= planned
+    planner = config['planner_server']['ros__parameters']['GridBased']
+    if 'minimum_turning_radius' in planner:
+        assert 0.0 < command <= planner['minimum_turning_radius']
+    else:
+        assert command == 0.0

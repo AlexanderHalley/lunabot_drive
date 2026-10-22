@@ -166,13 +166,13 @@ def generate_launch_description():
         param_rewrites={
             'use_sim_time': use_sim_time,
             'default_nav_to_pose_bt_xml': PathJoinSubstitution(
-                [FindPackageShare('lunabot_navigation'), 'config', 'navigate_car_like.xml']
+                [FindPackageShare('lunabot_navigation'), 'config', 'navigate_to_pose.xml']
             ),
             'default_nav_through_poses_bt_xml': PathJoinSubstitution(
                 [
                     FindPackageShare('lunabot_navigation'),
                     'config',
-                    'navigate_through_poses_car_like.xml',
+                    'navigate_through_poses.xml',
                 ]
             ),
         },

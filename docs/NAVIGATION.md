@@ -112,26 +112,30 @@ Deliberately absent:
 
 In roughly the order the problems will show up.
 
-**The rover cannot turn on the spot.** The 2026 rover could not pivot in sand at all, only drive
-wide arcs, and the 2027 chassis has nearly the same proportions (Isaac's sand model reproduces
-it: `lunabot_sim/robot/soil.py`). So Nav2 drives it like a car:
+**The rover turns on the spot — because it has six wheels.** The 2026 four-wheeler could not
+pivot in sand at all, only drive wide arcs, and the 2027 four-wheel design has nearly the same
+proportions (Isaac's sand model reproduces it: `lunabot_sim/robot/soil.py`). Widening the track
+enough (~0.9 m) breaks the 0.75 m starting width, so on 2026-10-22 the rover became a **six-wheel
+drop-centre**: a middle axle at the same 0.62 m wheelbase, `wheel_drop` (1.5 cm, assumed) lower.
+It rocks onto the middle axle, whose wheels sit on the pivot axis and scrub nothing. Isaac:
+~99% of the commanded yaw rate, pivots and arcs alike (rigid ground flatters it — sinking sand
+loads the end wheels more; the planar model's 50%-middle case gives 85–93%).
 
-- **Smac Hybrid-A\*** with **Reeds-Shepp** motion plans paths of arcs no tighter than
-  `minimum_turning_radius` (1.5 m, the *achieved* radius — assumed until measured), reversing
-  where it must. A turn-around comes out as a K-turn.
-- **Regulated Pure Pursuit** follows them forwards and backwards (`allow_reversing`), with
-  `use_rotate_to_heading: false`. It slows where the path bends tighter than 1.5 m.
-- **`curvature_limiter`** caps the *commanded* radius at 1 m. RPP has no curvature limit, and below
-  ~0.5–1 m commanded the rover stalls with its wheels spinning — which wheel odometry counts as
-  driving, so the whole `odom` frame runs away (seen in Isaac: ~50 m) and the local costmap with it.
-- The behaviour trees replan every 10 s or when the path goes invalid — not at 1 Hz (cusps would
-  move mid-manoeuvre), and not never (a failed approach would be retried identically forever).
-- The global costmap's obstacle layer is a **VoxelLayer**, like the local one. A 2D ObstacleLayer
-  erased the boulders: the camera looks down over a low rock at the ground behind it, and the flat
-  clearing rays ran straight through the rock's cell.
+So Nav2 is the ordinary differential-drive setup:
 
-Isaac, seed 7, goal (2.4, 0) behind the boulder at (1.66, 0.06), full stack (EKF + rtabmap): two of
-two runs succeeded (31 s / 47 s, ending 0.33 / 0.21 m from the goal by ground truth).
+- **Smac 2D** grid planner — no turning radius, no reverse legs.
+- **Regulated Pure Pursuit** with `use_rotate_to_heading`: turn in place to face the path, then
+  drive forward, so the forward camera looks where the rover goes. No reversing.
+- **Spin** recovery is back (it is how the forward camera looks around); BackUp 15 cm, blind.
+- **`curvature_limiter`** stays in the chain at radius 0 (pass-through). If field tests show the
+  pivot does not hold, the four-wheel car-like setup is one commit back (`c1b4379`: Hybrid-A*
+  with Reeds-Shepp at 1.5 m, no rotate-to-heading, limiter at 1 m), and
+  `test_turning_in_place_is_all_or_nothing` keeps either setup self-consistent.
+- The behaviour trees (`config/navigate_to_pose.xml`, `navigate_through_poses.xml`) replan every
+  10 s or when the path goes invalid, and call only behaviours `behavior_server` runs (tested —
+  a missing server stops Nav2 coming up).
+- The global costmap is a 16 m **rolling window** with a **VoxelLayer**: sized by rtabmap's map
+  it rejected goals across the arena (error 204), and a 2D obstacle layer erased low boulders.
 
 **The odometry is fabricated.** There are no encoders; wheel speed stands in for ground speed. In
 sand the wheels slip, worst at cusps and in stalls, and the EKF's position drifts with them — its
@@ -143,10 +147,8 @@ exceed that, and a test enforces it: claiming more range marks obstacles from no
 *clears* cells that were never observed. The local costmap window is deliberately larger (4 m) so
 the rover keeps a short memory of obstacles behind it — it cannot see backwards at all.
 
-**There is no spin recovery.** Rotating in place does not happen in sand — the wheels dig in —
-so it is gone from `behavior_plugins` and from both behaviour trees (tested). Both trees must be
-ours: `bt_navigator` loads the through-poses tree at configure too, and Nav2's default calls the
-spin server that no longer exists, which stops Nav2 coming up at all.
+**Both behaviour trees must be ours.** `bt_navigator` loads the through-poses tree at configure
+too, and a tree that calls a behaviour `behavior_server` does not run stops Nav2 coming up at all.
 
 **Traversability is not binary.** A slope the rover climbs empty may be impassable loaded. The
 costmap has one obstacle/free distinction and no notion of cost-to-traverse. That is a real

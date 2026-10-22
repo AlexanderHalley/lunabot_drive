@@ -6,17 +6,13 @@
   https://opensource.org/licenses/MIT.
 -->
 <!--
-  Navigate-through-poses for a rover that CANNOT TURN ON THE SPOT.
-
-  Nav2's navigate_through_poses_w_replanning_and_recovery.xml with the same two
-  changes as navigate_car_like.xml: replan every 10 s or when the goals change
-  or the path goes invalid (Hybrid-A* cusps must not move mid-manoeuvre, but a
-  failed approach must get a fresh plan), and no Spin
-  recovery (in sand the rover digs in instead; lunabot_sim/robot/soil.py).
+  Navigate-through-poses for the Lunabot: Nav2's
+  navigate_through_poses_w_replanning_and_recovery.xml with the same changes
+  as navigate_to_pose.xml (replan every 10 s or when invalid; our recoveries).
 
   bt_navigator loads this tree at configure time even if nothing ever sends a
-  through-poses goal, and Nav2's default calls Spin; with no spin server the
-  whole of Nav2 fails to come up.
+  through-poses goal, so it must only call behaviours behavior_server has, or
+  the whole of Nav2 fails to come up.
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -56,6 +52,7 @@
             <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
             <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
           </Sequence>
+          <Spin name="SpinRecovery" spin_dist="1.57"/>
           <BackUp name="BackUpRecovery" backup_dist="0.15" backup_speed="0.10"/>
           <Wait name="WaitRecovery" wait_duration="3.0"/>
         </RoundRobin>
