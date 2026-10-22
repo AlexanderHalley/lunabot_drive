@@ -14,8 +14,10 @@ Two halves:
      chassis, boulders, ground -- keeps its friction, so a boulder pushed by
      the chassis still drags on the ground.
   2. SandTraction, after world.reset(): every physics step, read the wheel
-     bodies' poses and velocities, ask soil.wheel_forces() what sand would do,
-     and apply that at each contact point.
+     bodies' poses and velocities and each wheel's normal force on the
+     ground, ask soil.wheel_forces() what sand would do, and apply that at
+     each contact point. The normal forces are what make the drop-centre
+     six-wheeler pivot: its middle axle carries more than an even share.
 
 The wheels also lose their grip on boulders: climbing a rock is not something
 this model knows how to do. Flat ground only, like terrain.py.
@@ -36,6 +38,9 @@ logger = logging.getLogger(__name__)
 
 WHEEL_LINKS = tuple(j.replace('_joint', '_link') for j in WHEEL_JOINTS)
 CALLBACK = 'lunabot_sand_traction'
+LOAD_SMOOTHING = 0.5
+"""Weight of the newest contact reading. Contact forces jitter step to step;
+the sand model's stability caps scale with load, so jitter becomes buzz."""
 
 
 def wheel_radius(urdf_path: Path) -> float:
@@ -49,8 +54,13 @@ def wheel_radius(urdf_path: Path) -> float:
     raise RuntimeError(f'no collision cylinder on {WHEEL_LINKS[0]} in {urdf_path}')
 
 
-def make_wheels_frictionless(robot_path: str) -> list[str]:
-    """Bind a zero-friction physics material over every wheel link."""
+def make_wheels_frictionless(robot_path: str, config: SoilConfig | None = None) -> list[str]:
+    """Bind a zero-friction, compliant physics material over every wheel link.
+
+    Compliant: the contact is a spring and damper (SoilConfig sinkage), so
+    the wheels sink into the ground a little as they would into sand.
+    """
+    config = config or SoilConfig()
     import omni.usd
     from pxr import PhysxSchema, UsdPhysics, UsdShade
 
@@ -65,6 +75,8 @@ def make_wheels_frictionless(robot_path: str) -> list[str]:
     # 'min' outranks the default 'average', so the wheel's zero wins against
     # the ground's 0.7. (PhysX priority: average < min < multiply < max.)
     physx.CreateFrictionCombineModeAttr().Set('min')
+    physx.CreateCompliantContactStiffnessAttr().Set(config.sinkage_stiffness)
+    physx.CreateCompliantContactDampingAttr().Set(config.sinkage_damping)
 
     wheels = _find_wheel_links(stage, robot_path)
     for prim in wheels:
@@ -73,6 +85,10 @@ def make_wheels_frictionless(robot_path: str) -> list[str]:
         UsdShade.MaterialBindingAPI.Apply(prim).Bind(
             material, UsdShade.Tokens.strongerThanDescendants, 'physics'
         )
+        # So SandTraction can read each wheel's load on the ground. Must be
+        # on the stage before the simulation starts.
+        report = PhysxSchema.PhysxContactReportAPI.Apply(prim)
+        report.CreateThresholdAttr().Set(0.0)
     paths = [str(p.GetPath()) for p in wheels]
     logger.info('wheel colliders frictionless (%s); sand model drives them', material_path)
     return paths
@@ -88,6 +104,8 @@ class SandTraction:
         self._articulation_path = articulation_path
         self._wheel_paths = list(wheel_paths)
         self._wheels = None
+        self._contacts = None
+        self._loads = None
         world.add_physics_callback(CALLBACK, self.step)
 
     def _attach(self) -> bool:
@@ -110,6 +128,15 @@ class SandTraction:
         self._torch = SimulationManager.get_backend() == 'torch'
         self._device = SimulationManager.get_physics_sim_device()
         self._mass, self._yaw_inertia = _rover_inertia(view, self._articulation_path)
+        try:
+            # Net contact force per wheel, no filter: the ground is a static
+            # plane collider, not a rigid body, and a ground-only filter on it
+            # reads zero on every wheel.
+            self._contacts = view.create_rigid_contact_view(self._wheel_paths)
+        except Exception as exc:  # noqa: BLE001
+            # Still drives, on an even load split -- which a drop-centre
+            # six-wheeler is NOT. Loud, because pivots will look wrong.
+            logger.warning('no wheel contact forces (%s): splitting load evenly', exc)
         self._indices = self._out(np.arange(self._wheels.count, dtype=np.int32))
         logger.info(
             'sand traction on %d wheels (%s): rover %.1f kg, yaw inertia %.2f kg m^2, %s',
@@ -123,6 +150,7 @@ class SandTraction:
         pose = _np(self._wheels.get_transforms()).reshape(-1, 7)
         vel = _np(self._wheels.get_velocities()).reshape(-1, 6)
         axis = _rotate(pose[:, 3:7], np.array([0.0, 1.0, 0.0]))
+        loads = self._read_loads(dt)
         force, point = wheel_forces(
             self._config,
             pose[:, :3],
@@ -133,10 +161,35 @@ class SandTraction:
             self._mass,
             self._yaw_inertia,
             dt,
+            loads=loads,
         )
         self._wheels.apply_forces_and_torques_at_position(
             self._out(force), None, self._out(point), self._indices, True
         )
+
+    def _read_loads(self, dt: float):
+        """Each wheel's normal force on the ground, N, smoothed; None if unknown."""
+        if self._contacts is None:
+            return None
+        # The VERTICAL part of each wheel's net contact force is its load: a
+        # rock pushing on a wheel sideways adds none, a wheel resting on a
+        # rock still carries its share. Flat-ground scope, like soil.py.
+        forces = _np(self._contacts.get_net_normal_contact_forces(dt)).reshape(-1, 3)
+        normal = np.maximum(forces[:, 2], 0.0)
+        if self._loads is None:
+            self._loads = normal
+            self._steps = 0
+        else:
+            self._loads = LOAD_SMOOTHING * normal + (1.0 - LOAD_SMOOTHING) * self._loads
+        self._steps += 1
+        if self._steps == 480:  # once, after the rover has settled (~2 s)
+            share = self._loads / max(self._loads.sum(), 1e-9)
+            logger.info(
+                'wheel load share at rest: %s',
+                ', '.join(f'{p.rsplit("/", 1)[-1].replace("_wheel_link", "")} {100 * f:.0f}%'
+                          for p, f in zip(self._wheel_paths, share)),
+            )
+        return self._loads
 
     def _out(self, array):
         if self._torch:

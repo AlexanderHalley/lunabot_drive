@@ -84,6 +84,23 @@ class SoilConfig:
     contact_tolerance: float = 0.02
     """m. A wheel whose centre is within radius + this of the ground is on it."""
 
+    # ==================== Sinkage ====================
+    # Sand gives. Applied in Isaac as a compliant (spring-damper) contact on
+    # the wheel colliders. Without it the ground is rigid and a drop-centre
+    # six-wheeler balances on three wheels, chattering across the diagonal
+    # (Isaac: roll rate 0.2 rad/s average, standing still) and pivoting more
+    # easily than it would in sand, where the end wheels sink in and carry
+    # their share. Sized so that with the 1.5 cm drop the end wheels and the
+    # middle axle split the weight about evenly: each wheel sinks ~1.5 cm.
+
+    sinkage_stiffness: float = 560.0
+    """N/m per contact POINT. PhysX makes about five per wheel on the ground
+    plane (measured: 2800 here sank a wheel 1.2 cm under 167 N, ~13900 N/m),
+    so ~2800 N/m per wheel. Lower: deeper sinkage, more even loads."""
+
+    sinkage_damping: float = 36.0
+    """N s/m per contact point; about critical per wheel, five points each."""
+
 
 def wheel_forces(
     config: SoilConfig,
@@ -95,6 +112,7 @@ def wheel_forces(
     mass: float,
     yaw_inertia: float,
     dt: float,
+    loads: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Sand forces on each wheel, world frame.
 
@@ -105,18 +123,23 @@ def wheel_forces(
       omega       angular velocity of the wheel body (spin included)
     mass, yaw_inertia: the whole rover's, about the middle of the wheels.
 
-    Returns (force, contact point): apply each force AT its point.
+    loads, optional: each wheel's normal force, N. In Isaac these come from
+    the ground contacts, which is what makes a drop-centre six-wheeler work:
+    the middle axle carries more and the ends scrub less. Without them the
+    weight is split evenly over the wheels near the ground.
 
-    The load is split evenly over the wheels on the ground. Fine on flat
-    ground; craters will want real normal loads from contact reports.
+    Returns (force, contact point): apply each force AT its point.
     """
-    n = len(centre)
     forward, lateral, point, slip, v_x = _kinematics(centre, axis, v_centre, omega, radius)
     surface = v_x - slip  # rim speed, omega * r
 
     on_ground = centre[:, 2] < radius + config.contact_tolerance
-    load = np.where(on_ground, mass * _G / max(int(on_ground.sum()), 1), 0.0)
-    share = mass / n
+    if loads is None:
+        load = np.where(on_ground, mass * _G / max(int(on_ground.sum()), 1), 0.0)
+    else:
+        load = np.where(on_ground, np.maximum(np.asarray(loads, dtype=float), 0.0), 0.0)
+    # The mass each wheel would have to stop on its own, for the step caps.
+    share = load / _G
 
     # ---- Along the wheel: traction and rolling resistance ----
     # Slip ratio: + driving (rim faster than travel), - braking.

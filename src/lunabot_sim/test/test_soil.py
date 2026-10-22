@@ -42,10 +42,35 @@ LEFT = np.array([True, False, True, False])
 ASSUMED_MIN_ARC_RADIUS = 1.5  # m, unmeasured -- see SoilConfig
 
 
-def drive(linear, angular, seconds=6.0, config=None):
+# Six wheels, same wheelbase: a middle axle on the rover's centre line. With a
+# drop-centre (middle axle a little lower) it carries more of the weight;
+# MIDDLE_SHARE is that share, a static stand-in for what Isaac measures.
+CORNERS_6 = np.array(
+    [
+        [WHEELBASE / 2, TRACK / 2],
+        [WHEELBASE / 2, -TRACK / 2],
+        [0.0, TRACK / 2],
+        [0.0, -TRACK / 2],
+        [-WHEELBASE / 2, TRACK / 2],
+        [-WHEELBASE / 2, -TRACK / 2],
+    ]
+)
+LEFT_6 = np.array([True, False, True, False, True, False])
+
+
+def six_wheel_loads(middle_share):
+    end = (1.0 - middle_share) / 4.0
+    share = np.array([end, end, middle_share / 2, middle_share / 2, end, end])
+    return share * MASS * 9.81
+
+
+def drive(linear, angular, seconds=6.0, config=None, corners=None, left=None, loads=None):
     """Hold diff-drive wheel speeds; return the settled (speed, yaw rate)."""
     config = config or SoilConfig()
-    rim = np.where(LEFT, linear - angular * TRACK / 2, linear + angular * TRACK / 2)
+    corners = CORNERS if corners is None else corners
+    left = LEFT if left is None else left
+    n = len(corners)
+    rim = np.where(left, linear - angular * TRACK / 2, linear + angular * TRACK / 2)
 
     pos = np.zeros(2)
     heading = 0.0
@@ -55,14 +80,14 @@ def drive(linear, angular, seconds=6.0, config=None):
     steps = int(seconds / DT)
     for step in range(steps):
         c, s = np.cos(heading), np.sin(heading)
-        arm = CORNERS @ np.array([[c, -s], [s, c]]).T
-        centre = np.c_[pos + arm, np.full(4, RADIUS)]
-        axis = np.tile([-s, c, 0.0], (4, 1))
-        v_centre = np.c_[vel + yaw_rate * np.c_[-arm[:, 1], arm[:, 0]], np.zeros(4)]
+        arm = corners @ np.array([[c, -s], [s, c]]).T
+        centre = np.c_[pos + arm, np.full(n, RADIUS)]
+        axis = np.tile([-s, c, 0.0], (n, 1))
+        v_centre = np.c_[vel + yaw_rate * np.c_[-arm[:, 1], arm[:, 0]], np.zeros(n)]
         omega = (rim / RADIUS)[:, None] * axis + [0.0, 0.0, yaw_rate]
 
         force, _ = wheel_forces(
-            config, centre, axis, v_centre, omega, RADIUS, MASS, YAW_INERTIA, DT
+            config, centre, axis, v_centre, omega, RADIUS, MASS, YAW_INERTIA, DT, loads=loads
         )
         vel = vel + force[:, :2].sum(axis=0) / MASS * DT
         torque = np.sum(arm[:, 0] * force[:, 1] - arm[:, 1] * force[:, 0])
@@ -143,3 +168,44 @@ def test_wheel_off_the_ground_gets_no_force():
         DT,
     )
     assert np.allclose(force, 0.0)
+
+
+# ==================== Six wheels, drop-centre ====================
+# The 2027 design choice for turning on the spot: same 0.62 m wheelbase and
+# track, plus a middle axle. Its wheels sit on the pivot axis, so they carry
+# weight without adding scrub; lowered slightly, they carry more of it.
+
+
+@pytest.mark.parametrize('middle_share', [1 / 3, 0.5])
+def test_six_wheels_can_pivot(middle_share):
+    """Even with the weight spread evenly; better with the middle loaded."""
+    speed, yaw_rate, jitter = drive(
+        0.0, 0.5, corners=CORNERS_6, left=LEFT_6, loads=six_wheel_loads(middle_share)
+    )
+    assert yaw_rate > 0.3 * 0.5
+    assert speed < 0.02  # turns about its middle, does not wander
+    assert jitter < 1e-2
+
+
+def test_a_heavier_middle_pivots_better():
+    rates = [
+        drive(0.0, 0.5, corners=CORNERS_6, left=LEFT_6, loads=six_wheel_loads(share))[1]
+        for share in (1 / 3, 0.5, 0.7)
+    ]
+    assert rates == sorted(rates)
+
+
+def test_six_wheels_still_drive_straight_and_arc():
+    loads = six_wheel_loads(0.5)
+    speed, yaw_rate, _ = drive(0.3, 0.0, corners=CORNERS_6, left=LEFT_6, loads=loads)
+    assert abs(yaw_rate) < 1e-4
+    assert speed > 0.25
+    speed, yaw_rate, _ = drive(0.3, 0.15, corners=CORNERS_6, left=LEFT_6, loads=loads)
+    assert yaw_rate > 0.5 * 0.15
+
+
+def test_loads_default_to_an_even_split():
+    """Passing the even split explicitly changes nothing."""
+    even = np.full(4, MASS * 9.81 / 4)
+    assert drive(0.0, 0.5, loads=even)[1] == pytest.approx(drive(0.0, 0.5)[1], abs=1e-9)
+

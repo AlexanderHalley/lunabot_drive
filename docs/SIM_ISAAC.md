@@ -117,13 +117,21 @@ in place, 3% in an arc — backwards). So the wheel colliders get a zero-frictio
 holds the rover up, and every physics step a tyre-style model applies traction (from slip ratio) and
 side force (from slip angle) at each contact point. A pivot puts every wheel at ~48° slip angle at
 any yaw rate, side force saturates, and the rover stays put while the wheels dig; a wide arc has
-small slip angles and turns. Calibrated to: **no pivot at all, tightest achieved arc ≈ 1.5 m** — an
-assumed number until the real one is measured. `test/test_soil.py` pins this down in CI.
+small slip angles and turns. Calibrated, for the 2026-style four-wheeler, to: **no pivot at all,
+tightest achieved arc ≈ 1.5 m** — an assumed number until the real one is measured. `test/test_soil.py` pins this down in CI.
 `run_isaac_sim.sh --no-sand` puts plain PhysX friction back, for comparison.
 
-Limits: flat ground only (contact = wheel centre within r + 2 cm of z = 0), load split evenly over
-the wheels on the ground, no grouser geometry (grousers are in the traction numbers), and wheels
-have no grip on boulders.
+**Loads and sinkage.** Each wheel's load is the vertical part of its PhysX contact force, read
+every step — that is what lets the six-wheel drop-centre work, since its middle axle carries more
+than an even share. The wheel contact is also *compliant* (a spring-damper, `SoilConfig.sinkage_*`):
+the wheels sink ~3 cm, the middle axle and the end wheels split the weight about 50/50 with the
+1.5 cm drop, and the rover sits still. On rigid ground it balanced on three wheels and chattered in
+roll (0.2 rad/s standing still), which drove the EKF's gyro yaw 60–160° wrong. With six wheels and
+sinkage, Isaac gives 85% of a commanded pivot and 74–85% of commanded arcs
+(`wheel_separation_multiplier` 1.2).
+
+Limits: flat ground only (contact = wheel centre within r + 2 cm of z = 0), no grouser geometry
+(grousers are in the traction numbers), and wheels have no grip on boulders.
 
 **Arena** (`scene/layout.py`, drawn by `scene/arena.py`) — `--scene` picks it:
 

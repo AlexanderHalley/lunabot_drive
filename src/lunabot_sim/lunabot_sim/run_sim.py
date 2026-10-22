@@ -324,13 +324,19 @@ def _place_on_ground(robot_path: str, urdf_path: Path) -> None:
     below the ground plane. PhysX only partly pushes them back out, and the
     rover then drives around about 2.5 cm sunk into the terrain. The height
     comes from the URDF: base_footprint is at z = -wheel_radius under
-    base_link by construction (see lunabot.urdf.xacro).
+    base_link by construction (see lunabot.urdf.xacro), and the drop-centre
+    middle axle sits wheel_drop lower still -- the LOWEST wheel sets it.
     """
     import omni.usd
     from pxr import Gf, UsdGeom
 
+    from lunabot_sim.robot.traction import WHEEL_LINKS
+
     footprint = _urdf_frame_transform(urdf_path, 'base_link', 'base_footprint')
-    height = -footprint[2, 3] + SPAWN_CLEARANCE_M
+    lowest_axle = min(
+        _urdf_frame_transform(urdf_path, 'base_link', link)[2, 3] for link in WHEEL_LINKS
+    )
+    height = -footprint[2, 3] - min(lowest_axle, 0.0) + SPAWN_CLEARANCE_M
 
     prim = omni.usd.get_context().get_stage().GetPrimAtPath(robot_path)
     UsdGeom.XformCommonAPI(prim).SetTranslate(Gf.Vec3d(0.0, 0.0, height))

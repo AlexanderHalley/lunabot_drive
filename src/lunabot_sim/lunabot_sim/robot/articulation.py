@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 WHEEL_JOINTS = (
     'front_left_wheel_joint',
     'front_right_wheel_joint',
+    'middle_left_wheel_joint',
+    'middle_right_wheel_joint',
     'rear_left_wheel_joint',
     'rear_right_wheel_joint',
 )
