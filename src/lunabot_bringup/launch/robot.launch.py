@@ -58,11 +58,12 @@ ARGUMENTS = [
     ),
     DeclareLaunchArgument(
         'odom_source',
-        default_value='wheel',
-        choices=['wheel', 'visual', 'ekf'],
+        default_value='auto',
+        choices=['auto', 'wheel', 'visual', 'ekf'],
         description=(
             'Who publishes odom -> base_link. Exactly one node may. '
-            'wheel = diff_drive_controller, visual = cuVSLAM, ekf = robot_localization.'
+            'wheel = diff_drive_controller, visual = cuVSLAM, ekf = robot_localization. '
+            'auto = ekf, except wheel under hw:=mock, which has no IMU and no slip.'
         ),
     ),
     DeclareLaunchArgument(
@@ -165,7 +166,9 @@ def generate_launch_description():
             launch_arguments={'use_sim_time': use_sim_time, **kwargs}.items(),
         )
 
-    odom_source = LaunchConfiguration('odom_source')
+    odom_source = _resolve_odom_source(
+        LaunchConfiguration('odom_source'), LaunchConfiguration('hw')
+    )
 
     return LaunchDescription(
         ARGUMENTS
@@ -276,6 +279,22 @@ def generate_launch_description():
                 'foxglove.launch.py',
                 condition=IfCondition(LaunchConfiguration('foxglove')),
             ),
+        ]
+    )
+
+
+def _resolve_odom_source(source, hw):
+    """odom_source:=auto, resolved: ekf on sim and real hardware, wheel on mock.
+
+    EKF by default because a skid-steer's wheel yaw is fiction -- in Isaac
+    the 2027 chassis turns 48% of what its wheels report in place and 3% in
+    an arc -- and the EKF takes rotation from the gyro instead. Not on mock:
+    there is no camera, so no IMU, and mock wheels cannot slip.
+    """
+    return PythonExpression(
+        [
+            "('wheel' if '", hw, "' == 'mock' else 'ekf')",
+            " if '", source, "' == 'auto' else '", source, "'",
         ]
     )
 

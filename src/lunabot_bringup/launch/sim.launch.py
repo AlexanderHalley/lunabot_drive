@@ -70,9 +70,9 @@ ARGUMENTS = [
     ),
     DeclareLaunchArgument(
         'odom_source',
-        default_value='wheel',
-        choices=['wheel', 'visual', 'ekf'],
-        description='Who publishes odom -> base_link.',
+        default_value='auto',
+        choices=['auto', 'wheel', 'visual', 'ekf'],
+        description='Who publishes odom -> base_link. auto = ekf (gyro yaw); see robot.launch.py.',
     ),
     DeclareLaunchArgument(
         'wait_for_clock',

@@ -161,9 +161,10 @@ def parse_args(argv):
     )
     parser.add_argument(
         '--odom-source',
-        default='wheel',
+        default=None,
         choices=['wheel', 'visual', 'ekf'],
-        help='Must match the odom_source the stack was launched with.',
+        help='Must match the odom_source the stack was launched with. Default: as '
+        "odom_source:=auto resolves it -- wheel for --profile mock, ekf otherwise.",
     )
     parser.add_argument(
         '--slam',
@@ -182,7 +183,10 @@ def parse_args(argv):
         action='store_true',
         help='Also command 0.2 m/s for two seconds and check /odom responds. MOVES THE ROBOT.',
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.odom_source is None:
+        args.odom_source = 'wheel' if args.profile == 'mock' else 'ekf'
+    return args
 
 
 class StackChecker(Node):

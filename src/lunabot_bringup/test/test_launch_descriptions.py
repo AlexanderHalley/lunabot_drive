@@ -260,3 +260,25 @@ def test_exactly_one_node_owns_odom_to_base_link(odom_source):
 
     claiming = [name for name, value in owners.items() if value == 'true']
     assert len(claiming) == 1, f'odom_source:={odom_source} gives publishers {claiming}'
+
+
+@pytest.mark.parametrize(
+    ('odom_source', 'hw', 'resolved'),
+    [
+        ('auto', 'mock', 'wheel'),
+        ('auto', 'sim', 'ekf'),
+        ('auto', 'real', 'ekf'),
+        ('wheel', 'real', 'wheel'),
+        ('visual', 'sim', 'visual'),
+    ],
+)
+def test_odom_source_auto_resolves_by_hardware(odom_source, hw, resolved):
+    """auto is the EKF wherever there is an IMU, and wheel odometry on mock.
+
+    The EKF takes rotation from the gyro because skid-steer wheel yaw is
+    fiction; mock has no camera, so no IMU, and its wheels cannot slip. An
+    explicit odom_source always wins.
+    """
+    module = load('robot.launch.py')
+    value = module._resolve_odom_source(odom_source, hw).perform(LaunchContext())
+    assert value == resolved

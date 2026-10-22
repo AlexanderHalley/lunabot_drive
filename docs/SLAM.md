@@ -94,9 +94,10 @@ This is the part that goes wrong silently, so it gets a table.
 `odom_source` is a single switch precisely so the three candidates cannot all publish at once:
 
 ```bash
-odom_source:=wheel    # diff_drive_controller (default)
+odom_source:=auto     # default: ekf, or wheel under hw:=mock (no IMU there)
+odom_source:=wheel    # diff_drive_controller
 odom_source:=visual   # rgbd_odometry or cuVSLAM
-odom_source:=ekf      # robot_localization
+odom_source:=ekf      # robot_localization: wheel forward speed + gyro yaw
 ```
 
 Two publishers on one transform produces a TF tree that looks entirely correct in `view_frames` and

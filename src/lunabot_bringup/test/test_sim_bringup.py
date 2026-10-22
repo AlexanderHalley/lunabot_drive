@@ -102,6 +102,10 @@ def generate_test_description():
             # renderer. SLAM in sim is a manual check.
             'slam': 'none',
             'perception': 'false',
+            # The double publishes no IMU, so the EKF (the sim default) would
+            # never see a rotation. This test is about the control loop, and
+            # wheel odometry is what that loop produces.
+            'odom_source': 'wheel',
         }.items(),
     )
 
@@ -419,6 +423,8 @@ class TestSimBringup(unittest.TestCase):
                 'check_stack.py',
                 '--profile',
                 'sim',
+                '--odom-source',
+                'wheel',
                 '--timeout',
                 '60',
             ],
