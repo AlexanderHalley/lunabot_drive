@@ -68,6 +68,22 @@
   <!-- design: axles 0.62 m apart -->
   <xacro:property name="wheel_base" value="0.62"/>
 
+  <!--
+    SIX wheels, drop-centre: a middle axle at x = 0, wheel_drop LOWER than
+    the front and rear ones. Chosen 2026-10-22 so the rover can turn on the
+    spot in sand, which the 2026 four-wheeler could not do (and the 2027
+    four-wheel design would not either: lunabot_sim/robot/soil.py). The
+    middle wheels sit on the pivot axis, so they carry weight without
+    scrubbing; lowered, they carry more of it, and the ends scrub less.
+    The rover rocks onto the middle axle and one end; by design.
+
+    NOT in the team's design model yet: the drop is an ASSUMPTION. Too
+    little and the middle carries no extra load; too much and the rover
+    rocks visibly and pitches its camera. 1.5 cm is a starting point for
+    sand, where the middle wheels also sink further.
+  -->
+  <xacro:property name="wheel_drop" value="0.015"/>
+
   <!-- ==================== OAK-D S2 ==================== -->
   <!-- Enclosure, from the Luxonis datasheet. VERIFY against your unit. -->
   <xacro:property name="oak_d_length" value="0.0175"/>   <!-- X, depth   -->

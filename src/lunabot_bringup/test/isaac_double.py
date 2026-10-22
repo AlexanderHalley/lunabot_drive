@@ -75,11 +75,13 @@ from sensor_msgs.msg import JointState
 WHEEL_JOINTS = (
     'front_left_wheel_joint',
     'front_right_wheel_joint',
+    'middle_left_wheel_joint',
+    'middle_right_wheel_joint',
     'rear_left_wheel_joint',
     'rear_right_wheel_joint',
 )
-LEFT_JOINTS = ('front_left_wheel_joint', 'rear_left_wheel_joint')
-RIGHT_JOINTS = ('front_right_wheel_joint', 'rear_right_wheel_joint')
+LEFT_JOINTS = ('front_left_wheel_joint', 'middle_left_wheel_joint', 'rear_left_wheel_joint')
+RIGHT_JOINTS = ('front_right_wheel_joint', 'middle_right_wheel_joint', 'rear_right_wheel_joint')
 
 # The topic names in graphs/joints.py and graphs/ground_truth.py, which are
 # themselves the defaults of sim_joint_states_topic and sim_joint_commands_topic

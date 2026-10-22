@@ -31,8 +31,8 @@ diff_drive_controller:
     #
     # These strings must match the joint names in
     # lunabot_description/urdf/lunabot.urdf.xacro exactly.
-    left_wheel_names: [front_left_wheel_joint, rear_left_wheel_joint]
-    right_wheel_names: [front_right_wheel_joint, rear_right_wheel_joint]
+    left_wheel_names: [front_left_wheel_joint, middle_left_wheel_joint, rear_left_wheel_joint]
+    right_wheel_names: [front_right_wheel_joint, middle_right_wheel_joint, rear_right_wheel_joint]
 
     # ======================= MEASURE THESE =======================
     # PLACEHOLDERS. Both are duplicated in
@@ -54,9 +54,16 @@ diff_drive_controller:
     # and every map comes out rotated.
     #
     # TUNE ON REGOLITH, not on a workshop floor -- the value depends on the
-    # surface. Expect somewhere between 1.3 and 2.0. Procedure: command a
-    # known yaw rate, measure the actual rotation over ten seconds, scale.
-    wheel_separation_multiplier: 1.5
+    # surface. Procedure: command a known yaw rate, measure the actual
+    # rotation over ten seconds, scale.
+    #
+    # 1.2 for the six-wheel drop-centre (2026-10-22). In Isaac, with the
+    # wheels sinking ~3 cm into compliant ground and the middle axle carrying
+    # ~half the weight, the rover achieves 85% of a commanded pivot and
+    # 74-85% of commanded arcs at 1.0, so ~1.2 brings both near 100%. On
+    # rigid ground (no sinkage) it was ~1.0: the end wheels lifted clear. The
+    # 2026 four-wheeler's 1.3-2.0 no longer applies. Measure on regolith.
+    wheel_separation_multiplier: 1.2
 
     left_wheel_radius_multiplier: 1.0
     right_wheel_radius_multiplier: 1.0

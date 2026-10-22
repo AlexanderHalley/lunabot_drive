@@ -11,11 +11,11 @@
     was hardcoded in C++ (right_front_->SetInverted(true)), which meant
     rewiring the robot required recompiling it.
 
-    All four wheels rotate about their local Y axis. The cylinder is
+    Every wheel rotates about its local Y axis. The cylinder is
     modelled along Z and rotated into place, which is why the inertia
     macro takes an origin block.
   -->
-  <xacro:macro name="lunabot_wheel" params="prefix name side x_offset">
+  <xacro:macro name="lunabot_wheel" params="prefix name side x_offset z_offset:=0">
 
     <xacro:property name="y_sign" value="${1 if side == 'left' else -1}"/>
     <xacro:property name="y_offset" value="${y_sign * wheel_separation / 2.0}"/>
@@ -58,7 +58,7 @@
     <joint name="${prefix}${name}_wheel_joint" type="continuous">
       <parent link="${prefix}base_link"/>
       <child  link="${prefix}${name}_wheel_link"/>
-      <origin xyz="${x_offset} ${y_offset} 0" rpy="0 0 0"/>
+      <origin xyz="${x_offset} ${y_offset} ${z_offset}" rpy="0 0 0"/>
       <axis xyz="0 1 0"/>
       <dynamics damping="0.05" friction="0.1"/>
       <limit effort="${max_wheel_effort}" velocity="${max_wheel_rad_s}"/>

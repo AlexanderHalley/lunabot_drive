@@ -107,6 +107,12 @@ defaults *and* with the README table.
 | `front_right_wheel_joint` | 1 | yes |
 | `rear_left_wheel_joint` | 3 | no |
 | `rear_right_wheel_joint` | 4 | yes |
+| `middle_left_wheel_joint` | 5 — **placeholder** | no |
+| `middle_right_wheel_joint` | 6 — **placeholder** | yes |
+
+The middle axle (six-wheel drop-centre, 2026-10-22, so the rover can turn on the spot in sand) is
+not wired yet: IDs 5 and 6 only keep the configuration unique. Assign the real ones with the
+electrical team before `hw:=real`.
 
 Front-left is **2** and front-right is **1**. That looks like a typo and is not: it is what
 `pi_drive.launch.py` actually ran after the 2026 commit *"Updated pi wheel allocation for proper

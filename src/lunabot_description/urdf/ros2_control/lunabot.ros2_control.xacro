@@ -190,6 +190,13 @@
       -->
       <xacro:lunabot_wheel_joint name="front_left_wheel_joint"  can_id="2" invert="false"/>
       <xacro:lunabot_wheel_joint name="front_right_wheel_joint" can_id="1" invert="true"/>
+      <!--
+        Middle axle (six-wheel drop-centre, 2026-10-22). CAN IDs 5 and 6 are
+        PLACEHOLDERS: nothing is wired yet. Assign them with the electrical
+        team before hw:=real.
+      -->
+      <xacro:lunabot_wheel_joint name="middle_left_wheel_joint"  can_id="5" invert="false"/>
+      <xacro:lunabot_wheel_joint name="middle_right_wheel_joint" can_id="6" invert="true"/>
       <xacro:lunabot_wheel_joint name="rear_left_wheel_joint"   can_id="3" invert="false"/>
       <xacro:lunabot_wheel_joint name="rear_right_wheel_joint"  can_id="4" invert="true"/>
 

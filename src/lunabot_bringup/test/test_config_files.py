@@ -180,10 +180,12 @@ def test_controller_wheel_names_match_the_urdf():
 
     assert diff_drive['left_wheel_names'] == [
         'front_left_wheel_joint',
+        'middle_left_wheel_joint',
         'rear_left_wheel_joint',
     ]
     assert diff_drive['right_wheel_names'] == [
         'front_right_wheel_joint',
+        'middle_right_wheel_joint',
         'rear_right_wheel_joint',
     ]
 

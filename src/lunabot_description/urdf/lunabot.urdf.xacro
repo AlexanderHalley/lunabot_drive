@@ -69,6 +69,11 @@
                        x_offset="${wheel_base / 2.0}"/>
   <xacro:lunabot_wheel prefix="${prefix}" name="front_right" side="right"
                        x_offset="${wheel_base / 2.0}"/>
+  <!-- Middle axle, dropped: see wheel_drop in properties.xacro. -->
+  <xacro:lunabot_wheel prefix="${prefix}" name="middle_left"  side="left"
+                       x_offset="0" z_offset="${-wheel_drop}"/>
+  <xacro:lunabot_wheel prefix="${prefix}" name="middle_right" side="right"
+                       x_offset="0" z_offset="${-wheel_drop}"/>
   <xacro:lunabot_wheel prefix="${prefix}" name="rear_left"   side="left"
                        x_offset="${-wheel_base / 2.0}"/>
   <xacro:lunabot_wheel prefix="${prefix}" name="rear_right"  side="right"
