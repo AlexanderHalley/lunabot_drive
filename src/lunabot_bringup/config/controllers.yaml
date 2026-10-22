@@ -65,11 +65,14 @@ diff_drive_controller:
     odom_frame_id: odom
     base_frame_id: base_link
 
-    # This controller owns odom -> base_link by default. Exactly one node may
-    # publish that transform; lunabot_bringup/launch/robot.launch.py flips
-    # this to false when odom_source:=visual or odom_source:=ekf.
-    # See docs/TOPIC_FRAME_CONTRACT.md.
-    enable_odom_tf: true
+    # enable_odom_tf is deliberately NOT set here. Exactly one node may publish
+    # odom -> base_link, and control.launch.py's enable_odom_tf argument
+    # (default true; robot.launch.py passes false when odom_source:=visual or
+    # :=ekf) decides which. A value in this file WINS over that argument: the
+    # controller manager loads this file again after the spawner's `-p`. With
+    # `true` here, diff_drive_controller and the EKF both published the
+    # transform, and TF flipped between a wheel yaw ~160 deg wrong and the
+    # gyro's. See docs/TOPIC_FRAME_CONTRACT.md.
 
     # Use wheel feedback rather than integrating the command.
     #

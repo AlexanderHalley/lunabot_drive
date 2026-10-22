@@ -59,9 +59,14 @@ correct in `view_frames` and behaves nondeterministically.
 
 | `odom_source:=` | publishes `odom → base_link` | must be off |
 |---|---|---|
-| `wheel` (default) | `diff_drive_controller` (`enable_odom_tf: true`) | cuVSLAM odom TF, EKF |
+| `wheel` (`auto` on mock) | `diff_drive_controller` (`control.launch.py enable_odom_tf:=true`) | cuVSLAM odom TF, EKF |
 | `visual` | cuVSLAM (`publish_odom_to_base_tf: true`) | `diff_drive_controller` odom TF, EKF |
 | `ekf` | `robot_localization/ekf_node` | `diff_drive_controller` odom TF, cuVSLAM odom TF |
+
+`enable_odom_tf` must **never** be set in `controllers.yaml`: the controller manager loads that
+file after the launch file's `-p` override, so a value there wins. With `true` in the file,
+`odom_source:=ekf` had `diff_drive_controller` and the EKF both publishing `odom → base_link`,
+and TF flipped between the gyro's yaw and a skid-steer wheel yaw 160° off. A test enforces it.
 
 ### Why `base_link` is the root
 

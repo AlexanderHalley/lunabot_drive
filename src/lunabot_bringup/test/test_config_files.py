@@ -243,6 +243,21 @@ def test_controller_update_rate_sustains_the_can_heartbeat():
     assert rate >= 40, f'update_rate {rate} Hz is too slow to keep the motors alive'
 
 
+def test_odom_tf_ownership_is_left_to_the_launch_file():
+    """controllers.yaml must not set enable_odom_tf.
+
+    control.launch.py passes `-p enable_odom_tf:=...` to decide which ONE node
+    publishes odom -> base_link. The controller manager loads controllers.yaml
+    again after that override, so a value in the file wins. With `true` here,
+    odom_source:=ekf had diff_drive_controller AND the EKF both publishing the
+    transform, and TF flipped between the gyro's yaw and a skid-steer wheel
+    yaw 160 deg off -- which looked exactly like SLAM and Nav2 failing.
+    """
+    params = yaml.safe_load((CONFIG_DIR / 'controllers.yaml').read_text())
+    diff_drive = params['diff_drive_controller']['ros__parameters']
+    assert 'enable_odom_tf' not in diff_drive
+
+
 def test_no_camera_profile_lets_the_driver_publish_tf():
     """robot_state_publisher owns the TF tree. The driver must not fight it.
 
