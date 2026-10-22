@@ -117,7 +117,7 @@ own camera transforms and fights `robot_state_publisher` — and the prefix then
 | `/joint_states` | `sensor_msgs/JointState` | `joint_state_broadcaster` | `robot_state_publisher` |
 | `/odom` | `nav_msgs/Odometry` | odom source | rtabmap, Nav2, EKF |
 | `/tf`, `/tf_static` | `tf2_msgs/TFMessage` | see ownership table | everything |
-| `/drive/status` | `lunabot_msgs/DriveStatus` | `SparkFlexSystem` | diagnostics |
+| `/drive/status` | `lunabot_msgs/DriveStatus` | `SparkFlexSystem` | `robot_health`, plots |
 
 ¹ **RESOLVED. The whole chain is `TwistStamped`, and every switch is set.**
 
@@ -206,6 +206,20 @@ speculatively now.)
 |---|---|---|
 | `/map` | `nav_msgs/OccupancyGrid` | rtabmap's grid, or `map_server` |
 | `/goal_pose` | `geometry_msgs/PoseStamped` | RViz, autonomy |
+
+### Monitoring
+
+| Topic | Type | Publisher | Consumer |
+|---|---|---|---|
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | `robot_health`, `ekf_node` ³ | Foxglove, PlotJuggler, the aggregator |
+| `/diagnostics_agg` | `diagnostic_msgs/DiagnosticArray` | `diagnostic_aggregator` | `rqt_robot_monitor`, and nothing else |
+
+Both are started by `diagnostics.launch.py`, which `robot.launch.py` includes by default. Turn them
+off with `diagnostics:=false`. See [`MONITORING.md`](MONITORING.md).
+
+³ `ekf_node` contributes its own statuses only under `odom_source:=ekf`; `print_diagnostics` is set
+in `ekf.yaml`. Several publishers on `/diagnostics` is normal and is the opposite of the `/tf`
+situation — a `DiagnosticStatus` carries its own name, so the aggregator merges rather than fights.
 
 ### Simulation only
 

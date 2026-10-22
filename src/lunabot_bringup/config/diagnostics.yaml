@@ -1,0 +1,67 @@
+# diagnostic_aggregator analyzers: how /diagnostics is grouped into the tree
+# rqt_robot_monitor draws.
+#
+# The aggregator is what turns a flat list of statuses into "Lunabot >
+# Drivetrain > ...". Foxglove's Diagnostics panel and PlotJuggler read the raw
+# /diagnostics and do not need any of this; rqt_robot_monitor reads
+# /diagnostics_agg and shows nothing at all without it.
+#
+# ==================== THE TOP KEY IS `analyzers`, NOT THE NODE NAME ====================
+# diagnostic_aggregator's Aggregator builds its OWN internal node, named
+# `analyzers`, and loads this configuration from that node's parameters. So
+# this block is keyed on `analyzers` no matter what the aggregator node itself
+# is called in the launch file. Renaming it to match the launch node gives an
+# aggregator that starts cleanly, reports no error, and files every status
+# under "Other".
+# ======================================================================================
+
+analyzers:
+  ros__parameters:
+    path: Lunabot
+
+    # ==================== `contains`, not `startswith` ====================
+    # diagnostic_updater-style publishers prefix status names with their node
+    # name, and whether a given client library does that has moved between
+    # releases. robot_health.py names its statuses "Topics: /odom",
+    # "Controllers" and "Drivetrain"; matching on a substring works whether or
+    # not "robot_health: " ends up in front of them.
+    #
+    # A `startswith` that has silently stopped matching looks exactly like a
+    # healthy robot with nothing to report, which is the worst failure mode a
+    # monitoring config has.
+    # ======================================================================
+    drivetrain:
+      type: diagnostic_aggregator/GenericAnalyzer
+      path: Drivetrain
+      contains: [Drivetrain, Controllers]
+
+    control:
+      type: diagnostic_aggregator/GenericAnalyzer
+      path: Control
+      contains: ['/joint_states', '/odom', '/tf']
+
+    sensors:
+      type: diagnostic_aggregator/GenericAnalyzer
+      path: Sensors
+      contains: ['/oak_d']
+
+    perception:
+      type: diagnostic_aggregator/GenericAnalyzer
+      path: Perception
+      contains: ['/perception']
+
+    # Isaac's clock. Nothing publishes it on the real rover, so this group is
+    # empty there rather than red -- an analyzer with no matching status
+    # reports nothing, it does not report a failure.
+    simulation:
+      type: diagnostic_aggregator/GenericAnalyzer
+      path: Simulation
+      contains: ['/clock']
+
+    # robot_localization's own diagnostics, which arrive only when
+    # odom_source:=ekf (print_diagnostics is set in ekf.yaml). Same as above:
+    # silent when the EKF is not running.
+    localization:
+      type: diagnostic_aggregator/GenericAnalyzer
+      path: Localization
+      contains: [ekf_node, Filter]

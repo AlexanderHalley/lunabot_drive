@@ -17,6 +17,12 @@
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
 
+  <!-- /drive/status. lunabot_msgs is the DriveStatus/MotorStatus definition;
+       realtime_tools is RealtimePublisher, which is what makes publishing
+       from write() safe in a loop that also carries the CAN heartbeat. -->
+  <depend>lunabot_msgs</depend>
+  <depend>realtime_tools</depend>
+
   <!-- NOT resolvable by rosdep. Built from source via lunabot.repos, and
        listed in the rosdep skip-keys used by CI and the README. -->
   <depend>sparkcan</depend>

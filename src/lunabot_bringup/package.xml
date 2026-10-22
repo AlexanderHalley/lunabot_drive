@@ -31,7 +31,8 @@
   <exec_depend>topic_based_ros2_control</exec_depend>
 
   <!-- scripts/check_stack.py, which reads a live graph and judges it against
-       docs/TOPIC_FRAME_CONTRACT.md. -->
+       docs/TOPIC_FRAME_CONTRACT.md, and scripts/robot_health.py, which does
+       the same thing continuously onto /diagnostics. -->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>controller_manager_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
@@ -40,6 +41,21 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>tf2_msgs</exec_depend>
+
+  <!-- Monitoring. diagnostic_msgs is what robot_health.py publishes;
+       diagnostic_aggregator turns it into the /diagnostics_agg tree that
+       rqt_robot_monitor is the only consumer of. lunabot_msgs and vision_msgs
+       are the two message packages robot_health.py subscribes to that nothing
+       else in this package needs. -->
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>diagnostic_aggregator</exec_depend>
+  <exec_depend>lunabot_msgs</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
+
+  <!-- Foxglove Studio's WebSocket bridge, started by foxglove:=true. Exec-only
+       and off by default, so a machine without it loses foxglove.launch.py and
+       nothing else. -->
+  <exec_depend>foxglove_bridge</exec_depend>
 
   <!-- Teleop and velocity arbitration -->
   <exec_depend>joy</exec_depend>

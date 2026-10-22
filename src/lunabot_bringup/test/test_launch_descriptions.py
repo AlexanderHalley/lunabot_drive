@@ -137,6 +137,55 @@ def test_camera_profiles_match_the_config_files():
         assert (config_dir / filename).is_file(), f'missing config {filename}'
 
 
+def test_every_rviz_config_choice_is_a_file_that_exists():
+    """`rviz_config:=nav` must find nav.rviz, in both files that offer it.
+
+    rviz.launch.py builds the path by substituting the argument straight into
+    a filename, so a choice with no file behind it fails at launch with a Qt
+    error about a missing file rather than anything about launch arguments --
+    and it fails several seconds in, after the rest of the stack is already
+    up. The two argument declarations have to agree with each other as well:
+    robot.launch.py passes its value down, so a choice offered there and not
+    here is rejected by the inner file with a message naming the inner file.
+    """
+    rviz_dir = LAUNCH_DIR.parent.parent / 'lunabot_description' / 'rviz'
+
+    def choices(name):
+        description = load(name).generate_launch_description()
+        argument = next(
+            e
+            for e in description.entities
+            if isinstance(e, DeclareLaunchArgument) and e.name == 'rviz_config'
+        )
+        return set(argument.choices)
+
+    assert choices('robot.launch.py') == choices('rviz.launch.py')
+
+    for choice in choices('rviz.launch.py'):
+        assert (rviz_dir / f'{choice}.rviz').is_file(), f'no {choice}.rviz in {rviz_dir}'
+
+
+def test_the_diagnostics_profile_follows_the_hardware_backend():
+    """robot.launch.py passes hw straight through as the health node's profile.
+
+    They are the same three-way split -- mock expects nothing extra, sim
+    expects /clock, real expects /drive/status -- so a value that is legal for
+    one and not the other makes `hw:=real` fail inside a monitoring launch
+    file, which is a long way from where anyone would look.
+    """
+    robot = load('robot.launch.py').generate_launch_description()
+    hw = next(e for e in robot.entities if isinstance(e, DeclareLaunchArgument) and e.name == 'hw')
+
+    diagnostics = load('diagnostics.launch.py').generate_launch_description()
+    profile = next(
+        e
+        for e in diagnostics.entities
+        if isinstance(e, DeclareLaunchArgument) and e.name == 'profile'
+    )
+
+    assert set(profile.choices) == set(hw.choices)
+
+
 def test_the_camera_node_name_is_the_urdf_frame_prefix():
     """The camera node's NAME is what prefixes every published frame_id.
 

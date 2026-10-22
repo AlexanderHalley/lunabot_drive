@@ -31,6 +31,12 @@
        into the costmaps' own parameter blocks. -->
   <exec_depend>nav2_common</exec_depend>
 
+  <!-- The Navigation 2 panel in lunabot_description/rviz/nav.rviz. Declared
+       here rather than in lunabot_description so that a description package
+       does not acquire a dependency on the whole of Nav2; RViz degrades to
+       "failed to load panel" and keeps every display when it is absent. -->
+  <exec_depend>nav2_rviz_plugins</exec_depend>
+
   <!-- Not launched from here. Kept for map_saver_cli, which maps/README.md
        tells you to run. -->
   <exec_depend>nav2_bringup</exec_depend>

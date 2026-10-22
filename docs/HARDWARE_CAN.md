@@ -169,14 +169,62 @@ silently below it.
 
 ---
 
-## Not implemented yet
+## `/drive/status`, and what is still missing from it
 
-`/drive/status` (`lunabot_msgs/DriveStatus`) appears in
-[`TOPIC_FRAME_CONTRACT.md`](TOPIC_FRAME_CONTRACT.md) but **nothing publishes it**. The messages
-exist; the broadcaster does not. Publishing it needs either a `controller_interface` broadcaster or
-a node subscribing to the hardware's state interfaces, and most of the fields it carries (bus
-voltage, current, temperature, faults) are unavailable until motor telemetry is read at all — so it
-is blocked behind the same work as `use_motor_feedback`.
+`SparkFlexSystem` publishes `lunabot_msgs/DriveStatus` on `/drive/status` at
+`status_publish_rate` (20 Hz, set in `lunabot.ros2_control.xacro`). `status_publish_rate: 0` turns
+it off.
+
+It is published from a node the component creates itself, through a
+`realtime_tools::RealtimePublisher`. Both halves of that are deliberate:
+
+- **A node, not a broadcaster.** The orthodox shape is to export bus voltage and temperature as
+  extra state interfaces and read them from a `controller_interface` broadcaster. These are not
+  per-joint control quantities, nothing claims them, and a broadcaster would have to be spawned and
+  kept in step with a hardware component that may not even be the one loaded — `mock` and `sim`
+  export no such interfaces.
+- **`RealtimePublisher`, not `rclcpp::Publisher`.** It is published from `write()`, which is the
+  control loop: 10 ms, already carrying a CAN write and a heartbeat to four controllers.
+  `trylock()` drops a status sample when DDS is busy rather than stretching a cycle. A dropped
+  sample is invisible on a plot; a late heartbeat faults the drivetrain.
+
+### What it carries today
+
+| Field | Today |
+|---|---|
+| `applied_duty_cycle` | Real. Post-clamp, post-inversion — what went on the wire |
+| `can_interface`, `motor_feedback_active` | Real |
+| `time_since_last_command`, `watchdog_triggered` | Real, with the caveat below |
+| `velocity`, `position` | **NaN**, until `use_motor_feedback` |
+| `bus_voltage`, `output_current`, `temperature` | **NaN**, unconditionally |
+| `fault_bits` | **0**, unconditionally |
+
+The last two rows are the part still blocked. `SparkFlexMotor` exposes no getter for voltage,
+current, temperature or faults, and wiring one is the same job as wiring `read_velocity()` —
+against a sparkcan API no one on this team has exercised against hardware. They are NaN rather than
+zero so that a plot shows a gap instead of a convincing flat line at 0 V.
+
+`velocity` and `position` stay NaN with `use_motor_feedback: false` even though `hw_states_*` hold
+numbers, because those numbers are the commanded velocity echoed back. Copying them into a field
+called `velocity` would put dead reckoning on a telemetry topic whose only purpose is to be
+trusted.
+
+### What `time_since_last_command` can honestly mean
+
+Not "seconds since a command arrived", which cannot be measured from inside a hardware component. A
+`ros2_control` command interface is a bare `double` in shared memory with no timestamp and no
+writer identity, so a controller writing the same value every cycle and a controller that has died
+are byte-identical from down here.
+
+What it reports instead is seconds since the drivetrain was last *asked to move* — the last cycle
+with a non-zero or changed command. Its useful reading is the one a dashboard wants: a rising value
+means nothing is driving this robot. The cost is one false positive, an operator holding a
+deliberate sustained zero, and that is the right trade: the failure it catches is silent and the
+one it confuses is not.
+
+`watchdog_triggered` is that value exceeding `command_timeout`, which matches
+`diff_drive_controller`'s `cmd_vel_timeout` because it is that watchdog it is reporting on — the
+hardware layer no longer has one of its own. `test_config_files.py` keeps the two numbers equal.
 
 ---
 

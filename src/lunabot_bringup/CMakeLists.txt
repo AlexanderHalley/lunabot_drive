@@ -9,9 +9,12 @@ install(
 )
 
 # lib/, not share/: this is where `ros2 run lunabot_bringup check_stack.py`
-# looks. PROGRAMS rather than FILES so it stays executable.
+# looks, and where diagnostics.launch.py finds robot_health.py. PROGRAMS
+# rather than FILES so they stay executable.
 install(
-  PROGRAMS scripts/check_stack.py
+  PROGRAMS
+    scripts/check_stack.py
+    scripts/robot_health.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

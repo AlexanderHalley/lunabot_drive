@@ -73,6 +73,20 @@ ros2 launch lunabot_bringup robot.launch.py hw:=mock slam:=rtabmap nav:=true rvi
 `nav:=true` needs `slam:=` for the `map` frame, and Nav2 drives `/cmd_vel_nav` rather than
 `/cmd_vel` so that teleop keeps the right of way. See [`docs/NAVIGATION.md`](docs/NAVIGATION.md).
 
+## Watching it
+
+`/diagnostics` is published by default — topic rates against the contract, controller states, and
+the drivetrain on real hardware. Point anything at it:
+
+```bash
+ros2 run rqt_robot_monitor rqt_robot_monitor   # health tree
+ros2 run plotjuggler plotjuggler               # numbers over time
+```
+
+RViz has three configs (`rviz_config:=description|slam|nav`), and Foxglove Studio attaches over a
+WebSocket with `foxglove:=true`. Which tool answers which question, and what none of them can show,
+is [`docs/MONITORING.md`](docs/MONITORING.md).
+
 ## Documentation
 
 Start here, in this order:
@@ -87,6 +101,7 @@ Start here, in this order:
 - [`docs/SLAM.md`](docs/SLAM.md) — choosing and tuning a SLAM backend
 - [`docs/NAVIGATION.md`](docs/NAVIGATION.md) — Nav2, and why it never publishes `/cmd_vel`
 - [`docs/OAK_D_S2_INTEGRATION.md`](docs/OAK_D_S2_INTEGRATION.md) — camera bring-up and bandwidth
+- [`docs/MONITORING.md`](docs/MONITORING.md) — RViz, Foxglove, PlotJuggler and `/diagnostics`
 - [`docs/ONBOARDING.md`](docs/ONBOARDING.md) — new team member setup
 
 ## Status

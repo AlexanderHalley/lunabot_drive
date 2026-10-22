@@ -32,6 +32,15 @@ PROPERTIES = (
     CONFIG_DIR.parent.parent / 'lunabot_description' / 'urdf' / 'common' / 'properties.xacro'
 )
 
+# Where SparkFlexSystem's own parameters are set. Also a sibling package.
+ROS2_CONTROL_XACRO = (
+    CONFIG_DIR.parent.parent
+    / 'lunabot_description'
+    / 'urdf'
+    / 'ros2_control'
+    / 'lunabot.ros2_control.xacro'
+)
+
 # Matches a scalar that a human would read as a number.
 NUMERIC_LOOKING = re.compile(r'^-?\d+(\.\d*)?([eE][-+]?\d+)?$')
 
@@ -250,6 +259,33 @@ def test_no_camera_profile_lets_the_driver_publish_tf():
             f'{path.name} sets i_tf_tf_prefix, which depthai-ros does not declare. '
             'It is silently ignored; the prefix comes from the node name.'
         )
+
+
+def test_the_drive_status_watchdog_matches_the_controller_watchdog():
+    """DriveStatus.watchdog_triggered reports diff_drive_controller's watchdog.
+
+    The hardware layer has no watchdog of its own any more -- cmd_vel_timeout
+    replaced it (docs/HARDWARE_CAN.md). So SparkFlexSystem's command_timeout
+    is not an independent setting: it is the threshold at which the status
+    topic says "the controller would have given up by now". Two numbers that
+    have to agree, in two packages, in two file formats, which is exactly the
+    shape of every other trap this file guards.
+
+    Drift is silent. The rover keeps driving; only the telemetry lies, either
+    flagging a watchdog that has not fired or staying quiet through one that
+    has -- and a dashboard is trusted precisely when nobody is watching the
+    rover itself.
+    """
+    match = re.search(
+        r'<param\s+name="command_timeout">([\d.]+)</param>', ROS2_CONTROL_XACRO.read_text()
+    )
+    assert match, f'command_timeout not found in {ROS2_CONTROL_XACRO.name}'
+
+    cmd_vel_timeout = yaml.safe_load((CONFIG_DIR / 'controllers.yaml').read_text())[
+        'diff_drive_controller'
+    ]['ros__parameters']['cmd_vel_timeout']
+
+    assert float(match.group(1)) == pytest.approx(cmd_vel_timeout)
 
 
 def test_twist_mux_prefers_teleop_over_navigation():

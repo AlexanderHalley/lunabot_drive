@@ -123,6 +123,15 @@ ARGUMENTS = [
         ),
     ),
     DeclareLaunchArgument(
+        'diagnostics',
+        default_value='true',
+        description=(
+            'Publish /diagnostics and /diagnostics_agg. On by default: a health '
+            'topic nobody launches is the same as no health topic. It subscribes '
+            'to nothing heavy -- see scripts/robot_health.py.'
+        ),
+    ),
+    DeclareLaunchArgument(
         'rviz',
         default_value='false',
         description='Start RViz2.',
@@ -130,8 +139,16 @@ ARGUMENTS = [
     DeclareLaunchArgument(
         'rviz_config',
         default_value='slam',
-        choices=['description', 'slam'],
+        choices=['description', 'slam', 'nav'],
         description='Which RViz config to load.',
+    ),
+    DeclareLaunchArgument(
+        'foxglove',
+        default_value='false',
+        description=(
+            'Start foxglove_bridge, so Foxglove Studio can attach over a '
+            'WebSocket. Off by default because it opens a port.'
+        ),
     ),
 ]
 
@@ -227,11 +244,37 @@ def generate_launch_description():
                 'navigation.launch.py',
                 condition=IfCondition(LaunchConfiguration('nav')),
             ),
+            # Monitoring last, and deliberately after the things it watches:
+            # robot_health reports "never received" until a publisher appears,
+            # which is correct but noisy if it wins the race by a wide margin.
+            include(
+                bringup,
+                'diagnostics.launch.py',
+                condition=IfCondition(LaunchConfiguration('diagnostics')),
+                # The health node's expectations follow the same three-way
+                # split as everything else in this file. hw:=sim means /clock
+                # must be flowing; hw:=real means /drive/status must be.
+                profile=LaunchConfiguration('hw'),
+                # Watched when THIS launch starts the driver, which under
+                # camera:=auto means real hardware. Isaac publishes the same
+                # camera topics under hw:=sim, but whether its camera graphs
+                # are in the loaded scene is a property of the scene, not of
+                # this file -- so expecting them here would report a missing
+                # camera on a sim run that never had one. Pass camera:=true to
+                # watch them anyway.
+                camera=_camera_enabled(LaunchConfiguration('camera'), LaunchConfiguration('hw')),
+                perception=LaunchConfiguration('perception'),
+            ),
             include(
                 bringup,
                 'rviz.launch.py',
                 condition=IfCondition(LaunchConfiguration('rviz')),
                 rviz_config=LaunchConfiguration('rviz_config'),
+            ),
+            include(
+                bringup,
+                'foxglove.launch.py',
+                condition=IfCondition(LaunchConfiguration('foxglove')),
             ),
         ]
     )

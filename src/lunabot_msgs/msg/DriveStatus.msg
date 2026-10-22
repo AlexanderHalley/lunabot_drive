@@ -17,10 +17,26 @@ string can_interface
 # odometry is dead reckoning from command -- see docs/HARDWARE_CAN.md.
 bool motor_feedback_active
 
-# Seconds since the last command reached the hardware interface. Compare
-# against diff_drive_controller's cmd_vel_timeout (0.5 s) to see how close
-# the drivetrain is to a watchdog stop.
+# Seconds since the drivetrain was last asked to move: the last control cycle
+# in which a commanded velocity was non-zero, or changed.
+#
+# NOT "seconds since a command arrived", which cannot be measured. A
+# ros2_control command interface is a bare double in shared memory with no
+# timestamp and no writer identity, so a controller writing the same value
+# every cycle and a controller that has died look identical to the hardware
+# component. This is the strongest statement available, and its useful
+# reading is the one a dashboard wants: a rising value means nothing is
+# driving this robot.
+#
+# One false positive follows from that: an operator holding a deliberate,
+# sustained zero is indistinguishable from a dead controller.
 float32 time_since_last_command
 
-# True when the watchdog has zeroed the outputs.
+# True when time_since_last_command has exceeded command_timeout (0.5 s by
+# default, matching diff_drive_controller's cmd_vel_timeout).
+#
+# The hardware layer has no watchdog of its own -- the controller's replaced
+# it, see docs/HARDWARE_CAN.md -- so this is that watchdog observed from
+# below: the outputs are zero and have been for longer than the controller
+# would have tolerated silence.
 bool watchdog_triggered
