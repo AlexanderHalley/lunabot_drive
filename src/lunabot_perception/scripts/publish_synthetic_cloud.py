@@ -9,13 +9,24 @@
 
     ros2 run lunabot_perception publish_synthetic_cloud.py --boulders 3
 
-A flat ground plane with cubes on it, published on /oak_d/points in the
-camera's optical frame, plus the static transform the detector needs to get
-back to base_link. That means this alone is enough to see /perception/boulders
+A ground plane with cubes on it, published on /oak_d/points in the camera's
+optical frame, plus the static transform the detector needs to get back to
+base_link. That means this alone is enough to see /perception/boulders
 populate -- no robot, no sim, no bag.
 
 Deliberately noisy by default: a perfect cloud makes the clustering look far
 better than it is.
+
+--slope tilts the ground, which is the cheapest demonstration of what the
+RANSAC ground fit buys. Publish a 10 degree slope, then run the detector each
+way -- parameters are read once at startup, so this is two runs, not a live
+`ros2 param set`:
+
+    ros2 run lunabot_perception publish_synthetic_cloud.py --slope 10
+    ros2 run lunabot_perception boulder_detector \
+        --ros-args -p ground_fit_plane:=false   # most of the floor detected
+    ros2 run lunabot_perception boulder_detector \
+        --ros-args -p ground_fit_plane:=true    # the floor is the floor
 """
 
 import argparse
@@ -53,16 +64,27 @@ def make_cloud_msg(points, frame_id, stamp):
     return msg
 
 
-def build_scene(rng, boulders, noise):
-    """Ground plane plus cubes, in BASE_LINK coordinates (X fwd, Y left, Z up)."""
+def build_scene(rng, boulders, noise, slope_degrees=0.0):
+    """Ground plane plus cubes, in BASE_LINK coordinates (X fwd, Y left, Z up).
+
+    `slope_degrees` tilts the ground about the Y axis, rising with X and
+    passing through ground_z under the rover. It is the quickest way to see
+    the plane fit earning its keep: at 10 degrees with ground_fit_plane:=false
+    the detector reports most of the floor as boulders, and with it on the
+    same scene comes back clean.
+    """
     ground_z = -0.10
+    gradient = math.tan(math.radians(slope_degrees))
     points = []
+
+    def ground_at(x):
+        return ground_z + gradient * x
 
     x = 0.3
     while x <= 2.5:
         y = -1.2
         while y <= 1.2:
-            points.append((x, y, ground_z + rng.gauss(0.0, noise)))
+            points.append((x, y, ground_at(x) + rng.gauss(0.0, noise)))
             y += 0.04
         x += 0.04
 
@@ -85,11 +107,14 @@ def build_scene(rng, boulders, noise):
         for i in range(steps):
             for j in range(steps):
                 for k in range(steps):
+                    px = cx - half + i * size / steps
                     points.append(
                         (
-                            cx - half + i * size / steps + rng.gauss(0.0, noise),
+                            px + rng.gauss(0.0, noise),
                             cy - half + j * size / steps + rng.gauss(0.0, noise),
-                            ground_z + k * size / steps + rng.gauss(0.0, noise),
+                            # Base follows the slope, so the rock sits on the
+                            # ground instead of being buried at one edge.
+                            ground_at(px) + k * size / steps + rng.gauss(0.0, noise),
                         )
                     )
 
@@ -126,11 +151,12 @@ class SyntheticCloudPublisher(Node):
         self.static_tf = StaticTransformBroadcaster(self)
         self.static_tf.sendTransform(self._optical_transform())
 
-        points, placed = build_scene(self.rng, args.boulders, args.noise)
+        points, placed = build_scene(self.rng, args.boulders, args.noise, args.slope)
         self.points = base_link_to_optical(points)
 
         self.get_logger().info(
             f'publishing {len(self.points)} points at {args.rate} Hz, '
+            f'ground sloped {args.slope} deg, '
             f'{len(placed)} boulders at {[(round(x, 2), round(y, 2)) for x, y in placed]}'
         )
 
@@ -159,6 +185,13 @@ def main():
     parser.add_argument('--boulders', type=int, default=3, help='how many rocks to scatter')
     parser.add_argument('--seed', type=int, default=0, help='same seed, same scene')
     parser.add_argument('--rate', type=float, default=5.0, help='Hz')
+    parser.add_argument(
+        '--slope',
+        type=float,
+        default=0.0,
+        help='tilt the ground this many degrees about Y. Exercises the RANSAC ground fit -- '
+        'try 10 with ground_fit_plane:=false to see what the fit is for.',
+    )
     parser.add_argument(
         '--noise',
         type=float,

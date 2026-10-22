@@ -25,20 +25,59 @@ boulder_detector:
     roi_max: [2.5, 1.5, 1.0]
 
     # ==================== Ground ====================
-    # Height of the ground plane in base_link. base_link sits one wheel
-    # radius above the ground by construction, so this is -wheel_radius.
+    # Nominal height of the ground plane in base_link. base_link sits one
+    # wheel radius above the ground by construction, so this is -wheel_radius.
     #
     # KEEP IN SYNC with wheel_radius in properties.xacro and controllers.yaml.
     # A third copy of the same number, and the only one that is a plain
     # threshold rather than a kinematic constant.
+    #
+    # With ground_fit_plane on, this is NOT the classification threshold. It
+    # is the prior: the plane used if the fit is rejected, and the value the
+    # fit is sanity-checked against. Getting it wrong by a few centimetres no
+    # longer breaks the detector.
     ground_z: -0.10
 
-    # Points within 5 cm of that plane are ground.
+    # Points within 5 cm of the ground plane are ground. Perpendicular
+    # distance to the plane, so on a slope this still means "on the ground"
+    # rather than "at about the right height".
     #
-    # This is the stub's weakest assumption: a flat, level ground plane at a
-    # known height. It does not survive a slope, a suspension deflection, or
-    # a berm. Replacing it with a RANSAC plane fit is the first real upgrade.
+    # Doubles as the RANSAC inlier threshold, which is the right coupling:
+    # a point close enough to the plane to be an inlier is a point close
+    # enough to be ground.
     ground_plane_distance_threshold: 0.05
+
+    # Fit the plane to each cloud instead of assuming it is level at
+    # ground_z. Off is the old behaviour, and is the thing to try first if
+    # the detector starts reporting the floor -- a bad fit is worse than no
+    # fit, and the detector says which one it used at startup and warns,
+    # throttled, on every frame it falls back.
+    ground_fit_plane: true
+
+    # Reject a fit tilted more than this from horizontal. Sized for a plane
+    # the ROVER IS ON: at 15 degrees the rover is close to the limit of what
+    # it can climb anyway, and anything steeper in view is a berm face or a
+    # crater wall, which are exactly the things that must not be mistaken for
+    # the floor.
+    ground_max_slope_degrees: 15.0
+
+    # RANSAC iterations. The ground is normally the large majority of the
+    # cropped cloud, so this finds it with room to spare -- a cost ceiling
+    # rather than a tuning knob.
+    ground_max_iterations: 100
+
+    # Reject a fit supported by less than this fraction of the cloud. The
+    # guard against fitting the flat top of a large rock. Raise it if the
+    # detector latches onto boulder faces; lower it if it falls back to level
+    # whenever the view fills with obstacles.
+    ground_min_inlier_fraction: 0.25
+
+    # Reject a fit whose height under base_link differs from ground_z by more
+    # than this. DELIBERATELY LOOSE -- it is a sanity bound, not a second
+    # threshold. Tighten it towards ground_plane_distance_threshold and the
+    # fit loses the ability to correct ground_z, which is most of the reason
+    # to fit at all.
+    ground_max_height_deviation: 0.30
 
     # ==================== Clustering ====================
     # Points more than 10 cm apart are different objects. At 2 m the stereo

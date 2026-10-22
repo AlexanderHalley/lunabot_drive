@@ -30,6 +30,39 @@ using Cloud = pcl::PointCloud<PointT>;
 /// All of these operate in `base_link`: X forward, Y left, Z up, origin at
 /// axle height. The caller transforms the cloud before calling in.
 
+/// The ground plane that a split was classified against.
+///
+/// Returned rather than kept internal because this is the first thing worth
+/// looking at when the detector misbehaves. A detector that suddenly reports
+/// the whole arena as one boulder has almost always fitted its plane to
+/// something that is not the ground, and no amount of staring at the
+/// detections themselves shows that.
+struct GroundPlane
+{
+  /// ax + by + cz + d = 0, with (a, b, c) a UNIT normal that points UP.
+  ///
+  /// The sign convention is not cosmetic. RANSAC hands back a normal pointing
+  /// whichever way the three points it happened to draw imply, so without
+  /// orienting it here "above ground" and "below ground" would swap between
+  /// one frame and the next.
+  Eigen::Vector4f coefficients = Eigen::Vector4f(0.0f, 0.0f, 1.0f, 0.0f);
+
+  /// False when no fit was attempted, or one was attempted and rejected. The
+  /// split then ran against the level plane at `ground_z` instead, which is
+  /// the old stub behaviour and still a reasonable answer on flat ground.
+  bool fitted = false;
+
+  /// Points supporting the fit. Zero when `fitted` is false.
+  std::size_t inlier_count = 0;
+
+  /// Angle between the plane normal and vertical, radians.
+  float slope() const;
+
+  /// Height of the plane directly below base_link's origin, metres. Negative
+  /// on a rover whose origin is at axle height.
+  float height_below_origin() const;
+};
+
 /// Result of splitting a cloud by height. THREE clouds, not two.
 ///
 /// This is the single most important shape decision in the package.
@@ -42,6 +75,9 @@ struct GroundSplit
   Cloud::Ptr ground;
   Cloud::Ptr above_ground;
   Cloud::Ptr below_ground;
+
+  /// What the three clouds above were classified against.
+  GroundPlane plane;
 };
 
 /// An axis-aligned box around one cluster, in base_link.
@@ -55,11 +91,57 @@ struct Cluster
 struct GroundParameters
 {
   /// Points within this distance of the ground plane count as ground.
+  ///
+  /// Perpendicular distance to the plane, not a difference in z. On level
+  /// ground the two are the same number; on a slope the perpendicular
+  /// distance is the one that means "sitting on the ground".
   double plane_distance_threshold = 0.05;
 
   /// Expected height of the ground plane in base_link. The wheels put
   /// base_link one wheel radius above the ground, so this is negative.
+  ///
+  /// With `fit_plane` on this is no longer the classification threshold. It
+  /// demotes to a prior: the plane used when a fit is rejected, and the value
+  /// `max_height_deviation` judges a candidate fit against.
   double ground_z = -0.10;
+
+  /// Fit the plane to the cloud rather than assuming it is level at
+  /// `ground_z`.
+  ///
+  /// Off is the old stub behaviour, kept because it is the only thing that
+  /// works when the ground is barely in view -- a cloud that is mostly
+  /// boulder has nothing to fit to, and a wrong plane is worse than a
+  /// stale one.
+  bool fit_plane = true;
+
+  /// Reject a fit tilted more than this from horizontal, radians.
+  ///
+  /// The constraint is applied twice: once inside RANSAC, so that tilted
+  /// candidates never win, and once on the refined coefficients afterwards,
+  /// because the least-squares refit is free to tilt the winner back out of
+  /// bounds.
+  double max_slope = 0.26;  // ~15 degrees
+
+  /// RANSAC iterations. The ground is normally most of the cloud, so the
+  /// default finds it with room to spare; this is a cost ceiling rather than
+  /// a tuning knob.
+  int max_iterations = 100;
+
+  /// Reject a fit supported by less than this fraction of the input.
+  ///
+  /// The guard against fitting the top of a big rock. A boulder face large
+  /// enough to beat this fraction is large enough that calling it the ground
+  /// is arguably right.
+  double min_inlier_fraction = 0.25;
+
+  /// Reject a fit whose height below base_link's origin differs from
+  /// `ground_z` by more than this, metres.
+  ///
+  /// Deliberately loose. It is a sanity bound that catches a plane locked
+  /// onto a boulder top or a berm, NOT a second classification threshold --
+  /// tighten it and the fit stops being able to correct `ground_z`, which is
+  /// most of the point of fitting at all.
+  double max_height_deviation = 0.30;
 };
 
 struct ClusterParameters
@@ -87,13 +169,31 @@ Cloud::Ptr downsample(const Cloud::ConstPtr & input, double leaf_size);
 Cloud::Ptr crop(
   const Cloud::ConstPtr & input, const Eigen::Vector3f & min, const Eigen::Vector3f & max);
 
-/// Split into ground / above / below by height about a known plane.
+/// Fit the ground plane with RANSAC, constrained to be roughly horizontal.
 ///
-/// This is the STUB implementation: a flat z-threshold about `ground_z`. It
-/// assumes the ground is level and that base_link's height above it is known,
-/// neither of which survives a slope or a suspension. A RANSAC plane fit is
-/// the obvious replacement and is why the parameters are shaped this way
-/// rather than being a bare float.
+/// Returns the level plane at `ground_z` with `fitted == false` when fitting
+/// is off, when there is too little cloud to fit to, or when the fit fails
+/// any of the three sanity checks in `GroundParameters`. Never returns a
+/// plane the caller has to check for validity before using -- the fallback is
+/// always a usable plane, which is what keeps `split_by_ground` branch-free.
+///
+/// Deterministic: PCL seeds its sample consensus RNG with a fixed value
+/// unless asked not to, so the same cloud gives the same plane every run.
+/// Tests depend on that, and so does reproducing a bad frame from a bag.
+GroundPlane fit_ground_plane(const Cloud::ConstPtr & input, const GroundParameters & params);
+
+/// Split into ground / above / below about the fitted plane.
+///
+/// Classification is by SIGNED PERPENDICULAR DISTANCE to the plane returned
+/// by `fit_ground_plane`, positive upwards. With `fit_plane` off that plane
+/// is level at `ground_z` and the distance collapses to `z - ground_z`, so
+/// the flat-threshold behaviour this started as is still in here, reached by
+/// the same arithmetic rather than by a separate branch.
+///
+/// What this still does not do: the boxes `extract_clusters` puts around the
+/// resulting clusters stay axis-aligned in base_link, so on a slope they are
+/// larger than the rock inside them. Fixing that needs an oriented box, not a
+/// better plane.
 GroundSplit split_by_ground(const Cloud::ConstPtr & input, const GroundParameters & params);
 
 /// Euclidean clustering, then an axis-aligned box per cluster.

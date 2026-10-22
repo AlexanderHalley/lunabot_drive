@@ -10,6 +10,7 @@
 // system header and wants those first. See cloud_segmentation.hpp.
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,6 +22,14 @@
 
 namespace lunabot_perception
 {
+namespace
+{
+
+/// Spelled out rather than using M_PI, which is a POSIX extension and not
+/// guaranteed by <cmath> under a strict-ISO build.
+constexpr double kDegreesToRadians = 3.14159265358979323846 / 180.0;
+
+}  // namespace
 
 BoulderDetectorNode::BoulderDetectorNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("boulder_detector", options)
@@ -36,6 +45,14 @@ BoulderDetectorNode::BoulderDetectorNode(const rclcpp::NodeOptions & options)
 
   declare_parameter("ground_z", -0.10);
   declare_parameter("ground_plane_distance_threshold", 0.05);
+
+  // Ground plane fitting. `ground_z` above stops being the threshold when
+  // this is on and becomes the prior the fit is sanity-checked against.
+  declare_parameter("ground_fit_plane", true);
+  declare_parameter("ground_max_slope_degrees", 15.0);
+  declare_parameter("ground_max_iterations", 100);
+  declare_parameter("ground_min_inlier_fraction", 0.25);
+  declare_parameter("ground_max_height_deviation", 0.30);
 
   declare_parameter("cluster_tolerance", 0.10);
   declare_parameter("min_cluster_size", 20);
@@ -74,8 +91,10 @@ BoulderDetectorNode::BoulderDetectorNode(const rclcpp::NodeOptions & options)
 
   RCLCPP_INFO(
     get_logger(),
-    "boulder_detector started. THIS IS A GEOMETRIC PLACEHOLDER: it reports lumps above a "
-    "flat plane, with a constant score and no classifier. See src/cloud_segmentation.cpp.");
+    "boulder_detector started. THIS IS A GEOMETRIC PLACEHOLDER: it reports lumps above the "
+    "ground plane, with a constant score and no classifier. See src/cloud_segmentation.cpp. "
+    "Ground plane fitting is %s.",
+    ground_.fit_plane ? "ON" : "OFF (assuming level ground at ground_z)");
 }
 
 void BoulderDetectorNode::read_parameters()
@@ -90,6 +109,13 @@ void BoulderDetectorNode::read_parameters()
 
   ground_.ground_z = get_parameter("ground_z").as_double();
   ground_.plane_distance_threshold = get_parameter("ground_plane_distance_threshold").as_double();
+  ground_.fit_plane = get_parameter("ground_fit_plane").as_bool();
+  // Degrees on the parameter, radians in the struct. Nobody tunes a slope
+  // limit in radians, and nothing downstream of here wants degrees.
+  ground_.max_slope = get_parameter("ground_max_slope_degrees").as_double() * kDegreesToRadians;
+  ground_.max_iterations = static_cast<int>(get_parameter("ground_max_iterations").as_int());
+  ground_.min_inlier_fraction = get_parameter("ground_min_inlier_fraction").as_double();
+  ground_.max_height_deviation = get_parameter("ground_max_height_deviation").as_double();
 
   clustering_.tolerance = get_parameter("cluster_tolerance").as_double();
   clustering_.min_points = get_parameter("min_cluster_size").as_int();
@@ -133,6 +159,22 @@ void BoulderDetectorNode::on_cloud(const sensor_msgs::msg::PointCloud2::ConstSha
   const auto split = split_by_ground(cropped, ground_);
   const auto clusters = extract_clusters(split.above_ground, clustering_);
   const auto boulders = filter_by_dimensions(clusters, dimensions_);
+
+  // A rejected fit is not an error -- the level fallback is a working answer
+  // on flat ground -- but it is degraded, and silently degraded perception is
+  // the kind of thing that gets diagnosed at a competition instead of here.
+  if (ground_.fit_plane && !split.plane.fitted) {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 5000,
+      "ground plane fit rejected, falling back to level ground at z=%.2f. Too little cloud, too "
+      "few inliers, too steep, or too far from ground_z.",
+      ground_.ground_z);
+  } else if (split.plane.fitted) {
+    RCLCPP_DEBUG_THROTTLE(
+      get_logger(), *get_clock(), 5000, "ground plane: slope %.1f deg, z %.3f, %zu inliers",
+      split.plane.slope() / kDegreesToRadians, split.plane.height_below_origin(),
+      split.plane.inlier_count);
+  }
 
   vision_msgs::msg::Detection3DArray detections;
   detections.header.stamp = msg->header.stamp;
@@ -201,6 +243,49 @@ void BoulderDetectorNode::publish_debug(
   visualization_msgs::msg::Marker clear;
   clear.action = visualization_msgs::msg::Marker::DELETEALL;
   markers.markers.push_back(clear);
+
+  // The fitted plane, as a thin slab. Worth drawing: when the detector
+  // reports nonsense, the question is almost always "what did it think the
+  // ground was", and this answers it at a glance. Green when the fit held,
+  // grey when it was rejected and this is the level fallback.
+  {
+    const Eigen::Vector3f normal = split.plane.coefficients.head<3>();
+    const Eigen::Quaternionf orientation =
+      Eigen::Quaternionf::FromTwoVectors(Eigen::Vector3f::UnitZ(), normal);
+
+    visualization_msgs::msg::Marker plane;
+    plane.header.stamp = stamp;
+    plane.header.frame_id = output_frame_;
+    plane.ns = "ground_plane";
+    plane.id = 0;
+    plane.type = visualization_msgs::msg::Marker::CUBE;
+    plane.action = visualization_msgs::msg::Marker::ADD;
+
+    // Centred in the region of interest so the slab sits under what is
+    // actually being segmented rather than under the origin.
+    const Eigen::Vector3f centre = (roi_min_ + roi_max_) * 0.5f;
+    plane.pose.position.x = centre.x();
+    plane.pose.position.y = centre.y();
+    // Put it on the plane, directly below the centre of the ROI.
+    plane.pose.position.z =
+      (-split.plane.coefficients.w() - normal.x() * centre.x() - normal.y() * centre.y()) /
+      normal.z();
+    plane.pose.orientation.x = orientation.x();
+    plane.pose.orientation.y = orientation.y();
+    plane.pose.orientation.z = orientation.z();
+    plane.pose.orientation.w = orientation.w();
+
+    plane.scale.x = std::max(0.1f, roi_max_.x() - roi_min_.x());
+    plane.scale.y = std::max(0.1f, roi_max_.y() - roi_min_.y());
+    plane.scale.z = 0.01;
+
+    plane.color.r = split.plane.fitted ? 0.2f : 0.6f;
+    plane.color.g = split.plane.fitted ? 0.8f : 0.6f;
+    plane.color.b = split.plane.fitted ? 0.3f : 0.6f;
+    plane.color.a = 0.25f;
+
+    markers.markers.push_back(plane);
+  }
 
   int id = 0;
   for (const auto & cluster : clusters) {

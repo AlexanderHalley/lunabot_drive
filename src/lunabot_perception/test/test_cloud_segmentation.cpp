@@ -47,6 +47,46 @@ void add_boulder(const Cloud::Ptr & cloud, float cx, float cy, float size, float
   }
 }
 
+/// Ground height at x on a slope that rises with x and passes through
+/// kGroundZ directly under base_link -- the rover is ON the slope, which is
+/// the case that matters. A slope the rover is looking at from level ground
+/// is an easier problem, not a harder one.
+float sloped_ground_z(float x, float slope)
+{
+  return kGroundZ + std::tan(slope) * x;
+}
+
+/// A flat square of ground, tilted `slope` radians about the Y axis.
+///
+/// Spacing is coarser than add_ground's so that the ground still outnumbers
+/// a solid cube of boulder points. Point counts decide RANSAC votes, and a
+/// scene where the rock outvotes the floor is testing something else.
+void add_sloped_ground(
+  const Cloud::Ptr & cloud, float slope, float extent = 2.5f, float spacing = 0.03f)
+{
+  for (float x = 0.0f; x <= extent; x += spacing) {
+    for (float y = -extent / 2; y <= extent / 2; y += spacing) {
+      cloud->points.emplace_back(x, y, sloped_ground_z(x, slope));
+    }
+  }
+}
+
+/// A cube whose base follows the slope, so it sits on the ground rather than
+/// half-buried at one edge and floating at the other.
+void add_boulder_on_slope(
+  const Cloud::Ptr & cloud, float cx, float cy, float size, float slope, float spacing = 0.03f)
+{
+  const float half = size / 2;
+  for (float x = cx - half; x <= cx + half; x += spacing) {
+    for (float y = cy - half; y <= cy + half; y += spacing) {
+      const float base = sloped_ground_z(x, slope);
+      for (float z = base; z <= base + size; z += spacing) {
+        cloud->points.emplace_back(x, y, z);
+      }
+    }
+  }
+}
+
 Cloud::Ptr finish(const Cloud::Ptr & cloud)
 {
   cloud->width = cloud->points.size();
@@ -171,6 +211,267 @@ TEST(SplitByGround, loses_no_points)
     split.ground->points.size() + split.above_ground->points.size() +
       split.below_ground->points.size(),
     cloud->points.size());
+}
+
+// ============================ Ground plane fitting ============================
+//
+// The flat z-threshold this package started with assumed level ground at a
+// known height. These cover the fit that replaced it, and -- in
+// detects_a_boulder_on_a_slope and its companion -- the failure that motivated
+// the whole thing.
+
+TEST(FitGroundPlane, recovers_a_level_plane_and_reports_it_as_fitted)
+{
+  auto cloud = std::make_shared<Cloud>();
+  add_ground(cloud);
+  finish(cloud);
+
+  const auto plane = fit_ground_plane(cloud, ground_params());
+
+  EXPECT_TRUE(plane.fitted);
+  EXPECT_NEAR(plane.slope(), 0.0f, 0.01f);
+  EXPECT_NEAR(plane.height_below_origin(), kGroundZ, 0.01f);
+  EXPECT_GT(plane.inlier_count, 0u);
+  // Unit normal, pointing up. Everything downstream reads a sign off this.
+  EXPECT_NEAR(plane.coefficients.head<3>().norm(), 1.0f, 1e-4f);
+  EXPECT_GT(plane.coefficients.z(), 0.0f);
+}
+
+TEST(FitGroundPlane, recovers_the_tilt_of_a_sloped_plane)
+{
+  constexpr float kSlope = 0.175f;  // 10 degrees
+
+  auto cloud = std::make_shared<Cloud>();
+  add_sloped_ground(cloud, kSlope);
+  finish(cloud);
+
+  const auto plane = fit_ground_plane(cloud, ground_params());
+
+  ASSERT_TRUE(plane.fitted);
+  EXPECT_NEAR(plane.slope(), kSlope, 0.02f);
+  // The slope was built through kGroundZ under the origin, so the fit should
+  // put it back there even though it is nowhere near level.
+  EXPECT_NEAR(plane.height_below_origin(), kGroundZ, 0.02f);
+  EXPECT_GT(plane.coefficients.z(), 0.0f);
+}
+
+TEST(FitGroundPlane, corrects_a_ground_z_that_is_simply_wrong)
+{
+  // The prior says -0.10; the ground is really at -0.25. That is a
+  // suspension deflection, or a wheel radius nobody updated after a tyre
+  // change. The flat threshold would have called the entire floor a crater.
+  constexpr float kRealGroundZ = -0.25f;
+
+  auto cloud = std::make_shared<Cloud>();
+  for (float x = 0.0f; x <= 2.0f; x += 0.03f) {
+    for (float y = -1.0f; y <= 1.0f; y += 0.03f) {
+      cloud->points.emplace_back(x, y, kRealGroundZ);
+    }
+  }
+  finish(cloud);
+
+  const auto plane = fit_ground_plane(cloud, ground_params());
+
+  ASSERT_TRUE(plane.fitted);
+  EXPECT_NEAR(plane.height_below_origin(), kRealGroundZ, 0.01f);
+}
+
+TEST(FitGroundPlane, falls_back_to_the_level_plane_when_fitting_is_off)
+{
+  auto cloud = std::make_shared<Cloud>();
+  add_sloped_ground(cloud, 0.175f);
+  finish(cloud);
+
+  auto params = ground_params();
+  params.fit_plane = false;
+
+  const auto plane = fit_ground_plane(cloud, params);
+
+  EXPECT_FALSE(plane.fitted);
+  EXPECT_EQ(plane.inlier_count, 0u);
+  // Exactly the plane the old flat threshold used: z = ground_z.
+  EXPECT_NEAR(plane.coefficients.x(), 0.0f, 1e-6f);
+  EXPECT_NEAR(plane.coefficients.y(), 0.0f, 1e-6f);
+  EXPECT_NEAR(plane.coefficients.z(), 1.0f, 1e-6f);
+  EXPECT_NEAR(plane.height_below_origin(), kGroundZ, 1e-6f);
+}
+
+TEST(FitGroundPlane, falls_back_when_there_is_almost_no_cloud)
+{
+  // Fewer than three points cannot define a plane, and three points that do
+  // are not a measurement of anything.
+  auto cloud = std::make_shared<Cloud>();
+  cloud->points.emplace_back(1.0f, 0.0f, kGroundZ);
+  cloud->points.emplace_back(1.1f, 0.0f, kGroundZ);
+  finish(cloud);
+
+  const auto plane = fit_ground_plane(cloud, ground_params());
+
+  EXPECT_FALSE(plane.fitted);
+  EXPECT_NEAR(plane.height_below_origin(), kGroundZ, 1e-6f);
+}
+
+TEST(FitGroundPlane, rejects_a_plane_steeper_than_max_slope)
+{
+  // A 30 degree face with the limit at 15. Better to fall back to a plane
+  // that is wrong in a known way than to accept one this tilted -- at 30
+  // degrees the thing being fitted is far more likely to be a berm face than
+  // the arena floor.
+  auto cloud = std::make_shared<Cloud>();
+  add_sloped_ground(cloud, 0.524f);
+  finish(cloud);
+
+  auto params = ground_params();
+  params.max_slope = 0.26;
+
+  const auto plane = fit_ground_plane(cloud, params);
+
+  EXPECT_FALSE(plane.fitted);
+  EXPECT_NEAR(plane.slope(), 0.0f, 1e-6f) << "the fallback plane is the level one";
+}
+
+TEST(FitGroundPlane, rejects_a_plane_too_far_from_the_expected_height)
+{
+  // The guard against locking onto the top of a large rock: a perfectly
+  // horizontal, perfectly well supported plane, most of a metre too high.
+  auto cloud = std::make_shared<Cloud>();
+  for (float x = 0.0f; x <= 2.0f; x += 0.03f) {
+    for (float y = -1.0f; y <= 1.0f; y += 0.03f) {
+      cloud->points.emplace_back(x, y, kGroundZ + 0.80f);
+    }
+  }
+  finish(cloud);
+
+  auto params = ground_params();
+  params.max_height_deviation = 0.30;
+
+  const auto plane = fit_ground_plane(cloud, params);
+
+  EXPECT_FALSE(plane.fitted);
+  EXPECT_NEAR(plane.height_below_origin(), kGroundZ, 1e-6f);
+}
+
+TEST(FitGroundPlane, rejects_a_plane_without_enough_support)
+{
+  // Ground plus a rock, with the support bar set absurdly high. Stands in
+  // for the real case -- a cloud that is mostly obstacle and barely floor --
+  // without needing a scene contrived enough to be its own puzzle.
+  auto cloud = std::make_shared<Cloud>();
+  add_ground(cloud);
+  add_boulder(cloud, 1.0f, 0.0f, 0.20f);
+  finish(cloud);
+
+  auto params = ground_params();
+  params.min_inlier_fraction = 0.99;
+
+  EXPECT_FALSE(fit_ground_plane(cloud, params).fitted);
+
+  // Same cloud, believable bar: the floor is most of it, so it fits.
+  params.min_inlier_fraction = 0.25;
+  EXPECT_TRUE(fit_ground_plane(cloud, params).fitted);
+}
+
+TEST(SplitByGround, classifies_by_distance_to_the_sloped_plane_not_by_height)
+{
+  constexpr float kSlope = 0.175f;
+
+  auto cloud = std::make_shared<Cloud>();
+  add_sloped_ground(cloud, kSlope);
+  finish(cloud);
+
+  const auto split = split_by_ground(cloud, ground_params());
+
+  ASSERT_TRUE(split.plane.fitted);
+  // Every point is ground. Under the old flat threshold the far half of this
+  // same cloud came back as obstacles, because at 10 degrees the floor climbs
+  // through a 5 cm band within the first 30 cm.
+  EXPECT_EQ(split.ground->points.size(), cloud->points.size());
+  EXPECT_EQ(split.above_ground->points.size(), 0u);
+  EXPECT_EQ(split.below_ground->points.size(), 0u);
+}
+
+TEST(SplitByGround, loses_no_points_on_a_slope)
+{
+  auto cloud = std::make_shared<Cloud>();
+  add_sloped_ground(cloud, 0.175f);
+  add_boulder_on_slope(cloud, 1.2f, 0.0f, 0.25f, 0.175f);
+  finish(cloud);
+
+  const auto split = split_by_ground(cloud, ground_params());
+
+  EXPECT_EQ(
+    split.ground->points.size() + split.above_ground->points.size() +
+      split.below_ground->points.size(),
+    cloud->points.size());
+}
+
+TEST(Pipeline, detects_a_boulder_on_a_slope)
+{
+  // The payoff. One rock on a 10 degree slope, one detection out, near where
+  // it was put -- with no adjustment to ground_z, which is still the level
+  // value and still wrong for most of this scene.
+  constexpr float kSlope = 0.175f;
+
+  auto cloud = std::make_shared<Cloud>();
+  add_sloped_ground(cloud, kSlope);
+  add_boulder_on_slope(cloud, 1.2f, 0.0f, 0.25f, kSlope);
+  finish(cloud);
+
+  const auto split = split_by_ground(cloud, ground_params());
+  ASSERT_TRUE(split.plane.fitted);
+
+  const auto clusters = extract_clusters(split.above_ground, cluster_params());
+
+  DimensionFilter filter;
+  filter.min_dimension = 0.05;
+  filter.max_dimension = 1.50;
+  filter.min_height = 0.03;
+
+  const auto boulders = filter_by_dimensions(clusters, filter);
+
+  ASSERT_EQ(boulders.size(), 1u);
+  EXPECT_NEAR(boulders[0].centroid.x(), 1.2f, 0.10f);
+  EXPECT_NEAR(boulders[0].centroid.y(), 0.0f, 0.10f);
+}
+
+TEST(Pipeline, the_flat_threshold_goes_blind_on_the_same_slope)
+{
+  // The bug the fit exists to remove, kept as a test so that turning fitting
+  // off is a visibly worse answer rather than a quiet one. Same scene as
+  // detects_a_boulder_on_a_slope, fit_plane off.
+  //
+  // The failure is worse than the false positives it looks like it should be.
+  // The whole floor comes back as one contiguous above-ground cluster, the
+  // rock is joined to it, and the size filter then throws the lot away as a
+  // wall -- so the detector does not over-report, it reports NOTHING. A rover
+  // driving on that sees a clear path into a boulder.
+  constexpr float kSlope = 0.175f;
+
+  auto cloud = std::make_shared<Cloud>();
+  add_sloped_ground(cloud, kSlope);
+  add_boulder_on_slope(cloud, 1.2f, 0.0f, 0.25f, kSlope);
+  finish(cloud);
+
+  auto params = ground_params();
+  params.fit_plane = false;
+
+  const auto split = split_by_ground(cloud, params);
+
+  ASSERT_FALSE(split.plane.fitted);
+  // Most of the floor, not just the rock, is now "above ground".
+  EXPECT_GT(split.above_ground->points.size(), cloud->points.size() / 2)
+    << "if this ever stops holding, the flat threshold got better and this "
+       "test is the one to re-derive";
+
+  const auto clusters = extract_clusters(split.above_ground, cluster_params());
+
+  DimensionFilter filter;
+  filter.min_dimension = 0.05;
+  filter.max_dimension = 1.50;
+  filter.min_height = 0.03;
+
+  EXPECT_EQ(filter_by_dimensions(clusters, filter).size(), 0u)
+    << "the rock is swallowed by the floor-sized cluster and filtered out with it";
 }
 
 TEST(ExtractClusters, finds_two_separated_boulders_at_the_right_places)

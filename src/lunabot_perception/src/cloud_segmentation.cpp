@@ -16,8 +16,9 @@
 //   - assign a real confidence. The score is a constant.
 //   - track anything over time. Every frame is independent, so detections
 //     flicker and IDs mean nothing.
-//   - cope with a sloped or uneven ground plane. The split is a flat
-//     z-threshold.
+//   - cope with ground that is not PLANAR. The plane is now fitted rather
+//     than assumed, so a slope is fine and so is a wrong `ground_z`, but a
+//     crest or a dip still splits badly -- one plane is one plane.
 //
 // It exists so that the topic, the message type and the frame conventions are
 // fixed and exercised now. Replacing it with an RGB-D network or an Isaac ROS
@@ -33,9 +34,13 @@
 #include <pcl/filters/crop_box.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl/segmentation/sac_segmentation.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <vector>
 
@@ -75,16 +80,132 @@ Cloud::Ptr crop(
   return output;
 }
 
+float GroundPlane::slope() const
+{
+  // The normal is unit length and oriented upwards by the time anything can
+  // observe it, so its z component is the cosine of the tilt directly. The
+  // clamp is for the float rounding that puts it at 1.0000001 on an exactly
+  // level plane, where acos returns NaN.
+  return std::acos(std::clamp(coefficients.z(), -1.0f, 1.0f));
+}
+
+float GroundPlane::height_below_origin() const
+{
+  // Solve ax + by + cz + d = 0 at x = y = 0. c cannot be zero for a plane
+  // that passed the slope check, but this is also called on planes that have
+  // not passed anything yet.
+  const float c = coefficients.z();
+  if (std::abs(c) < 1e-6f) {
+    return std::numeric_limits<float>::quiet_NaN();
+  }
+  return -coefficients.w() / c;
+}
+
+GroundPlane fit_ground_plane(const Cloud::ConstPtr & input, const GroundParameters & params)
+{
+  GroundPlane plane;
+  // The fallback, and the answer whenever a fit is rejected below: the level
+  // plane z = ground_z, written as 0x + 0y + 1z - ground_z = 0.
+  plane.coefficients = Eigen::Vector4f(0.0f, 0.0f, 1.0f, -static_cast<float>(params.ground_z));
+
+  if (!params.fit_plane || input->points.size() < 3) {
+    return plane;
+  }
+
+  pcl::SACSegmentation<PointT> segmentation;
+  // PERPENDICULAR_PLANE with the Z axis means "plane perpendicular to Z",
+  // i.e. normal within setEpsAngle of vertical. The naming reads backwards;
+  // the constraint is the one we want, and having RANSAC enforce it beats
+  // fitting freely and discarding, because a tilted candidate can otherwise
+  // out-score the ground and leave nothing to fall back from.
+  segmentation.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
+  segmentation.setMethodType(pcl::SAC_RANSAC);
+  segmentation.setAxis(Eigen::Vector3f::UnitZ());
+  segmentation.setEpsAngle(params.max_slope);
+  segmentation.setDistanceThreshold(params.plane_distance_threshold);
+  segmentation.setMaxIterations(params.max_iterations);
+  // Refit the winner over its inliers. Worth it: the raw three-point plane is
+  // as noisy as the three points, and this is the plane every distance in the
+  // frame is measured against.
+  segmentation.setOptimizeCoefficients(true);
+  segmentation.setInputCloud(input);
+
+  pcl::PointIndices inliers;
+  pcl::ModelCoefficients coefficients;
+  segmentation.segment(inliers, coefficients);
+
+  if (coefficients.values.size() != 4 || inliers.indices.empty()) {
+    return plane;
+  }
+
+  Eigen::Vector4f candidate(
+    coefficients.values[0], coefficients.values[1], coefficients.values[2], coefficients.values[3]);
+
+  const float norm = candidate.head<3>().norm();
+  if (norm < 1e-6f) {
+    return plane;
+  }
+  candidate /= norm;
+
+  // Orient upwards. RANSAC's normal points whichever way its sample implied,
+  // so without this the sign of every height in the frame is a coin flip.
+  if (candidate.z() < 0.0f) {
+    candidate = -candidate;
+  }
+
+  GroundPlane fitted;
+  fitted.coefficients = candidate;
+  fitted.inlier_count = inliers.indices.size();
+
+  // Three sanity checks, each rejecting to the level fallback. They are
+  // separate rather than one score because they fail for different reasons
+  // and the fix for each is a different parameter.
+
+  // Too little support: whatever this is, it is not the arena floor.
+  const double inlier_fraction =
+    static_cast<double>(inliers.indices.size()) / static_cast<double>(input->points.size());
+  if (inlier_fraction < params.min_inlier_fraction) {
+    return plane;
+  }
+
+  // Too steep. setEpsAngle already refused tilted candidates, but
+  // setOptimizeCoefficients re-fits afterwards and is not bound by it.
+  if (fitted.slope() > static_cast<float>(params.max_slope)) {
+    return plane;
+  }
+
+  // In the wrong place. This is what catches a plane that locked onto the top
+  // of a large rock: correctly horizontal, well supported, and half a metre
+  // too high.
+  // NaN first: a NaN deviation compares false against everything, so testing
+  // the deviation alone would let a degenerate plane through.
+  const float height = fitted.height_below_origin();
+  const float deviation = std::abs(height - static_cast<float>(params.ground_z));
+  if (!std::isfinite(height) || deviation > static_cast<float>(params.max_height_deviation)) {
+    return plane;
+  }
+
+  fitted.fitted = true;
+  return fitted;
+}
+
 GroundSplit split_by_ground(const Cloud::ConstPtr & input, const GroundParameters & params)
 {
-  GroundSplit split{
-    std::make_shared<Cloud>(), std::make_shared<Cloud>(), std::make_shared<Cloud>()};
+  GroundSplit split;
+  split.ground = std::make_shared<Cloud>();
+  split.above_ground = std::make_shared<Cloud>();
+  split.below_ground = std::make_shared<Cloud>();
+  split.plane = fit_ground_plane(input, params);
 
-  const float ground_z = static_cast<float>(params.ground_z);
+  const Eigen::Vector3f normal = split.plane.coefficients.head<3>();
+  const float offset = split.plane.coefficients.w();
   const float threshold = static_cast<float>(params.plane_distance_threshold);
 
   for (const auto & point : input->points) {
-    const float height = point.z - ground_z;
+    // Signed perpendicular distance, positive above the plane because the
+    // normal points up. On the fallback plane this is exactly the old
+    // `point.z - ground_z`.
+    const float height = normal.dot(Eigen::Vector3f(point.x, point.y, point.z)) + offset;
 
     if (std::abs(height) <= threshold) {
       split.ground->points.push_back(point);
