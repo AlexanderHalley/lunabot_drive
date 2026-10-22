@@ -133,6 +133,10 @@ TF_OWNERS = {
 SLAM_TF_OWNERS = {'rtabmap': {'rtabmap'}, 'cuvslam': {'visual_slam_node'}, 'none': set()}
 
 
+
+def _stamp_seconds(message) -> float:
+    return message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
+
 class Result:
     """One check, its verdict, and enough detail to act on a failure."""
 
@@ -386,7 +390,8 @@ class StackChecker(Node):
         try:
             if not self.wait_for(lambda: bool(odom), self._args.timeout):
                 return [Result('odometry responds to /cmd_vel', False, 'no /odom messages at all')]
-            start = odom[-1].pose.pose.position
+            start_message = odom[-1]
+            start = start_message.pose.pose.position
 
             end = time.time() + 2.0
             while time.time() < end:
@@ -397,13 +402,19 @@ class StackChecker(Node):
                 publisher.publish(message)
                 rclpy.spin_once(self, timeout_sec=0.05)
 
-            final = odom[-1].pose.pose.position
+            final_message = odom[-1]
+            final = final_message.pose.pose.position
             travelled = ((final.x - start.x) ** 2 + (final.y - start.y) ** 2) ** 0.5
+            # Elapsed time from the odom stamps, not the wall clock: Isaac does
+            # not run at real time (about 1.5x on the desktop), so 2 s of
+            # commands is not 2 s of driving.
+            elapsed = _stamp_seconds(final_message) - _stamp_seconds(start_message)
             return [
                 Result(
                     'odometry responds to /cmd_vel',
                     travelled > 0.05,
-                    f'travelled {travelled:.3f} m in 2 s at 0.2 m/s',
+                    f'travelled {travelled:.3f} m in {elapsed:.2f} s of robot time '
+                    f'commanding 0.2 m/s',
                 )
             ]
         finally:

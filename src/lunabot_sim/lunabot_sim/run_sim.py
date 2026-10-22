@@ -32,6 +32,7 @@ import argparse
 import logging
 import signal
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -52,6 +53,12 @@ def parse_args(argv=None):
         '--seed', type=int, default=0, help='Boulder layout seed. Same seed, same scene.'
     )
     parser.add_argument('--headless', action='store_true', help='No viewport.')
+    parser.add_argument(
+        '--no-realtime',
+        dest='realtime',
+        action='store_false',
+        help='Run as fast as the GPU allows instead of pacing to real time.',
+    )
     parser.add_argument('--domain-id', type=int, default=42, help='ROS_DOMAIN_ID for the bridge.')
     parser.add_argument(
         '--ground-truth',
@@ -148,6 +155,7 @@ def _run(args, simulation_app) -> int:
         articulation_path = importer.add_to_stage(robot_usd, robot_path)
     else:
         articulation_path = importer.import_urdf(Path(args.urdf), robot_path)
+    _place_on_ground(robot_path, Path(args.urdf))
     articulation.configure(articulation_path, robot_path=robot_path)
     articulation.set_solver_iterations(articulation_path)
 
@@ -180,10 +188,49 @@ def _run(args, simulation_app) -> int:
     # update is what evaluates the OnPlaybackTick graphs: with render=False
     # physics steps, the timeline plays, and not one ROS message is published.
     # Headless only drops the window.
+    pacer = RealTimePacer(world) if args.realtime else None
     while running and simulation_app.is_running():
         world.step(render=True)
+        if pacer is not None:
+            pacer.wait()
 
     return 0
+
+
+class RealTimePacer:
+    """Hold the simulation to a real-time factor of 1.0.
+
+    Isaac does not pace itself: on the desktop it runs 1.2-1.6x real time.
+    The ROS stack follows /clock and does not care, but a person teleoperating,
+    a script timing /cmd_vel by the wall clock, or a bag recorded alongside
+    all do. After each step this sleeps off however far simulated time has
+    run ahead of wall time.
+
+    It only slows the sim down. When a step takes longer than it simulates,
+    the sim falls behind and nothing here can help -- see "real-time factor"
+    in docs/SIM_ISAAC.md. Once more than MAX_LAG behind, the reference is
+    reset, so a slow stretch (shader compile, a heavy scene) is not followed by
+    a sprint to catch up, which is the one thing worse than running slow.
+    """
+
+    MAX_LAG = 0.25  # seconds
+
+    def __init__(self, world):
+        self._world = world
+        self._reset()
+
+    def _reset(self):
+        self._wall_start = time.monotonic()
+        self._sim_start = self._world.current_time
+
+    def wait(self):
+        ahead = (self._world.current_time - self._sim_start) - (
+            time.monotonic() - self._wall_start
+        )
+        if ahead > 0:
+            time.sleep(ahead)
+        elif ahead < -self.MAX_LAG:
+            self._reset()
 
 
 def _find_camera_prim(articulation_path: str, urdf_path: Path) -> str:
@@ -221,6 +268,29 @@ def _find_camera_prim(articulation_path: str, urdf_path: Path) -> str:
 
 
 CAMERA_OPTICAL_FRAME = 'oak_d_rgb_camera_optical_frame'
+
+# Dropped from this high onto the ground, so the wheels start just clear of it.
+SPAWN_CLEARANCE_M = 0.005
+
+
+def _place_on_ground(robot_path: str, urdf_path: Path) -> None:
+    """Raise the robot so its wheels start on the ground, not in it.
+
+    Imported as-is, base_link sits at z = 0 with the wheels a full radius
+    below the ground plane. PhysX only partly pushes them back out, and the
+    rover then drives around about 2.5 cm sunk into the terrain. The height
+    comes from the URDF: base_footprint is at z = -wheel_radius under
+    base_link by construction (see lunabot.urdf.xacro).
+    """
+    import omni.usd
+    from pxr import Gf, UsdGeom
+
+    footprint = _urdf_frame_transform(urdf_path, 'base_link', 'base_footprint')
+    height = -footprint[2, 3] + SPAWN_CLEARANCE_M
+
+    prim = omni.usd.get_context().get_stage().GetPrimAtPath(robot_path)
+    UsdGeom.XformCommonAPI(prim).SetTranslate(Gf.Vec3d(0.0, 0.0, height))
+    logger.info('placed %s at z = %.3f m', robot_path, height)
 
 
 def _urdf_frame_transform(urdf_path: Path, parent: str, child: str):

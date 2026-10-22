@@ -199,9 +199,19 @@ both silent. A graph needs the `execution` evaluator in the simulation pipeline 
 follow `execIn` connections. And the main loop must call `world.step(render=True)` even headless,
 because the app update is what evaluates the graphs.
 
-**The rover sits about 2.5 cm low.** Ground truth puts `base_link` at z = 0.075 m against a
-0.1 m wheel radius. Not investigated yet. Suspect contact offsets, or the URDF's inertia estimates,
-which 6.x no longer lets the importer recompute.
+**`/sim/ground_truth/odom` is relative to the spawn pose**, not the world frame: it reads zero at
+start, like `/odom`, which is what makes the two directly comparable. The rover is spawned one
+wheel radius up (read from the URDF's `base_footprint`) plus 5 mm, and settles about 4 mm down.
+Spawned at z = 0 instead, the wheels start a full radius inside the ground and the rover drives
+around 2.5 cm sunk into it.
+
+**The sim is paced to real time.** Isaac does not pace itself, and unpaced it runs ahead: on an
+RTX 5070 Ti about 1.8x alone and 1.4x with the full stack up (worst 2 s window 1.2x).
+`run_sim.py` sleeps off the lead after each step, which holds the real-time factor at 1.00 with
+the stack running, so teleop, wall-clock scripts and recorded bags behave as they would on the
+rover. `--no-realtime` (on `run_isaac_sim.sh` too) runs flat out, for batch runs that only care
+about `/clock`. Pacing can only slow the sim down: if it ever falls behind, it does not sprint to
+catch up afterwards. `check_stack.py --drive` reports against the `/odom` stamps either way.
 
 **The rover does not move at all, and nothing errors.** The first thing to check, and it is a
 configured parameter rather than a mystery. `TopicBasedSystem::write()` skips publishing when the
@@ -242,7 +252,7 @@ image topics comes from the graph configuration, not the prim name.
 
 **The IMU runs at the physics rate, not 400 Hz.** The 6.x IMU sensor has no frequency setting.
 
-**Real-time factor below ~0.3 makes teleop unusable.** `controller_manager` runs at 100 Hz against
+**A real-time factor below ~0.3 makes teleop unusable.** `controller_manager` runs at 100 Hz against
 the simulated clock, so everything scales together and stays correct — it is just unpleasant to
 drive. Reduce the render resolution or run `--headless`.
 
