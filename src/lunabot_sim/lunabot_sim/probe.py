@@ -45,6 +45,7 @@ from lunabot_sim import compat
 # fails if these two lists ever drift from what the code actually creates.
 REQUIRED_BRIDGE_NODES = (
     'ROS2CameraHelper',
+    'ROS2CameraInfoHelper',
     'ROS2Context',
     'ROS2PublishClock',
     'ROS2PublishImu',

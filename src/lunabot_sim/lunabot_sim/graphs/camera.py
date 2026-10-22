@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 RGB = 'rgb'
 DEPTH = 'depth'
 DEPTH_PCL = 'depth_pcl'
-CAMERA_INFO = 'camera_info'
 # ================================================
 
 
@@ -62,7 +61,10 @@ def build(
         # stream would render the scene three times per frame.
         ('RenderProduct', compat.core_node_type('IsaacCreateRenderProduct')),
         ('PublishRGB', compat.og_node_type('ROS2CameraHelper')),
+        ('PublishRGBRaw', compat.og_node_type('ROS2CameraHelper')),
         ('PublishDepth', compat.og_node_type('ROS2CameraHelper')),
+        ('PublishRGBInfo', compat.og_node_type('ROS2CameraInfoHelper')),
+        ('PublishDepthInfo', compat.og_node_type('ROS2CameraInfoHelper')),
     ]
 
     values = ctx_values + [
@@ -72,27 +74,44 @@ def build(
         ('RenderProduct.inputs:enabled', True),
         # The frame_id the real driver publishes. robot_state_publisher owns
         # the transform for it, from the URDF -- Isaac does not publish TF.
+        #
+        # image_rect is what rtabmap reads. A render has no lens distortion,
+        # so the same image is rectified by construction; image_raw carries
+        # it too, because the contract lists it for debugging.
         ('PublishRGB.inputs:frameId', 'oak_d_rgb_camera_optical_frame'),
-        ('PublishRGB.inputs:topicName', 'oak_d/rgb/image_raw'),
+        ('PublishRGB.inputs:topicName', 'oak_d/rgb/image_rect'),
         ('PublishRGB.inputs:type', RGB),
-        # True: publish camera_info alongside. rtabmap needs intrinsics, and a
-        # topic with images and no camera_info is a subtle way to have SLAM
-        # sit there receiving nothing it can use.
         ('PublishRGB.inputs:enableSemanticLabels', False),
+        ('PublishRGBRaw.inputs:frameId', 'oak_d_rgb_camera_optical_frame'),
+        ('PublishRGBRaw.inputs:topicName', 'oak_d/rgb/image_raw'),
+        ('PublishRGBRaw.inputs:type', RGB),
         ('PublishDepth.inputs:frameId', 'oak_d_rgb_camera_optical_frame'),
         ('PublishDepth.inputs:topicName', 'oak_d/stereo/image_raw'),
         ('PublishDepth.inputs:type', DEPTH),
+        # Intrinsics. rtabmap synchronises image, depth AND camera_info, so
+        # without these it receives frames and never uses one -- the "did not
+        # receive data" warning, with images plainly on the wire. Depth
+        # renders from the same camera, so both carry the same intrinsics.
+        ('PublishRGBInfo.inputs:frameId', 'oak_d_rgb_camera_optical_frame'),
+        ('PublishRGBInfo.inputs:topicName', 'oak_d/rgb/camera_info'),
+        ('PublishDepthInfo.inputs:frameId', 'oak_d_rgb_camera_optical_frame'),
+        ('PublishDepthInfo.inputs:topicName', 'oak_d/stereo/camera_info'),
     ]
 
-    connections = [
-        ('OnTick.outputs:tick', 'RenderProduct.inputs:execIn'),
-        ('RenderProduct.outputs:execOut', 'PublishRGB.inputs:execIn'),
-        ('RenderProduct.outputs:execOut', 'PublishDepth.inputs:execIn'),
-        ('RenderProduct.outputs:renderProductPath', 'PublishRGB.inputs:renderProductPath'),
-        ('RenderProduct.outputs:renderProductPath', 'PublishDepth.inputs:renderProductPath'),
-        ('Context.outputs:context', 'PublishRGB.inputs:context'),
-        ('Context.outputs:context', 'PublishDepth.inputs:context'),
-    ]
+    connections = [('OnTick.outputs:tick', 'RenderProduct.inputs:execIn')]
+    publishers = (
+        'PublishRGB',
+        'PublishRGBRaw',
+        'PublishDepth',
+        'PublishRGBInfo',
+        'PublishDepthInfo',
+    )
+    for publisher in publishers:
+        connections += [
+            ('RenderProduct.outputs:execOut', f'{publisher}.inputs:execIn'),
+            ('RenderProduct.outputs:renderProductPath', f'{publisher}.inputs:renderProductPath'),
+            ('Context.outputs:context', f'{publisher}.inputs:context'),
+        ]
 
     if publish_pointcloud:
         # On the real robot the cloud is built by depth_image_proc on the Pi

@@ -263,11 +263,31 @@ def _find_camera_prim(articulation_path: str, urdf_path: Path) -> str:
     camera = UsdGeom.Camera.Define(stage, path)
     # Gf matrices are row-vector: the transpose of the column-vector form.
     camera.AddTransformOp().Set(Gf.Matrix4d(transform.T.tolist()))
+
+    # The lens. A bare UsdGeom.Camera is a 50 mm lens (24 degrees across) with
+    # a 1 m near plane: the rover saw a sliver of the arena and nothing within
+    # a metre of the camera -- the ground in front of it least of all.
+    camera.CreateHorizontalApertureAttr().Set(CAMERA_APERTURE_MM)
+    camera.CreateVerticalApertureAttr().Set(CAMERA_APERTURE_MM * 400.0 / 640.0)
+    camera.CreateFocalLengthAttr().Set(
+        CAMERA_APERTURE_MM / 2.0 / np.tan(np.radians(CAMERA_HFOV_DEG) / 2.0)
+    )
+    camera.CreateClippingRangeAttr().Set(Gf.Vec2f(*CAMERA_CLIPPING_M))
     logger.info('created camera prim %s at the %s pose', path, CAMERA_OPTICAL_FRAME)
     return path
 
 
 CAMERA_OPTICAL_FRAME = 'oak_d_rgb_camera_optical_frame'
+
+# OAK-D S2 colour camera (IMX378), standard-FOV variant: 69 degrees across,
+# per the Luxonis datasheet -- VERIFY against your unit. Depth is aligned to
+# RGB on the robot (i_align_depth), so this is the depth FOV too. The aperture
+# only sets the units; the angle is what matters. The near plane is roughly
+# where the OAK-D's stereo depth starts; the far plane is generous because the
+# 2 m clip lives in the consumers, as on hardware.
+CAMERA_HFOV_DEG = 69.0
+CAMERA_APERTURE_MM = 20.955
+CAMERA_CLIPPING_M = (0.2, 20.0)
 
 # Dropped from this high onto the ground, so the wheels start just clear of it.
 SPAWN_CLEARANCE_M = 0.005
