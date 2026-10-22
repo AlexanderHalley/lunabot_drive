@@ -261,6 +261,21 @@ def test_no_camera_profile_lets_the_driver_publish_tf():
         )
 
 
+def test_oak_d_device_parameters_are_under_camera():
+    """depthai-ros reads the device settings from the camera: group.
+
+    The 2026 config had i_mx_id and i_usb_speed at the top level, where they
+    are kept as undeclared parameters and never applied -- harmless only while
+    they match the driver defaults, and silently wrong the day someone pins a
+    serial number. The upstream examples (multicam_example.yaml) nest them.
+    """
+    device_keys = {'i_mx_id', 'i_usb_speed', 'i_pipeline_type', 'i_nn_type'}
+    for path in CONFIG_DIR.glob('oak_d_s2*.yaml'):
+        parameters = yaml.safe_load(path.read_text())['/**']['ros__parameters']
+        stray = device_keys & set(parameters)
+        assert not stray, f'{path.name}: {sorted(stray)} belong under camera:, not the top level'
+
+
 def test_the_drive_status_watchdog_matches_the_controller_watchdog():
     """DriveStatus.watchdog_triggered reports diff_drive_controller's watchdog.
 

@@ -14,10 +14,12 @@
 
 /**:
   ros__parameters:
-    i_mx_id: ''
-    i_usb_speed: 'SUPER'
-
     camera:
+      # Device selection. Under camera:, where depthai-ros declares them; at
+      # the top level they are kept as undeclared values and never applied.
+      i_mx_id: ''
+      i_usb_speed: 'SUPER'
+
       # No on-device neural network. Frees the VPU and a chunk of USB
       # bandwidth; boulder detection runs on the host from the point cloud.
       i_nn_type: 'none'
