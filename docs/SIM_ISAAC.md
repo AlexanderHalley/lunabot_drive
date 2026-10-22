@@ -125,11 +125,27 @@ Limits: flat ground only (contact = wheel centre within r + 2 cm of z = 0), load
 the wheels on the ground, no grouser geometry (grousers are in the traction numbers), and wheels
 have no grip on boulders.
 
+**Arena** (`scene/layout.py`, drawn by `scene/arena.py`) — `--scene` picks it:
+
+| `--scene` | What | Source |
+|---|---|---|
+| `ucf` (default) | one 8.14 × 4.57 m lane: start box at the end wall beside the fiducial rail, 4.07 m obstacle zone, 4.07 m excavation zone, 2.6 × 2 m construction zone in the far corner with the 1.5 × 0.9 m berm target, posts at the corners and mid-walls | UCF Lunabotics 2025 Guidebook §3.1, Fig. 1 and Fig. 4 |
+| `ksc` | the Artemis Arena, 6.8 × 5.0 m, central column | NASA KSC facility page for size and column; **zones, column size, wall height approximate** |
+| `open` | the old placeholder: no walls, rocks in x 1–6, y ±2 | — |
+
+The rover spawns at the origin facing +X, inside the start zone; the competition draws the start
+pose at random, which the sim does not do yet. Walls (0.6 m, height assumed) and posts are static
+colliders. Zone outlines and the berm target are **visual-only floor markings** — the real arena is
+unmarked sand, and the lines hand feature-based SLAM landmarks it will not get on the day, so pass
+`--no-markings` for perception or SLAM evaluation. Craters are not modelled (flat terrain). The
+layout is written into the ground-truth JSON beside the boulders.
+
 **Boulders** — seeded rejection sampling, `numpy.random.default_rng(seed)`. Same seed, same scene,
 every time. That determinism is what makes "did that change help?" answerable at all; evaluating a
 perception change against a different random scene tells you nothing.
 
-Rocks are irregular primitives, not meshes — a rock's contact behaviour is a friction question, not
+In a walled arena they stay 0.3 m inside the walls and out of the start zone, the construction zone
+(the guidebook puts no obstacles there) and the posts. Rocks are irregular primitives, not meshes — a rock's contact behaviour is a friction question, not
 a geometry one, and convex meshes cost the solver dearly for detail nobody measures. Large ones are
 static; small ones can be shoved.
 

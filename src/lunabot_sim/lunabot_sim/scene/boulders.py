@@ -24,6 +24,8 @@ from pathlib import Path
 
 import numpy as np
 
+from lunabot_sim.scene.layout import Rect
+
 
 @dataclass(frozen=True)
 class Boulder:
@@ -88,6 +90,14 @@ class ArenaConfig:
     """Rejection sampling gives up eventually rather than looping forever when
     count and min_separation are jointly impossible."""
 
+    keep_outs: tuple[Rect, ...] = ()
+    """No rock overlaps these: the start zone (the rover spawns there), the
+    construction zone (the guidebook puts no obstacles in it), posts and the
+    column. Empty for the legacy open scene, which has start_zone_x instead."""
+
+    keep_out_clearance: float = 0.15
+    """Gap kept between a rock's edge and a keep-out, metres."""
+
 
 def scatter(config: ArenaConfig, seed: int) -> list[Boulder]:
     """Place boulders by rejection sampling. Deterministic in `seed`.
@@ -118,6 +128,11 @@ def scatter(config: ArenaConfig, seed: int) -> list[Boulder]:
             # with one that is twice as wide as it is tall.
             extent = np.array([diameter, diameter, diameter]) * rng.uniform(0.7, 1.3, size=3)
 
+            # Half the footprint's diagonal: the rock may be yawed any way.
+            reach = float(np.hypot(extent[0], extent[1])) / 2.0 + config.keep_out_clearance
+            if any(zone.contains(x, y, margin=reach) for zone in config.keep_outs):
+                continue
+
             shape = 'sphere' if rng.random() < 0.3 else 'cube'
             static = diameter >= config.static_above_diameter
             volume = float(np.prod(extent))
@@ -139,7 +154,9 @@ def scatter(config: ArenaConfig, seed: int) -> list[Boulder]:
     return boulders
 
 
-def to_ground_truth(boulders: list[Boulder], seed: int, config: ArenaConfig) -> dict:
+def to_ground_truth(
+    boulders: list[Boulder], seed: int, config: ArenaConfig, layout: dict | None = None
+) -> dict:
     """Build serialisable ground truth for scoring the detector.
 
     Written next to each run and published on /sim/ground_truth/boulders in
@@ -147,17 +164,26 @@ def to_ground_truth(boulders: list[Boulder], seed: int, config: ArenaConfig) -> 
     is a direct comparison rather than a format conversion. That symmetry is
     the reason this function exists at all.
     """
-    return {
+    truth = {
         'seed': seed,
         'arena': asdict(config),
         'count': len(boulders),
         'boulders': [asdict(b) for b in boulders],
     }
+    if layout is not None:
+        # Walls, zones and berm target: what a mission planner or a scorer
+        # needs to know about the arena beyond its rocks.
+        truth['layout'] = layout
+    return truth
 
 
 def write_ground_truth(
-    boulders: list[Boulder], seed: int, config: ArenaConfig, path: Path
+    boulders: list[Boulder],
+    seed: int,
+    config: ArenaConfig,
+    path: Path,
+    layout: dict | None = None,
 ) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(to_ground_truth(boulders, seed, config), indent=2))
+    path.write_text(json.dumps(to_ground_truth(boulders, seed, config, layout), indent=2))

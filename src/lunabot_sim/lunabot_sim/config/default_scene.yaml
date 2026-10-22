@@ -11,6 +11,8 @@
 seed: 0
 
 arena:
+  # These are the 'open' scene's bounds only. The competition arenas (walls,
+  # zones, keep-outs) are in scene/layout.py, chosen with --scene.
   # PLACEHOLDER dimensions, roughly Lunabotics-scale. Replace with the real
   # competition spec when published.
   x_min: 1.0

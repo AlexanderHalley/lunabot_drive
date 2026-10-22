@@ -48,7 +48,18 @@ def parse_args(argv=None):
     parser.add_argument(
         '--urdf', required=True, help='Expanded URDF. Written by run_isaac_sim.sh.'
     )
-    parser.add_argument('--scene', default='default', help='Scene config name.')
+    parser.add_argument(
+        '--scene',
+        default='default',
+        help="Arena layout: 'ucf' (default), 'ksc' (approximate) or 'open' (no walls).",
+    )
+    parser.add_argument(
+        '--no-markings',
+        dest='markings',
+        action='store_false',
+        help='No painted zone outlines. The real arena is unmarked sand; use this for '
+        'perception and SLAM evaluation.',
+    )
     parser.add_argument(
         '--seed', type=int, default=0, help='Boulder layout seed. Same seed, same scene.'
     )
@@ -149,7 +160,7 @@ def _run(args, simulation_app) -> int:
     )
 
     # ---- Scene ----
-    config = arena.SceneConfig(seed=args.seed)
+    config = arena.scene_config(args.scene, seed=args.seed, markings=args.markings)
     ground_truth_path = Path(
         args.ground_truth or (Path(args.urdf).parent / f'ground_truth_seed{args.seed}.json')
     )

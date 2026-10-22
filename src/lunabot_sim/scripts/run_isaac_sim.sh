@@ -7,6 +7,8 @@
 # --headless drops the viewport. --no-realtime stops pacing the sim to real
 # time (see RealTimePacer in run_sim.py). --no-sand puts plain PhysX friction
 # back under the wheels instead of the sand model (robot/soil.py).
+# --scene ucf|ksc|open picks the arena (scene/layout.py; default ucf).
+# --no-markings drops the painted zone outlines (use it for SLAM/perception).
 #
 # This script is the seam between two Python environments that must not mix:
 #
@@ -33,6 +35,7 @@ SEED=0
 HEADLESS=""
 REALTIME=""
 SAND=""
+MARKINGS=""
 DOMAIN_ID="${ROS_DOMAIN_ID:-42}"
 CACHE_DIR="${LUNABOT_SIM_CACHE:-${HOME}/.cache/lunabot_sim}"
 
@@ -49,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     --headless)  HEADLESS="--headless"; shift ;;
     --no-realtime) REALTIME="--no-realtime"; shift ;;
     --no-sand)   SAND="--no-sand"; shift ;;
+    --no-markings) MARKINGS="--no-markings"; shift ;;
     -h|--help)   usage 0 ;;
     *) echo "unknown argument: $1" >&2; usage 1 ;;
   esac
@@ -107,4 +111,5 @@ exec "${ISAAC_SIM_PATH}/python.sh" -m lunabot_sim.run_sim \
   --domain-id "${DOMAIN_ID}" \
   ${HEADLESS} \
   ${REALTIME} \
-  ${SAND}
+  ${SAND} \
+  ${MARKINGS}
