@@ -102,13 +102,13 @@ def parse_args(argv):
     parser.add_argument(
         '--wheel-radius',
         type=float,
-        default=0.10,
+        default=0.15,
         help='Only for the ground-truth integration. Keep it equal to controllers.yaml.',
     )
     parser.add_argument(
         '--wheel-separation',
         type=float,
-        default=0.50,
+        default=0.554,
         help='Only for the ground-truth integration. Keep it equal to controllers.yaml.',
     )
     parser.add_argument(

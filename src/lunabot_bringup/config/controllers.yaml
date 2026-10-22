@@ -44,8 +44,8 @@ diff_drive_controller:
     # reports it: no error, no warning, just a robot that believes it
     # travelled a different distance than it did. Change one, change the
     # other, same commit.
-    wheel_separation: 0.50
-    wheel_radius: 0.10
+    wheel_separation: 0.554
+    wheel_radius: 0.15
     # =============================================================
 
     # Skid-steer correction. A skid-steer rover's EFFECTIVE track width during

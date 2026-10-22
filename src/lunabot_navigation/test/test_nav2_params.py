@@ -179,25 +179,35 @@ def test_frames_match_the_contract():
 
 
 def test_footprint_matches_the_chassis():
-    """The footprint is the chassis from properties.xacro, stated twice more.
+    """The footprint is the robot's outline from properties.xacro, stated twice more.
 
-    A footprint smaller than the robot is how rovers get wedged, and nothing
-    about the symptom points at this file.
+    The outline is whichever reaches further, the chassis or the wheels: the
+    wheels stand proud of the chassis sides, and a footprint of the chassis
+    alone leaves them out. A footprint smaller than the robot is how rovers
+    get wedged, and nothing about the symptom points at this file.
     """
-    length = xacro_property('chassis_length')
-    width = xacro_property('chassis_width')
+    half_length = max(
+        xacro_property('chassis_length') / 2,
+        xacro_property('wheel_base') / 2 + xacro_property('wheel_radius'),
+    )
+    half_width = max(
+        xacro_property('chassis_width') / 2,
+        xacro_property('wheel_separation') / 2 + xacro_property('wheel_width') / 2,
+    )
+    length, width = 2 * half_length, 2 * half_width
     expected = [
-        [length / 2, width / 2],
-        [length / 2, -width / 2],
-        [-length / 2, -width / 2],
-        [-length / 2, width / 2],
+        [half_length, half_width],
+        [half_length, -half_width],
+        [-half_length, -half_width],
+        [-half_length, half_width],
     ]
 
     config = params()
     for name in ['local_costmap', 'global_costmap']:
         footprint = yaml.safe_load(config[name][name]['ros__parameters']['footprint'])
         message = (
-            f'{name} footprint does not match the {length} x {width} chassis in properties.xacro'
+            f'{name} footprint does not match the {length:.3f} x {width:.3f} outline of the '
+            'chassis and wheels in properties.xacro'
         )
         assert len(footprint) == len(expected), message
         # Corner by corner: pytest.approx does not descend into nested lists.

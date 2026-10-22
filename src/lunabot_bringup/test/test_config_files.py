@@ -276,6 +276,28 @@ def test_oak_d_device_parameters_are_under_camera():
         assert not stray, f'{path.name}: {sorted(stray)} belong under camera:, not the top level'
 
 
+def test_the_isaac_double_uses_the_controller_kinematics():
+    """isaac_double.py integrates ground truth from the same wheel geometry.
+
+    Its --wheel-radius and --wheel-separation defaults are a third copy of the
+    two numbers controllers.yaml and the URDF already share. Out of step, the
+    sim bringup test's ground truth drifts from /odom, and the drift reads as
+    an odometry bug in code that has none.
+    """
+    source = (Path(__file__).resolve().parent / 'isaac_double.py').read_text()
+    defaults = {
+        name: float(value)
+        for name, value in re.findall(
+            r"'--(wheel-radius|wheel-separation)',\s*type=float,\s*default=([\d.]+)", source
+        )
+    }
+    controller = yaml.safe_load((CONFIG_DIR / 'controllers.yaml').read_text())[
+        'diff_drive_controller'
+    ]['ros__parameters']
+    assert defaults['wheel-radius'] == pytest.approx(controller['wheel_radius'])
+    assert defaults['wheel-separation'] == pytest.approx(controller['wheel_separation'])
+
+
 def test_the_drive_status_watchdog_matches_the_controller_watchdog():
     """DriveStatus.watchdog_triggered reports diff_drive_controller's watchdog.
 

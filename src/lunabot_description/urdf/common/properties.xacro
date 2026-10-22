@@ -24,17 +24,33 @@
     ===================================================================
   -->
 
+  <!--
+    2027 DESIGN VALUES. Chassis and wheel numbers below marked "design" come
+    from the team's 2027 design model (ryan-hay.com/rover-sim, read
+    2026-10-21). That model is a guideline, not a measurement: it is ahead of
+    the build and will drift from it. Replace each with the measured value
+    once the rover exists, and keep controllers.yaml in step.
+  -->
   <!-- ==================== Chassis ==================== -->
   <!-- Body box. base_link sits at its geometric centre, at axle height. -->
-  <xacro:property name="chassis_length" value="0.70"/>   <!-- X, fore-aft -->
-  <xacro:property name="chassis_width"  value="0.40"/>   <!-- Y, lateral  -->
+  <!-- design: 32 x 17 in frame of 2 x 1 in 6061 tube, centred over the axles -->
+  <xacro:property name="chassis_length" value="0.813"/>  <!-- X, fore-aft -->
+  <xacro:property name="chassis_width"  value="0.432"/>  <!-- Y, lateral  -->
+  <!-- PLACEHOLDER. The real frame sits above the axles (21-26 cm off the
+       ground) with the drive units and e-box hanging off it; one box at axle
+       height is a stand-in until the description models those parts. -->
   <xacro:property name="chassis_height" value="0.20"/>   <!-- Z           -->
-  <xacro:property name="chassis_mass"   value="25.0"/>   <!-- kg, everything but wheels -->
+  <!-- design: 32.3 kg dry, less four 0.85 kg wheels. Includes the drum,
+       hopper and actuators, which the description does not model yet. -->
+  <xacro:property name="chassis_mass"   value="28.9"/>   <!-- kg, everything but wheels -->
 
   <!-- ==================== Wheels ==================== -->
-  <xacro:property name="wheel_radius"    value="0.10"/>
-  <xacro:property name="wheel_width"     value="0.08"/>
-  <xacro:property name="wheel_mass"      value="1.5"/>
+  <!-- design: 0.136 m tread band with 1.4 cm grousers, 9 cm wide. The
+       rolling radius on regolith lies between the band and the grouser tips;
+       0.15 is the tips. Measure it: odometry scales with it directly. -->
+  <xacro:property name="wheel_radius"    value="0.15"/>
+  <xacro:property name="wheel_width"     value="0.09"/>
+  <xacro:property name="wheel_mass"      value="0.85"/>
 
   <!--
     Lateral distance between the left and right wheel centreplanes.
@@ -43,12 +59,14 @@
     slip, because a skid-steer rover's effective track during a turn is
     wider than its geometric one. Do not pre-bake the fudge factor here.
   -->
-  <xacro:property name="wheel_separation" value="0.50"/>
+  <!-- design: wheel centreplanes at +-0.277 m -->
+  <xacro:property name="wheel_separation" value="0.554"/>
 
   <!-- Fore-aft distance between the front and rear axles. Does not enter
        the differential kinematics; it sets where the wheels are drawn and
        how the robot behaves in sim contact. -->
-  <xacro:property name="wheel_base" value="0.44"/>
+  <!-- design: axles 0.62 m apart -->
+  <xacro:property name="wheel_base" value="0.62"/>
 
   <!-- ==================== OAK-D S2 ==================== -->
   <!-- Enclosure, from the Luxonis datasheet. VERIFY against your unit. -->
@@ -87,7 +105,9 @@
     PLACEHOLDER: derive it as
         motor_free_speed_rpm / gear_ratio * 2*pi / 60
     and then measure, because free speed under load is not free speed.
-    16.0 rad/s at r=0.10 m is about 1.6 m/s, which is plausible and unverified.
+    16.0 rad/s at r=0.15 m is about 2.4 m/s, far above the 2027 design's
+    0.3 m/s top speed, so expect this to come down a long way once the drive
+    gearbox ratio is chosen (the design names a 3-stage planetary, no ratio).
   -->
   <xacro:property name="max_wheel_rad_s" value="16.0"/>
   <xacro:property name="gear_ratio"      value="20.0"/>
