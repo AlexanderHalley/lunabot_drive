@@ -137,3 +137,43 @@ def test_an_unknown_lighting_says_what_exists():
     with pytest.raises(ValueError, match='arena'):
         arena.scene_config('ucf', light='disco')
 
+
+# ==================== Regolith texture ====================
+# Small size: the arithmetic is the same at 4096.
+from lunabot_sim.scene.terrain import regolith_texture, write_png  # noqa: E402
+
+
+def test_the_texture_is_deterministic_and_varies_with_seed():
+    assert (regolith_texture(3, 256) == regolith_texture(3, 256)).all()
+    assert (regolith_texture(3, 256) != regolith_texture(4, 256)).any()
+
+
+def test_the_texture_has_contrast_around_the_albedo():
+    """Flat grey gives a camera nothing to match -- the whole point."""
+    grey = regolith_texture(1, 256, contrast=0.45, albedo=0.35)
+    assert abs(grey.mean() / 255.0 - 0.35) < 0.05
+    assert grey.std() > 8
+
+
+def test_the_texture_tiles_seamlessly():
+    """Frequency-domain noise wraps: the first and last rows are neighbours."""
+    grey = regolith_texture(2, 256).astype(float)
+    seam = abs(grey[0] - grey[-1]).mean()
+    interior = abs(grey[100] - grey[101]).mean()
+    assert seam < 2.0 * interior
+
+
+def test_the_png_is_valid(tmp_path):
+    import struct
+    import zlib
+
+    grey = regolith_texture(5, 64)
+    data = write_png(tmp_path / 't.png', grey).read_bytes()
+    assert data[:8] == b'\x89PNG\r\n\x1a\n'
+    width, height = struct.unpack('>II', data[16:24])
+    assert (width, height) == (64, 64)
+    start = data.index(b'IDAT') + 4
+    length = struct.unpack('>I', data[start - 8 : start - 4])[0]
+    raw = zlib.decompress(data[start : start + length])
+    assert len(raw) == 64 * (64 + 1)
+

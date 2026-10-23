@@ -86,7 +86,16 @@ def build(world, config: SceneConfig, ground_truth_path: Path | None = None):
 
     Returns the boulder list for the ground-truth publisher.
     """
-    terrain.build(world, config.terrain)
+    floor = config.layout.floor
+    terrain.build(
+        world,
+        config.terrain,
+        texture_dir=ground_truth_path.parent if ground_truth_path is not None else None,
+        seed=config.seed,
+        # First texture tile starts at the arena corner, so the arena itself
+        # never sees the texture repeat.
+        origin=(floor.x_min, floor.y_min) if floor is not None else (0.0, 0.0),
+    )
     lighting.build(config.lighting)
     _build_arena(config.layout, config.markings)
 

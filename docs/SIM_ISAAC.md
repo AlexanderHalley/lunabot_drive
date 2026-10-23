@@ -106,7 +106,11 @@ from a different place in sim than on the robot. Sim would stop being a test of 
 
 ## What the scene contains
 
-**Terrain** — a flat ground plane with a regolith physics material (0.7 static, 0.6 dynamic). The
+**Terrain** — a flat ground plane, with a procedural **regolith texture** (`terrain.regolith_texture`:
+seeded, seamless, grains + clumps + patches, one 8.2 m tile so the arena never sees a repeat).
+Untextured, the floor gave the camera nothing to match — visual odometry and loop closure had
+nothing to work with and the wheel odometry's slip drift was never corrected. Physics material
+0.7 static, 0.6 dynamic. The
 wheels do **not** use that friction: they ride on a sand model instead.
 
 **Wheels on sand** (`robot/soil.py`, applied by `robot/traction.py`). The 2026 rover could not turn
