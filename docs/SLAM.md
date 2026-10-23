@@ -97,8 +97,16 @@ This is the part that goes wrong silently, so it gets a table.
 odom_source:=auto     # default: ekf, or wheel under hw:=mock (no IMU there)
 odom_source:=wheel    # diff_drive_controller
 odom_source:=visual   # rgbd_odometry or cuVSLAM
-odom_source:=ekf      # robot_localization: wheel forward speed + gyro yaw
+odom_source:=ekf      # robot_localization: wheel + visual forward speed, gyro + visual yaw rate
 ```
+
+With `odom_source:=ekf` and the rtabmap backend, `rgbd_odometry` **also** runs — but only as an EKF
+input: `publish_tf: false`, frame `odom_visual`, publishing on `/odom/visual` (EKF `odom1`, velocities
+only). The camera does not slip in sand; the wheels do. When it loses track it publishes nothing and
+the wheels carry on. `publish_tf` and `odom_frame_id` are set **only** by `rtabmap.launch.py`, per
+mode: a value in `rtabmap.yaml`, keyed by the node's name, beats the launch file's override — with
+`publish_tf: true` in the YAML, visual odometry and the EKF both published `odom → base_link`.
+Tested, as is the same trap for `diff_drive_controller`'s `enable_odom_tf`.
 
 Two publishers on one transform produces a TF tree that looks entirely correct in `view_frames` and
 behaves nondeterministically — transform lookups return whichever arrived most recently. There is a

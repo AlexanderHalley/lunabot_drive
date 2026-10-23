@@ -110,8 +110,12 @@ rtabmap:
 rgbd_odometry:
   ros__parameters:
     frame_id: base_link
-    odom_frame_id: odom
-    publish_tf: true
+    # publish_tf and odom_frame_id are NOT set here. rtabmap.launch.py sets
+    # them per mode: true/odom when visual odometry owns odom -> base_link
+    # (odom_source:=visual), false/odom_visual when it only feeds the EKF. A
+    # value here would WIN over the launch file's (node-name keys beat its
+    # wildcard), and with true here the EKF and visual odometry both
+    # published odom -> base_link. Tested.
 
     # FALSE: on lost tracking, hold the last pose rather than publishing a
     # null odometry message. A null breaks the odom -> base_link chain, and

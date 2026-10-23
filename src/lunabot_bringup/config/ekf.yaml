@@ -71,6 +71,30 @@ ekf_node:
     odom0_relative: false
     odom0_queue_size: 10
 
+    # ==================== Visual odometry ====================
+    # rtabmap's rgbd_odometry, run WITHOUT TF when this EKF is the odom
+    # source (robot.launch.py: VISUAL_ODOM_TOPIC). Forward speed from the
+    # camera, which does not slip. Wheels do: in Isaac's sand the EKF drifted
+    # ~1 m over three arena goals on wheel speed alone. Both are fused; the
+    # camera's covariance is usually far tighter than the wheels' (0.05), so
+    # it dominates while it tracks. When it loses track it publishes nothing,
+    # and the wheels carry on alone. Absent with slam:=none.
+    #
+    # Yaw RATE too, fused with the gyro's: the camera measures rotation
+    # without timing jitter or bias. Gyro-only yaw was 8 deg off after the
+    # arena mission's pivots, which is 0.5 m sideways over a 7 m leg. Never
+    # the camera's absolute pose: it integrates its own velocity, so fusing
+    # both would count the same information twice.
+    odom1: /odom/visual
+    odom1_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, true,
+                   false, false, false]
+    odom1_differential: false
+    odom1_relative: false
+    odom1_queue_size: 10
+
     # ==================== IMU ====================
     imu0: /oak_d/imu/data
     # Yaw rate only.

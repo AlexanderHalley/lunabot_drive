@@ -94,6 +94,7 @@ def test_topic_defaults_match_the_contract():
         'right_info_topic': '/oak_d/right/camera_info',
         'imu_topic': '/oak_d/imu/data',
         'odom_topic': '/odom',
+        'visual_odom_topic': '',  # off unless the EKF fuses it
     }
 
 
@@ -165,3 +166,29 @@ def test_rtabmap_is_configured_for_a_planar_rover():
     assert params['Optimizer/Slam2D'] == 'true'
     # 2D grid, because Nav2's costmap cannot consume an octomap.
     assert params['Grid/3D'] == 'false'
+
+
+def test_visual_odometry_for_the_ekf_never_publishes_tf():
+    """The EKF owns odom -> base_link; its visual-odometry input must not.
+
+    Two publishers on one transform is the bug b959dbd fixed once already.
+    """
+    module = load('rtabmap.launch.py')
+    assert module.VO_FOR_EKF_PARAMETERS['publish_tf'] is False
+    assert module.VO_FOR_EKF_PARAMETERS['odom_frame_id'] != 'odom'
+    assert '**VO_FOR_EKF_PARAMETERS' in Path(module.__file__).read_text()
+
+
+def test_the_config_leaves_odometry_tf_to_the_launch_file():
+    """rtabmap.yaml must not set rgbd_odometry's publish_tf or odom_frame_id.
+
+    The launch file sets them per mode, but a value under the node's own name
+    in the YAML beats the launch file's wildcard-keyed override. With
+    publish_tf: true in the YAML, visual odometry published odom -> base_link
+    right alongside the EKF.
+    """
+    config = yaml.safe_load((PKG / 'config' / 'rtabmap.yaml').read_text())
+    odometry = config['rgbd_odometry']['ros__parameters']
+    assert 'publish_tf' not in odometry
+    assert 'odom_frame_id' not in odometry
+

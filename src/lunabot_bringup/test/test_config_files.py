@@ -381,3 +381,26 @@ def test_teleop_uses_separate_controls():
     ]['ros__parameters']
     assert params['axis_linear']['x'] != params['axis_angular']['yaw']
     assert params['enable_button'] != params['enable_turbo_button']
+
+
+def test_the_ekf_fuses_visual_odometry_where_the_launch_publishes_it():
+    """robot.launch.py's VISUAL_ODOM_TOPIC and ekf.yaml's odom1 are one topic.
+
+    Mismatched, the EKF silently runs on wheel speed alone -- slip and all.
+    Velocities only (vx, and vyaw beside the gyro): VO pose would double-count.
+    """
+    import ast
+
+    tree = ast.parse((CONFIG_DIR.parent / 'launch' / 'robot.launch.py').read_text())
+    topic = next(
+        node.value.value
+        for node in tree.body
+        if isinstance(node, ast.Assign) and node.targets[0].id == 'VISUAL_ODOM_TOPIC'
+    )
+    ekf = yaml.safe_load((CONFIG_DIR / 'ekf.yaml').read_text())['ekf_node']['ros__parameters']
+    assert ekf['odom1'] == topic
+    config = ekf['odom1_config']
+    assert config[6] is True  # vx
+    assert not any(config[:6]), 'visual odometry pose must not be fused'
+
+

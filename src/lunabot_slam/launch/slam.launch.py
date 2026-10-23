@@ -59,6 +59,14 @@ ARGUMENTS = [
             'node may publish this transform.'
         ),
     ),
+    DeclareLaunchArgument(
+        'visual_odom_topic',
+        default_value='',
+        description=(
+            'rtabmap only: also run visual odometry WITHOUT TF, publishing here, '
+            'for the EKF to fuse. Empty = off.'
+        ),
+    ),
     # ---- Topics. Defaults from docs/TOPIC_FRAME_CONTRACT.md. ----
     DeclareLaunchArgument(
         'rgb_topic',
@@ -111,7 +119,7 @@ ARGUMENTS = [
 # cuVSLAM topic to rtabmap would be silently ignored, which is the kind of
 # thing that makes a launch file impossible to reason about.
 _SHARED = ('use_sim_time', 'localization', 'publish_odom_tf', 'imu_topic', 'odom_topic')
-_RTABMAP_ONLY = ('rgb_topic', 'depth_topic', 'camera_info_topic')
+_RTABMAP_ONLY = ('rgb_topic', 'depth_topic', 'camera_info_topic', 'visual_odom_topic')
 _CUVSLAM_ONLY = (
     'left_rect_topic',
     'right_rect_topic',

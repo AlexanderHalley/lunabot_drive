@@ -16,9 +16,14 @@ which happens with odom_source:=visual.
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition, UnlessCondition
+from launch.substitutions import PythonExpression
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+
+# rgbd_odometry as an EKF input: never publishes TF (the EKF owns
+# odom -> base_link), and names its frame so it cannot be mistaken for odom.
+VO_FOR_EKF_PARAMETERS = {'publish_tf': False, 'odom_frame_id': 'odom_visual'}
 
 ARGUMENTS = [
     DeclareLaunchArgument('use_sim_time', default_value='false', description='Use /clock.'),
@@ -31,6 +36,14 @@ ARGUMENTS = [
         'publish_odom_tf',
         default_value='false',
         description='Run rgbd_odometry and let it publish odom -> base_link.',
+    ),
+    DeclareLaunchArgument(
+        'visual_odom_topic',
+        default_value='',
+        description=(
+            'If set (and publish_odom_tf is false), also run rgbd_odometry WITHOUT '
+            'TF, publishing here, for the EKF to fuse slip-free velocity.'
+        ),
     ),
     DeclareLaunchArgument(
         'rgb_topic', default_value='/oak_d/rgb/image_rect', description='Rectified RGB.'
@@ -120,7 +133,47 @@ def generate_launch_description():
         executable='rgbd_odometry',
         name='rgbd_odometry',
         condition=IfCondition(LaunchConfiguration('publish_odom_tf')),
-        **common,
+        parameters=[
+            config,
+            {'use_sim_time': use_sim_time, 'publish_tf': True, 'odom_frame_id': 'odom'},
+        ],
+        remappings=remappings,
+        output='screen',
     )
 
-    return LaunchDescription(ARGUMENTS + [mapping, localization, visual_odometry])
+    # Visual odometry as an EKF INPUT (odom_source:=ekf): velocity from the
+    # camera, which does not slip. Wheels do -- in sand, by tens of percent
+    # at cusps and stalls -- and the EKF's position drifted by a metre over
+    # three arena goals on wheel speed alone. publish_tf is forced off and the
+    # frame renamed: the EKF owns odom -> base_link, and this must never be
+    # mistaken for it.
+    fusion_remappings = [
+        (old, LaunchConfiguration('visual_odom_topic') if old == 'odom' else new)
+        for old, new in remappings
+    ]
+    visual_odometry_for_ekf = Node(
+        package='rtabmap_odom',
+        executable='rgbd_odometry',
+        name='rgbd_odometry',
+        condition=IfCondition(
+            PythonExpression(
+                [
+                    "'",
+                    LaunchConfiguration('visual_odom_topic'),
+                    "' != '' and '",
+                    LaunchConfiguration('publish_odom_tf'),
+                    "' != 'true'",
+                ]
+            )
+        ),
+        parameters=[
+            config,
+            {'use_sim_time': use_sim_time, **VO_FOR_EKF_PARAMETERS},
+        ],
+        remappings=fusion_remappings,
+        output='screen',
+    )
+
+    return LaunchDescription(
+        ARGUMENTS + [mapping, localization, visual_odometry, visual_odometry_for_ekf]
+    )

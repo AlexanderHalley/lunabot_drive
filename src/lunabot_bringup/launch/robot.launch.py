@@ -33,6 +33,10 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Pyth
 from launch_ros.actions import SetParameter
 from launch_ros.substitutions import FindPackageShare
 
+# Where the SLAM backend's visual odometry publishes when the EKF fuses it
+# (odom_source:=ekf). Must match odom1 in config/ekf.yaml (tested).
+VISUAL_ODOM_TOPIC = '/odom/visual'
+
 ARGUMENTS = [
     DeclareLaunchArgument(
         'hw',
@@ -223,6 +227,12 @@ def generate_launch_description():
                 # The backend publishes odom -> base_link only when it is the
                 # odom source. Otherwise it owns map -> odom and nothing else.
                 publish_odom_tf=_equals(odom_source, 'visual'),
+                # With the EKF as odom source, the backend's visual odometry
+                # runs too -- WITHOUT TF -- and the EKF fuses its velocity:
+                # the camera does not slip in sand, the wheels do.
+                visual_odom_topic=PythonExpression(
+                    ["'", VISUAL_ODOM_TOPIC, "' if '", odom_source, "' == 'ekf' else ''"]
+                ),
             ),
             include(
                 FindPackageShare('lunabot_perception'),
