@@ -177,3 +177,26 @@ def test_the_png_is_valid(tmp_path):
     raw = zlib.decompress(data[start : start + length])
     assert len(raw) == 64 * (64 + 1)
 
+
+# ==================== Live boulder ground truth ====================
+from lunabot_sim.scene.boulder_truth import current_boulders  # noqa: E402
+
+
+def test_moved_boulders_report_their_live_pose():
+    import math
+
+    config = arena.scene_config('ucf', seed=7)
+    placed = scatter(config.arena, 7)
+    movable = next(i for i, b in enumerate(placed) if not b.static)
+    half = math.sin(math.pi / 4)  # 90 deg about z
+    live = current_boulders(placed, {movable: (1.0, 2.0, 0.05, 0.0, 0.0, half, half)})
+    assert live[movable].position == (1.0, 2.0, 0.05)
+    assert live[movable].yaw == pytest.approx(math.pi / 2)
+    assert live[movable].dimensions == placed[movable].dimensions
+
+
+def test_unreported_boulders_keep_their_placed_pose():
+    config = arena.scene_config('ucf', seed=7)
+    placed = scatter(config.arena, 7)
+    assert current_boulders(placed, {}) == placed
+

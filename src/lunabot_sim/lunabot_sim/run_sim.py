@@ -222,9 +222,21 @@ def _run(args, simulation_app) -> int:
     # update is what evaluates the OnPlaybackTick graphs: with render=False
     # physics steps, the timeline plays, and not one ROS message is published.
     # Headless only drops the window.
+    # Live boulder poses, for scoring and for diagnosing pushed rocks. Not
+    # essential to the sim: if rclpy or vision_msgs is missing, say so and run.
+    try:
+        from lunabot_sim.scene.boulder_truth import BoulderTruthPublisher
+
+        boulder_truth = BoulderTruthPublisher(placed, domain_id=args.domain_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning('no live boulder ground truth: %s', exc)
+        boulder_truth = None
+
     pacer = RealTimePacer(world) if args.realtime else None
     while running and simulation_app.is_running():
         world.step(render=True)
+        if boulder_truth is not None:
+            boulder_truth.step(world.current_time)
         if pacer is not None:
             pacer.wait()
 
