@@ -130,6 +130,15 @@ So Nav2 is the ordinary differential-drive setup:
 - **Regulated Pure Pursuit** with `use_rotate_to_heading`: turn in place to face the path, then
   drive forward, so the forward camera looks where the rover goes. No reversing.
 - **Spin** recovery is back (it is how the forward camera looks around); BackUp 15 cm, blind.
+- **Initial survey** (`scripts/initial_survey.py`, opt-in: `survey:=true`): once Nav2 is active the
+  rover turns one full circle on the spot in the start zone, through Nav2's Spin (0.4 rad/s,
+  collision-checked), then latches `/navigation/survey_done` (wait for it before sending goals).
+  Meant to let SLAM recognise the start area when coming home facing the other way. **It did not
+  help in Isaac:** every rtabmap loop-closure attempt on the return found 45–74 feature matches and
+  **zero** geometric inliers — the regolith texture is random, so floor features are ambiguous, and
+  relaxing `Rtabmap/LoopThr`/`Vis/MinInliers` only produced more failed attempts. The return leg
+  still ends ~0.7 m off. Loop closure here needs geometry (ICP on the depth cloud against walls and
+  boulders) or the start rail's fiducials, not floor appearance.
 - **`curvature_limiter`** stays in the chain at radius 0 (pass-through). If field tests show the
   pivot does not hold, the four-wheel car-like setup is one commit back (`c1b4379`: Hybrid-A*
   with Reeds-Shepp at 1.5 m, no rotate-to-heading, limiter at 1 m), and

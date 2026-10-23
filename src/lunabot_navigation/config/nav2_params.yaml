@@ -391,7 +391,9 @@ behavior_server:
       plugin: "nav2_behaviors::BackUp"
     wait:
       plugin: "nav2_behaviors::Wait"
-    max_rotational_vel: 0.6
+    # Slow enough that visual odometry and rtabmap keep tracking through a
+    # turn: the initial survey and Spin recoveries both use these.
+    max_rotational_vel: 0.4
     min_rotational_vel: 0.2
     rotational_acc_lim: 2.0
 

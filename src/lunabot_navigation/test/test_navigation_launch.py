@@ -86,8 +86,8 @@ def test_every_declared_node_is_constructed(module, description):
     Pinning the count as well catches a node quietly dropped from the
     comprehension.
     """
-    # + curvature_limiter (not lifecycle-managed) + lifecycle_manager
-    assert len(nodes(description)) == len(module.NAV2_NODES) + 2
+    # + curvature_limiter, initial_survey (not lifecycle-managed) + lifecycle_manager
+    assert len(nodes(description)) == len(module.NAV2_NODES) + 3
 
 
 def test_nav2_never_publishes_to_cmd_vel(module):
@@ -167,3 +167,11 @@ def test_amcl_and_map_server_are_not_started(module):
     started = {node['executable'] for node in module.NAV2_NODES}
     assert 'amcl' not in started
     assert 'map_server' not in started
+
+
+def test_the_initial_survey_is_available_but_off(module, description):
+    """One full turn at the start, opt-in: alone it closed no loops in Isaac."""
+    arguments = {a.name: a for a in description.entities if hasattr(a, 'default_value')}
+    assert arguments['survey'].default_value[0].text == 'false'
+    assert module.INITIAL_SURVEY['executable'] == 'initial_survey.py'
+

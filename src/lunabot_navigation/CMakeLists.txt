@@ -9,7 +9,7 @@ install(
 )
 
 install(
-  PROGRAMS scripts/curvature_limiter.py
+  PROGRAMS scripts/curvature_limiter.py scripts/initial_survey.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

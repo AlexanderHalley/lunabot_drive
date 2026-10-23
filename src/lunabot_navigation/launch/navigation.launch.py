@@ -50,6 +50,7 @@ serialisation cost between costmap and controller is measurable.
 """
 
 from launch import LaunchDescription
+from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
@@ -119,6 +120,14 @@ CURVATURE_LIMITER = {
     ],
 }
 
+# One full turn on the spot once Nav2 is active, so SLAM sees the start area
+# from every heading (scripts/initial_survey.py). Not a lifecycle node.
+INITIAL_SURVEY = {
+    'package': 'lunabot_navigation',
+    'executable': 'initial_survey.py',
+    'name': 'initial_survey',
+}
+
 # Derived, not restated. An unmanaged lifecycle node sits in `unconfigured`
 # forever, producing no output and no error -- so "started but not managed"
 # should not be a state this file can express.
@@ -136,6 +145,15 @@ ARGUMENTS = [
             [FindPackageShare('lunabot_navigation'), 'config', 'nav2_params.yaml']
         ),
         description='Nav2 parameter file.',
+    ),
+    DeclareLaunchArgument(
+        'survey',
+        default_value='false',
+        description=(
+            'Turn a full circle on the spot once Nav2 is up, so SLAM sees the start area '
+            'from every heading; latches /navigation/survey_done. Off by default: on its '
+            'own it closed no loops in Isaac (see scripts/initial_survey.py).'
+        ),
     ),
     DeclareLaunchArgument(
         'autostart',
@@ -215,4 +233,13 @@ def generate_launch_description():
         ],
     )
 
-    return LaunchDescription(ARGUMENTS + nodes + [manager])
+    survey = Node(
+        package=INITIAL_SURVEY['package'],
+        executable=INITIAL_SURVEY['executable'],
+        name=INITIAL_SURVEY['name'],
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+        condition=IfCondition(LaunchConfiguration('survey')),
+    )
+
+    return LaunchDescription(ARGUMENTS + nodes + [manager, survey])
