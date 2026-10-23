@@ -123,7 +123,10 @@ loads the end wheels more; the planar model's 50%-middle case gives 85–93%).
 
 So Nav2 is the ordinary differential-drive setup:
 
-- **Smac 2D** grid planner — no turning radius, no reverse legs.
+- **Smac State Lattice** planner with Nav2's diff-drive primitives (arcs, straights, rotations in
+  place, forward only), checking the real rectangular footprint at every step — it plans a pivot
+  only where one fits. (Smac 2D, a point planner, routed into gaps the rover could only enter by
+  pivoting where a pivot did not fit.)
 - **Regulated Pure Pursuit** with `use_rotate_to_heading`: turn in place to face the path, then
   drive forward, so the forward camera looks where the rover goes. No reversing.
 - **Spin** recovery is back (it is how the forward camera looks around); BackUp 15 cm, blind.
@@ -132,14 +135,33 @@ So Nav2 is the ordinary differential-drive setup:
   with Reeds-Shepp at 1.5 m, no rotate-to-heading, limiter at 1 m), and
   `test_turning_in_place_is_all_or_nothing` keeps either setup self-consistent.
 - The behaviour trees (`config/navigate_to_pose.xml`, `navigate_through_poses.xml`) replan every
-  10 s or when the path goes invalid, and call only behaviours `behavior_server` runs (tested —
-  a missing server stops Nav2 coming up).
+  2 s or when the path goes invalid — the first plan is made before most rocks are visible — and
+  call only behaviours `behavior_server` runs (tested; a missing server stops Nav2 coming up).
+- **Footprint: the real 0.92 × 0.644 m box**, not the 0.59 m circle a pivot sweeps. The circle made
+  the rover 1.18 m wide to the planner and the UCF lane's rock field impassable. Pivots are made safe
+  by RPP's collision check, which projects the footprint through every rotate-to-heading.
 - The global costmap is a 16 m **rolling window** with a **VoxelLayer**: sized by rtabmap's map
   it rejected goals across the arena (error 204), and a 2D obstacle layer erased low boulders.
 
+**Costmaps and low rocks — three traps, all hit in Isaac, all tested now.**
+
+1. *Heights are from `base_link`, the axle, 0.15 m up — not from the ground.* Both the voxel layer's
+   `origin_z` and `min_obstacle_height` must sit below the axle. And `min_obstacle_height` exists
+   **twice** — per observation source and per layer — with the layer's default of **0.0** silently
+   overriding the source's. Every rock under ~20 cm was invisible; the rover drove into them.
+2. *Clearing erases low rocks.* Rays to the ground just behind a low rock pass through the voxel
+   holding its top. Once the rock drops into the camera's near blind zone (~0.65 m from the rover's
+   centre) nothing re-marks it, and it vanishes — from the planner (global) and from RPP's
+   collision check (local). Neither costmap clears now: arena rocks only move when pushed. On real
+   hardware depth-noise speckles will persist inside the 4 m local window; watch for that.
+3. *Inflation must reach past the footprint's farthest corner* (0.60 m), or a pivot gets no
+   warning before a corner touches.
+
 **The odometry is fabricated.** There are no encoders; wheel speed stands in for ground speed. In
-sand the wheels slip, worst at cusps and in stalls, and the EKF's position drifts with them — its
-yaw comes from the gyro and holds. Only SLAM can pull position back.
+sand the wheels slip, worst at cusps and in stalls. So with `odom_source:=ekf` and rtabmap, the
+EKF also fuses **visual odometry** (`/odom/visual`: forward speed and yaw rate from
+`rgbd_odometry`, which does not slip) — see docs/SLAM.md. On the arena mission that took the pose
+error from ~0.25–0.8 m to ~0.03 m on the first leg.
 
 **The sensor horizon is 2 m.** One forward camera, depth clipped at 2 m (`i_max_range: 2000` in
 `oak_d_s2.yaml`), tilted down. The costmap's `obstacle_max_range` and `raytrace_max_range` cannot

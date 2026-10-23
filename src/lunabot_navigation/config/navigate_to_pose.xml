@@ -10,12 +10,15 @@
 
   Based on Nav2's navigate_w_recovery_and_replanning_only_if_path_becomes_invalid.xml:
 
-  1. Replan every 10 s, or at once when the goal changes or the path stops
-     being valid; not at 1 Hz. NEVER replanning was worse: after a failed
-     approach and a back-up, the old path is still "valid" and the rover
-     retried the identical approach until it ran out of retries (seen in
-     Isaac). The 10 s timer is Nav2's own
-     nav_to_pose_with_consistent_replanning_and_if_path_becomes_invalid.xml.
+  1. Replan every 2 s, or at once when the goal changes or the path stops
+     being valid. The first plan is made before most rocks are visible, and
+     "invalid" only notices a rock ON the path's centre-line: a low rock
+     beside it, inside the footprint, left the old path standing and the
+     rover clipped it (seen in Isaac). A 2 s timer re-plans around each rock
+     while it is still 1.5-2 m ahead. (It was 10 s while Hybrid-A* paths had
+     reverse cusps that must not move mid-manoeuvre; the lattice planner is
+     forward-only.) Never replanning at all was worse still: the rover
+     retried a failed approach identically until it ran out of retries.
   2. Recoveries: clear the costmaps, spin a quarter turn (the only camera
      faces forward, so turning is how the rover looks around), back up
      15 cm (blind: nothing sees behind), wait. Every behaviour here must be
@@ -35,7 +38,7 @@
             <Fallback name="FallbackComputePathToPose">
               <ReactiveSequence name="CheckIfNewPathNeeded">
                 <Inverter>
-                  <PathExpiringTimer seconds="10" path="{path}"/>
+                  <PathExpiringTimer seconds="2" path="{path}"/>
                 </Inverter>
                 <Inverter>
                   <GlobalUpdatedGoal/>

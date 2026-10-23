@@ -8,7 +8,7 @@
 <!--
   Navigate-through-poses for the Lunabot: Nav2's
   navigate_through_poses_w_replanning_and_recovery.xml with the same changes
-  as navigate_to_pose.xml (replan every 10 s or when invalid; our recoveries).
+  as navigate_to_pose.xml (replan every 2 s or when invalid; our recoveries).
 
   bt_navigator loads this tree at configure time even if nothing ever sends a
   through-poses goal, so it must only call behaviours behavior_server has, or
@@ -25,7 +25,7 @@
             <Fallback name="FallbackComputePathThroughPoses">
               <ReactiveSequence name="CheckIfNewPathNeeded">
                 <Inverter>
-                  <PathExpiringTimer seconds="10" path="{path}"/>
+                  <PathExpiringTimer seconds="2" path="{path}"/>
                 </Inverter>
                 <Inverter>
                   <GlobalUpdatedGoal/>

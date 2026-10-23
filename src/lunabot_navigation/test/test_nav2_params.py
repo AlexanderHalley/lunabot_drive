@@ -23,6 +23,7 @@ job that has neither.
 """
 
 import ast
+import math
 import re
 from pathlib import Path
 
@@ -208,7 +209,18 @@ def test_footprint_matches_the_chassis():
 
     config = params()
     for name in ['local_costmap', 'global_costmap']:
-        footprint = yaml.safe_load(config[name][name]['ros__parameters']['footprint'])
+        costmap = config[name][name]['ros__parameters']
+        if 'robot_radius' in costmap:
+            # A rover that turns on the spot sweeps the circle round its
+            # outline; the radius must cover it, and not by so much that every
+            # gap closes.
+            sweep = math.hypot(half_length, half_width)
+            assert sweep <= costmap['robot_radius'] <= sweep + 0.10, (
+                f'{name} robot_radius {costmap["robot_radius"]} does not cover the '
+                f'{sweep:.3f} m pivot sweep of the {length:.3f} x {width:.3f} outline'
+            )
+            continue
+        footprint = yaml.safe_load(costmap['footprint'])
         message = (
             f'{name} footprint does not match the {length:.3f} x {width:.3f} outline of the '
             'chassis and wheels in properties.xacro'
@@ -302,6 +314,9 @@ def test_turning_in_place_is_all_or_nothing():
     else:
         assert follow['use_rotate_to_heading'] is True
         assert limiter['min_turning_radius'] == 0.0
+        # A pivot sweeps beyond a rectangular footprint; the follower must
+        # check the rotation and stop rather than swing into a rock.
+        assert follow['use_collision_detection'] is True
 
 
 def test_rotate_to_heading_and_reversing_are_not_both_on():
@@ -456,3 +471,80 @@ def test_every_dwb_controller_has_critics():
         assert plugin['max_speed_xy'] <= plugin['max_vel_x'] + 1e-9, (
             f'{name}: max_speed_xy above max_vel_x'
         )
+
+
+def test_the_costmaps_see_low_rocks():
+    """Obstacle heights are measured from base_link -- the axle, not the ground.
+
+    base_link is wheel_radius above the ground (and the wheels sink a few cm
+    more), so a voxel grid starting at z = 0, or a minimum obstacle height
+    above 0, ignores everything shorter than the axle. In Isaac the rover
+    drove straight into every rock under ~20 cm.
+    """
+    ground = -xacro_property('wheel_radius')
+    for path, block in blocks():
+        for name, layer in block.items():
+            if not isinstance(layer, dict) or 'observation_sources' not in layer:
+                continue
+            assert layer['origin_z'] < ground, f'{path}/{name}: voxels start above the ground'
+            # The layer's own threshold (default 0.0) applies on top of the
+            # source's, so both must be set.
+            low = layer['min_obstacle_height']
+            assert ground + 0.03 <= low <= ground + 0.10, f'{path}/{name}: layer-level {low}'
+            top = layer['origin_z'] + layer['z_resolution'] * layer['z_voxels']
+            assert top >= layer['max_obstacle_height'], f'{path}/{name}: grid too short'
+            for source in str(layer['observation_sources']).split():
+                low = layer[source]['min_obstacle_height']
+                assert ground + 0.03 <= low <= ground + 0.10, (
+                    f'{path}/{name}/{source}: min_obstacle_height {low} is not a few cm '
+                    f'above the ground at {ground}'
+                )
+
+
+def test_no_costmap_forgets_a_rock():
+    """Every camera layer marks but does not clear.
+
+    Clearing rays over a low rock erase its top voxel as soon as the rock is
+    too close to be seen: the planner then routed straight over it (global),
+    and the follower's collision check drove into it (local).
+    """
+    checked = 0
+    for path, block in blocks():
+        for name, layer in block.items():
+            if isinstance(layer, dict) and 'observation_sources' in layer:
+                for source in str(layer['observation_sources']).split():
+                    assert layer[source]['marking'] is True, f'{path}/{name}/{source}'
+                    assert layer[source]['clearing'] is False, f'{path}/{name}/{source}'
+                    checked += 1
+    assert checked == 2
+
+
+@pytest.mark.parametrize('name', ['local_costmap', 'global_costmap'])
+def test_inflation_covers_the_robot(name):
+    """Inflation reaches past the footprint's farthest corner.
+
+    Otherwise cost only starts rising once a corner is already touching a
+    rock, and a pivot -- which sweeps every corner round -- gets no warning.
+    """
+    costmap = params()[name][name]['ros__parameters']
+    if 'robot_radius' in costmap:
+        reach = costmap['robot_radius']
+    else:
+        pad = costmap.get('footprint_padding', 0.0)
+        reach = max(math.hypot(abs(x) + pad, abs(y) + pad) for x, y in yaml.safe_load(costmap['footprint']))
+    assert costmap['inflation_layer']['inflation_radius'] >= reach
+
+
+def test_lattice_primitives_match_the_costmap():
+    """A State Lattice planner needs primitives at the global costmap's resolution."""
+    planner = node_params('planner_server')['GridBased']
+    if planner['plugin'] != 'nav2_smac_planner::SmacPlannerLattice':
+        return
+    resolution_cm = round(params()['global_costmap']['global_costmap']['ros__parameters']['resolution'] * 100)
+    assert planner['lattice_filepath'].startswith(f'{resolution_cm}cm_resolution/')
+    assert '/diff/' in planner['lattice_filepath'], 'differential-drive primitives (rotate in place)'
+    launch = (PKG / 'launch' / 'navigation.launch.py').read_text()
+    assert "'lattice_filepath'" in launch, 'the launch must rewrite it to the installed path'
+    if planner.get('allow_reverse_expansion'):
+        assert node_params('controller_server')['FollowPath'].get('allow_reversing') is True
+

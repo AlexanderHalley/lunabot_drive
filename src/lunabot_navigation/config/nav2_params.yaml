@@ -118,10 +118,13 @@ controller_server:
       desired_linear_vel: 0.3
 
       # Pure pursuit steers at a point this far down the path. Too short and
-      # it weaves; too long and it cuts corners into obstacles.
-      lookahead_dist: 0.6
-      min_lookahead_dist: 0.4
-      max_lookahead_dist: 1.2
+      # it weaves; too long and it cuts corners into obstacles. Short here:
+      # the lattice planner threads gaps with ~10 cm to spare, and at 0.6 m
+      # the arc cut inside the planned path and the collision check stopped
+      # the rover 28 times in one mission (Isaac, UCF lane, seed 7).
+      lookahead_dist: 0.45
+      min_lookahead_dist: 0.3
+      max_lookahead_dist: 0.9
       lookahead_time: 1.5
       use_velocity_scaled_lookahead_dist: true
 
@@ -165,19 +168,38 @@ local_costmap:
       height: 4
       resolution: 0.05
 
-      # From properties.xacro: the box that holds the chassis AND the wheels,
-      # whichever reaches further (here the wheels: axle +- wheel_base/2 plus
-      # a radius, and track/2 plus half a wheel width). Update together; a
-      # footprint smaller than the robot is how rovers get wedged. The 2027
-      # design's drum reaches further forward still -- grow this when the
-      # description models it.
+      # The box that holds the chassis AND the wheels (properties.xacro):
+      # whichever reaches further. Tested against the xacro.
+      #
+      # NOT the 0.59 m circle a pivot sweeps. That was tried: it made the
+      # rover 1.18 m wide to the planner, and the UCF lane's rock field --
+      # gaps of 0.65-0.95 m that the real 0.64 m-wide rover drives through
+      # -- became impassable. Pivots are made safe by the follower instead:
+      # Regulated Pure Pursuit projects this footprint through every
+      # rotate-to-heading and stops rather than swing into a rock
+      # (use_collision_detection).
+      #
+      # The 2027 design's drum reaches further forward still -- grow this
+      # when the description models it.
       footprint: "[[0.46, 0.322], [0.46, -0.322], [-0.46, -0.322], [-0.46, 0.322]]"
-      footprint_padding: 0.05
+      footprint_padding: 0.03
 
       plugins: ["voxel_layer", "inflation_layer"]
 
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
+        # The voxel grid must start BELOW the ground (z is from the axle,
+        # see min_obstacle_height); its default origin_z of 0 silently drops
+        # everything lower than the axle. -0.20 .. +0.60 in 5 cm voxels.
+        origin_z: -0.20
+        z_resolution: 0.05
+        z_voxels: 16
+        # BOTH levels: the layer has its own min_obstacle_height, default
+        # 0.0, applied on top of the source's -- it silently dropped every
+        # point below the axle whatever the source said (found by reading
+        # the voxel grid: nothing was ever marked below z = 0).
+        min_obstacle_height: -0.10
+        max_obstacle_height: 0.60
         observation_sources: pointcloud
         pointcloud:
           topic: /oak_d/points
@@ -186,14 +208,30 @@ local_costmap:
           # than the sensor has means clearing space that was never observed.
           obstacle_max_range: 2.0
           raytrace_max_range: 2.0
-          min_obstacle_height: 0.05
-          max_obstacle_height: 1.0
+          # Heights are in the costmap's frame, where z = 0 is base_link: the
+          # AXLE, 0.15 m (wheel_radius) above the ground, ~0.18 m with the
+          # wheels sunk in. With +0.05 here every rock shorter than ~20 cm
+          # was invisible and the rover drove into them. -0.10 = ~8 cm above
+          # the ground. Tested against wheel_radius.
+          min_obstacle_height: -0.10
+          max_obstacle_height: 0.60
           marking: true
-          clearing: true
+          # NO clearing here either. A low rock drops into the camera's near
+          # blind zone (~0.65 m from the rover's centre) as the rover closes
+          # in, and clearing rays to the ground beyond it then erase it --
+          # exactly when Regulated Pure Pursuit's collision check needs it.
+          # In Isaac the rover drove into rocks it had marked a second
+          # earlier. Arena rocks only move when pushed, and the 4 m rolling
+          # window drops what the rover leaves behind. Cost on real hardware:
+          # depth-noise speckles also persist inside the window; the 8 cm
+          # threshold and 2 m range keep that down.
+          clearing: false
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.40
+        # >= the padded footprint's circumscribed radius (0.60 m), so cost
+        # rises before any corner can reach a rock, including mid-pivot.
+        inflation_radius: 0.75
         cost_scaling_factor: 3.0
 
 
@@ -218,8 +256,9 @@ global_costmap:
       width: 16
       height: 16
 
+      # Same footprint as local_costmap: see there.
       footprint: "[[0.46, 0.322], [0.46, -0.322], [-0.46, -0.322], [-0.46, 0.322]]"
-      footprint_padding: 0.05
+      footprint_padding: 0.03
 
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
 
@@ -237,27 +276,53 @@ global_costmap:
         # the planner drove straight at the rock (only rtabmap's /map, via
         # the static layer, had been hiding that). Same as local_costmap.
         plugin: "nav2_costmap_2d::VoxelLayer"
+        # The voxel grid must start BELOW the ground (z is from the axle,
+        # see min_obstacle_height); its default origin_z of 0 silently drops
+        # everything lower than the axle. -0.20 .. +0.60 in 5 cm voxels.
+        origin_z: -0.20
+        z_resolution: 0.05
+        z_voxels: 16
+        # BOTH levels: the layer has its own min_obstacle_height, default
+        # 0.0, applied on top of the source's -- it silently dropped every
+        # point below the axle whatever the source said (found by reading
+        # the voxel grid: nothing was ever marked below z = 0).
+        min_obstacle_height: -0.10
+        max_obstacle_height: 0.60
         observation_sources: pointcloud
         pointcloud:
           topic: /oak_d/points
           data_type: "PointCloud2"
           obstacle_max_range: 2.0
           raytrace_max_range: 2.0
-          min_obstacle_height: 0.05
-          max_obstacle_height: 1.0
+          # Heights are in the costmap's frame, where z = 0 is base_link: the
+          # AXLE, 0.15 m (wheel_radius) above the ground, ~0.18 m with the
+          # wheels sunk in. With +0.05 here every rock shorter than ~20 cm
+          # was invisible and the rover drove into them. -0.10 = ~8 cm above
+          # the ground. Tested against wheel_radius.
+          min_obstacle_height: -0.10
+          max_obstacle_height: 0.60
           marking: true
-          clearing: true
+          # NO clearing in the global costmap: it remembers every rock it
+          # has seen for the whole run. Clearing rays to the ground just
+          # behind a LOW rock pass through the voxel holding its top, so once
+          # the rock dropped below the camera's view as the rover closed in,
+          # it was erased and the planner drove straight over a 10 cm cube.
+          # Arena rocks do not move by themselves. The local costmap still
+          # clears, so transient noise near the rover goes away.
+          clearing: false
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        # >= the padded footprint's circumscribed radius (0.63 m), which
+        # >= the padded footprint's circumscribed radius (0.60 m), which
         # lets Smac collision-check by centre cost and only fall back to the
         # full footprint near obstacles. Well beyond it, so cost keeps
         # falling off past the footprint and Hybrid-A* leaves room: a rover
         # that cannot turn quickly lags its path, and a path that grazes the
         # inscribed zone has the follower stop for "collision ahead".
         inflation_radius: 1.0
-        cost_scaling_factor: 3.0
+        # Gentler fall-off: cost stays high further from rocks, so paths keep
+        # to the middle of gaps rather than skimming one side.
+        cost_scaling_factor: 2.0
 
 
 planner_server:
@@ -266,30 +331,50 @@ planner_server:
     expected_planner_frequency: 1.0
     planner_plugins: ["GridBased"]
     GridBased:
-      # Smac 2D: grid A* for a rover that can turn on the spot. The six-wheel
-      # drop-centre (2026-10-22) pivots on its middle axle, so paths need no
-      # turning radius and no reverse legs: the follower turns in place to
-      # face each one, and the forward camera looks where the rover goes.
+      # Smac STATE LATTICE: plans position AND heading with differential-drive
+      # motion primitives -- arcs, straights and rotations in place -- and
+      # collision-checks the real rectangular footprint at every step. So it
+      # plans a pivot only where the rover can actually pivot, and threads
+      # gaps lengthwise where it cannot.
       #
-      # Before that the four-wheeler could not pivot in sand and this was
-      # Hybrid-A* with Reeds-Shepp motion and a 1.5 m minimum radius (git
-      # c1b4379). Go back to it if field tests show the pivot does not hold:
-      # test_nav2_params.py checks whichever is configured.
-      plugin: "nav2_smac_planner::SmacPlanner2D"
+      # Smac 2D (a point planner) was tried first: in the UCF lane's rock
+      # field it routed into gaps the rover could only enter by pivoting
+      # where a pivot did not fit, and the rover stalled at the entrance,
+      # clipping a boulder. Before that, Hybrid-A* with Reeds-Shepp at 1.5 m
+      # was the setup for the four-wheeler that could not pivot (c1b4379).
+      plugin: "nav2_smac_planner::SmacPlannerLattice"
+      # Nav2's sample primitives for a differential drive at 5 cm (the
+      # global costmap's resolution, tested). Placeholder: navigation.launch.py
+      # rewrites it to the installed absolute path.
+      lattice_filepath: "5cm_resolution/0.5m_turning_radius/diff/output.json"
+      allow_reverse_expansion: false  # forward only: the camera faces forward
+      rotation_penalty: 3.0           # pivots cost something, not everything
+      reverse_penalty: 2.0
+      change_penalty: 0.05
+      non_straight_penalty: 1.05
+      cost_penalty: 3.0
+      retrospective_penalty: 0.015
       tolerance: 0.30
       allow_unknown: true
-      downsample_costmap: false
-      cost_travel_multiplier: 2.0  # keeps paths off the inflated edges of rocks
       max_iterations: 1000000
       max_on_approach_iterations: 1000
-      max_planning_time: 2.0
-      use_final_approach_orientation: false
+      max_planning_time: 5.0
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 3.0
+      analytic_expansion_max_cost: 200.0
+      analytic_expansion_max_cost_override: false
+      lookup_table_size: 20.0
+      cache_obstacle_heuristic: false
+      debug_visualizations: false
 
+      smooth_path: true
       smoother:
         max_iterations: 1000
         w_smooth: 0.3
         w_data: 0.2
         tolerance: 1.0e-10
+        do_refinement: true
+        refinement_num: 2
 
 
 behavior_server:

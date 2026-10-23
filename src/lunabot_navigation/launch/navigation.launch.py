@@ -168,6 +168,16 @@ def generate_launch_description():
             'default_nav_to_pose_bt_xml': PathJoinSubstitution(
                 [FindPackageShare('lunabot_navigation'), 'config', 'navigate_to_pose.xml']
             ),
+            'lattice_filepath': PathJoinSubstitution(
+                [
+                    FindPackageShare('nav2_smac_planner'),
+                    'sample_primitives',
+                    '5cm_resolution',
+                    '0.5m_turning_radius',
+                    'diff',
+                    'output.json',
+                ]
+            ),
             'default_nav_through_poses_bt_xml': PathJoinSubstitution(
                 [
                     FindPackageShare('lunabot_navigation'),
