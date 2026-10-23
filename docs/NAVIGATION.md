@@ -165,6 +165,8 @@ So Nav2 is the ordinary differential-drive setup:
    hardware depth-noise speckles will persist inside the 4 m local window; watch for that.
 3. *Inflation must reach past the footprint's farthest corner* (0.60 m), or a pivot gets no
    warning before a corner touches.
+4. *Rocks are thin shells, and unseen space looks free.* See "Rocks behind their seen faces"
+   below before working on clearance — including what NOT to rebuild.
 
 **The odometry is fabricated.** There are no encoders; wheel speed stands in for ground speed. In
 sand the wheels slip, worst at cusps and in stalls. So with `odom_source:=ekf` and rtabmap, the
@@ -186,6 +188,59 @@ costmap has one obstacle/free distinction and no notion of cost-to-traverse. Tha
 modelling gap, not a tuning parameter.
 
 ---
+
+## Rocks behind their seen faces — READ before changing obstacle handling
+
+**Symptom (Isaac seed 7, 2026-10-23):** the rover passes boulders at 0–4 cm and sometimes touches
+them. Plans themselves cross the true rock, on its far side.
+
+**Cause:** the camera only marks the faces of a rock turned towards it, so each rock is a thin
+lethal *shell* in the costmaps (a 0.33 m cube: 2 of its 45 cells lethal). Behind the shell nothing
+was ever seen, but nothing says so either. `track_unknown_space` is on in the global costmap,
+yet clearing is off (trap 2 above), so no cell is ever marked free: unseen and seen-free look the
+same, and Smac (`allow_unknown: true`) plans through both. **The planner cannot tell space it has
+seen to be empty from space it has never seen.** That is the problem to fix.
+
+**Dead end: guessing the rest of the rock. Do not rebuild this.** A node completed each
+`/perception/boulders` detection into a guessed whole-rock footprint, marked lethal (kept on the
+local branch `abandoned/rock-footprints`, commit `78eb3e4`, never pushed). It needed:
+- rules to tell boulders from walls, the berm and bumps (size, elongation, height cut-offs);
+- a shape prior (cubes and spheres, ≤ 0.40 m: "as deep as wide"), wrong for elongated rocks;
+- special handling for detections cut off by the edge of the view (seen 0.14 m wide);
+- a correction for the detector's axis-aligned box seen at an angle (10 cm short).
+
+Each fix exposed the next guess, and the detector is a self-declared geometric placeholder with
+no classifier, so the guesses rest on nothing. Results over 12 runs: closest pass to the worst
+cube −1 to +11 cm (still touching in 2 runs), the return leg slowed from ~32 s to 110–136 s by
+over-marking, and **the start survey's Spin failed** on some runs. Wall pieces completed into
+"rocks" put a lethal cell inside the circle the corners sweep in a pivot. That circle is 0.60 m
+from the rover's centre, plus 0.03 m of padding, and the back wall is only 0.75 m from the start
+pose. Any marking scheme that puts cost in front of a seen surface will do this.
+
+**Also tried and rejected:** `footprint_padding: 0.06`. It kept seed 7 off the rocks only by
+closing its 0.9 m gaps (one leg took 158 s of replanning). A bigger margin hides the problem.
+
+**Recommended direction (not yet tried): plan on what has been seen.**
+- Mark a cell *seen-free* only where the camera actually sees floor points. That is direct
+  evidence of free ground, unlike raytracing through obstacles, which erased low rocks (trap 2).
+  Obstacles stay marked and are never cleared.
+- Make the planner prefer seen-free cells, and avoid or penalise unknown cells near the rover,
+  while still allowing unknown far away (goals lie beyond the 2 m camera range). Open question:
+  how Jazzy's Smac weighs a cost-255 unknown cell with `allow_unknown: true`. The installed
+  package has only headers, so read the nav2_smac_planner source before choosing.
+- It is shape-agnostic, and it also covers **craters**: a forward camera can't see into a
+  crater, and no boulder rule would ever mark one.
+
+**Measuring clearance — lessons:**
+- One run proves nothing. Identical runs differed by up to 12 cm of clearance, so compare ≥ 3
+  per variant.
+- Measure against the exact rock shape from the sim's ground truth (sphere = circle, cube =
+  rotated square). Half-diagonal circles overstate a cube by up to 8 cm.
+- Check the *plans* as well as the driven track. A plan crossing the true rock means the costmap
+  was wrong; a clean plan with a touching track means tracking.
+- Placing one depth cloud in the world with the true pose against the back wall (x = −0.75)
+  put it at −0.750 m: the sim's depth and camera mount are correct, so don't chase a sensor
+  offset again.
 
 ## Testing
 
