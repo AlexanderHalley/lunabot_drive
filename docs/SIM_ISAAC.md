@@ -156,8 +156,12 @@ layout is written into the ground-truth JSON beside the boulders.
 every time. That determinism is what makes "did that change help?" answerable at all; evaluating a
 perception change against a different random scene tells you nothing.
 
-In a walled arena they stay 0.3 m inside the walls and out of the start zone, the construction zone
-(the guidebook puts no obstacles there) and the posts. Rocks are irregular primitives, not meshes — a rock's contact behaviour is a friction question, not
+In the arena scenes (`ucf`, `ksc`) they are **competition boulders only** — six, 30–40 cm across
+(guidebook §3.1) with random heights 0.5–1.5× that, all static (they may not be pushed in the
+obstacle zone), at least four in the obstacle zone, and spaced so every gap fits the rover. No
+small rocks: anything smaller is regolith. They stay 0.3 m inside the walls and out of the start
+zone, the construction zone (the guidebook puts no obstacles there) and the posts. The `open`
+scene keeps the old mixed 10–45 cm rocks, some movable. Rocks are irregular primitives, not meshes — a rock's contact behaviour is a friction question, not
 a geometry one, and convex meshes cost the solver dearly for detail nobody measures. Large ones are
 static; small ones can be shoved.
 

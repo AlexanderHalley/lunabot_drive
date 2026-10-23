@@ -79,6 +79,13 @@ class ArenaConfig:
     diameter_min: float = 0.10
     diameter_max: float = 0.45
 
+    footprint_variation: float = 0.3
+    """Each horizontal axis is scaled by 1 +- up to this, so rocks are not
+    round. 0 keeps the footprint exactly `diameter` across."""
+
+    height_variation: float = 0.3
+    """The height is diameter * (1 +- up to this)."""
+
     density: float = 1500.0
     """kg/m^3. Basalt is nearer 2900; this is lower because the shapes are
     boxes approximating irregular rocks and the volume is overestimated."""
@@ -98,6 +105,12 @@ class ArenaConfig:
     keep_out_clearance: float = 0.15
     """Gap kept between a rock's edge and a keep-out, metres."""
 
+    field: Rect | None = None
+    """If set, the first `count_in_field` rocks are placed inside it -- the
+    guidebook's 'at least three in the obstacle zone'. The rest go anywhere."""
+
+    count_in_field: int = 0
+
 
 def scatter(config: ArenaConfig, seed: int) -> list[Boulder]:
     """Place boulders by rejection sampling. Deterministic in `seed`.
@@ -111,10 +124,14 @@ def scatter(config: ArenaConfig, seed: int) -> list[Boulder]:
 
     x_min = max(config.x_min, config.start_zone_x)
 
-    for _ in range(config.count):
+    for number in range(config.count):
+        lo_x, hi_x, lo_y, hi_y = x_min, config.x_max, config.y_min, config.y_max
+        if config.field is not None and number < config.count_in_field:
+            lo_x, hi_x = max(lo_x, config.field.x_min), min(hi_x, config.field.x_max)
+            lo_y, hi_y = max(lo_y, config.field.y_min), min(hi_y, config.field.y_max)
         for _attempt in range(config.max_placement_attempts):
-            x = rng.uniform(x_min, config.x_max)
-            y = rng.uniform(config.y_min, config.y_max)
+            x = rng.uniform(lo_x, hi_x)
+            y = rng.uniform(lo_y, hi_y)
 
             if any(
                 (x - b.position[0]) ** 2 + (y - b.position[1]) ** 2 < config.min_separation**2
@@ -126,7 +143,13 @@ def scatter(config: ArenaConfig, seed: int) -> list[Boulder]:
             # Irregular rather than cubic: real rocks are not isotropic, and a
             # detector tuned against perfect cubes will not survive contact
             # with one that is twice as wide as it is tall.
-            extent = np.array([diameter, diameter, diameter]) * rng.uniform(0.7, 1.3, size=3)
+            # One draw for all three axes, so seeds give the same scenes as
+            # before these knobs existed: 1 + 0.3 * u(-1, 1) is u(0.7, 1.3).
+            u = rng.uniform(-1.0, 1.0, size=3)
+            variation = np.array(
+                [config.footprint_variation, config.footprint_variation, config.height_variation]
+            )
+            extent = np.array([diameter, diameter, diameter]) * (1.0 + variation * u)
 
             # Half the footprint's diagonal: the rock may be yawed any way.
             reach = float(np.hypot(extent[0], extent[1])) / 2.0 + config.keep_out_clearance

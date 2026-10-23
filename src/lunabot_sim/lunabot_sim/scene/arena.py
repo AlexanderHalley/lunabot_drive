@@ -75,6 +75,22 @@ def scene_config(
             # The start zone is a keep-out instead, in both axes.
             start_zone_x=floor.x_min,
             keep_outs=layout.keep_outs(),
+            # Competition boulders, not gravel: "approximately 30 cm to 40 cm"
+            # in diameter with random heights (UCF 2025 guidebook sec. 3.1);
+            # everything smaller is regolith. All static at this size
+            # (static_above_diameter), which is also what the rules want:
+            # they may not be pushed in the obstacle zone.
+            diameter_min=0.30,
+            diameter_max=0.40,
+            footprint_variation=0.0,  # exactly 30-40 cm across
+            height_variation=0.5,     # "random heights": 0.5-1.5 x the diameter
+            # At least three in the obstacle zone, some allowed in the
+            # excavation zone. Spaced so every gap fits the 0.70 m-wide
+            # (padded) rover: the judges build a slalom, not a wall.
+            count=6,
+            field=layout.obstacle_zone,
+            count_in_field=4,
+            min_separation=1.3,
         )
     return SceneConfig(
         arena=arena, layout=layout, lighting=lighting_config, markings=markings, seed=seed

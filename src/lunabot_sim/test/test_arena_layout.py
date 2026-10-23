@@ -185,7 +185,7 @@ from lunabot_sim.scene.boulder_truth import current_boulders  # noqa: E402
 def test_moved_boulders_report_their_live_pose():
     import math
 
-    config = arena.scene_config('ucf', seed=7)
+    config = arena.scene_config('open', seed=7)  # the arenas have no movable rocks
     placed = scatter(config.arena, 7)
     movable = next(i for i, b in enumerate(placed) if not b.static)
     half = math.sin(math.pi / 4)  # 90 deg about z
@@ -196,7 +196,25 @@ def test_moved_boulders_report_their_live_pose():
 
 
 def test_unreported_boulders_keep_their_placed_pose():
-    config = arena.scene_config('ucf', seed=7)
+    config = arena.scene_config('open', seed=7)
     placed = scatter(config.arena, 7)
     assert current_boulders(placed, {}) == placed
+
+
+@pytest.mark.parametrize('name', ['ucf', 'ksc'])
+@pytest.mark.parametrize('seed', range(10))
+def test_arena_boulders_are_competition_sized_and_fixed(name, seed):
+    """30-40 cm boulders, never pushable, at least three in the obstacle zone,
+    and never closer than a rover-width gap."""
+    config = arena.scene_config(name, seed=seed)
+    placed = scatter(config.arena, seed)
+    assert all(b.static for b in placed)
+    assert all(0.30 <= b.dimensions[0] <= 0.40 and b.dimensions[1] == b.dimensions[0] for b in placed)
+    in_field = [b for b in placed if config.layout.obstacle_zone.contains(*b.position[:2])]
+    assert len(in_field) >= 3
+    for i, a in enumerate(placed):
+        for b in placed[i + 1:]:
+            gap = math.hypot(a.position[0] - b.position[0], a.position[1] - b.position[1])
+            gap -= (math.hypot(*a.dimensions[:2]) + math.hypot(*b.dimensions[:2])) / 2
+            assert gap > 0.70, f'{a.position} and {b.position} leave only {gap:.2f} m'
 
