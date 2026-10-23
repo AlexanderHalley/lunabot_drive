@@ -181,7 +181,7 @@ transport, then drop to `profile:=pointcloud` if RGB is not needed.
 **Topics visible on the robot, not on the laptop.** Same `ROS_DOMAIN_ID` on both? Then
 `ros2 daemon stop && ros2 daemon start`.
 
-**Point cloud empty or very sparse.** `depth_image_proc` is subscribed to
+**Point cloud empty or very sparse.** `point_cloud_xyz` (rtabmap_util) is subscribed to
 `/oak_d/stereo/image_raw`, and `i_enable_lazy_publisher: true` means the device only produces
 frames when something is listening — so check the depth topic has a publisher *and* a subscriber.
 Also check `max_range`: everything past 2 m is discarded by design.

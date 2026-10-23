@@ -66,7 +66,7 @@
        the distro; it is exec-only, so a missing binary does not block the
        build, only hw:=real with the camera enabled. -->
   <exec_depend>depthai_ros_driver</exec_depend>
-  <exec_depend>depth_image_proc</exec_depend>
+  <exec_depend>rtabmap_util</exec_depend>
 
   <!-- SLAM and sensor fusion -->
   <exec_depend>lunabot_slam</exec_depend>

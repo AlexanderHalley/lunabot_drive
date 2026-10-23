@@ -290,10 +290,11 @@ interface into a slow rover rather than a broken one: wheel drives have **zero s
 that cannot hold a position cannot obey a position target), and `positionCommand` is deliberately
 left unconnected in `graphs/joints.py`.
 
-**Point cloud density differs from hardware.** On the robot the cloud is built by
-`depth_image_proc` with decimation 4 and a 2 m clip; in sim the camera helper produces it directly.
-Same topic, different density. If cluster tuning transfers poorly between sim and hardware, suspect
-this first.
+**The point cloud is built on the host, as on the robot.** Isaac publishes depth only;
+`lunabot_bringup/launch/point_cloud.launch.py` (rtabmap_util `point_cloud_xyz`, decimation 4, 2 m
+clip) builds `/oak_d/points` under `hw:=sim` and on the robot alike. Isaac's own `depth_pcl` cloud
+was 256k points (3 MB) at every rendered frame, ~50 Hz, best effort: C++ subscribers lost clouds
+whole, and the boulder detector published nothing for minutes at a time.
 
 **Depth encoding differs.** Isaac emits `32FC1` metres, the OAK-D emits `16UC1` millimetres. This
 is why the boulder detector consumes the point cloud rather than the depth image, and why

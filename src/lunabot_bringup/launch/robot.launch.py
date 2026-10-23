@@ -204,6 +204,13 @@ def generate_launch_description():
                 ),
                 profile=LaunchConfiguration('camera_profile'),
             ),
+            # Isaac publishes depth, not a cloud: build /oak_d/points exactly
+            # as the robot does (camera.launch.py includes the same file).
+            include(
+                bringup,
+                'point_cloud.launch.py',
+                condition=IfCondition(_equals(LaunchConfiguration('hw'), 'sim')),
+            ),
             include(
                 bringup,
                 'teleop.launch.py',

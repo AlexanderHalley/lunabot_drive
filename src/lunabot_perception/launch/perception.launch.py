@@ -27,8 +27,11 @@ ARGUMENTS = [
         default_value='false',
         description='Use /clock from Isaac Sim instead of the wall clock.',
     ),
+    # Not 'config': launch arguments are global to the whole bringup, and the
+    # SLAM launch's 'config' (rtabmap.yaml) won -- the detector was handed
+    # rtabmap.yaml and only ran correctly because its YAML equals its defaults.
     DeclareLaunchArgument(
-        'config',
+        'detector_config',
         default_value=PathJoinSubstitution(
             [FindPackageShare('lunabot_perception'), 'config', 'boulder_detector.yaml']
         ),
@@ -57,7 +60,7 @@ def generate_launch_description():
         package='lunabot_perception',
         executable='boulder_detector',
         name='boulder_detector',
-        parameters=[LaunchConfiguration('config'), {'use_sim_time': use_sim_time}],
+        parameters=[LaunchConfiguration('detector_config'), {'use_sim_time': use_sim_time}],
         remappings=[('/oak_d/points', LaunchConfiguration('cloud_topic'))],
         output='screen',
     )

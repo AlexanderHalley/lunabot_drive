@@ -114,11 +114,11 @@ def build(
         ]
 
     if publish_pointcloud:
-        # On the real robot the cloud is built by depth_image_proc on the Pi
-        # (decimation 4, 2 m clip). Here the helper produces it directly, so
-        # the point DENSITY differs between sim and hardware even though the
-        # topic does not. If cluster tuning transfers poorly between the two,
-        # this is the first thing to suspect.
+        # Off in run_sim.py: the full-resolution cloud at every rendered frame
+        # is 3 MB at ~50 Hz, which C++ subscribers lost whole, and 16x denser
+        # than the robot's. lunabot_bringup's point_cloud.launch.py builds
+        # /oak_d/points from depth instead, as on the robot. Kept for
+        # standalone Isaac use without the ROS stack.
         nodes.append(('PublishPointCloud', compat.og_node_type('ROS2CameraHelper')))
         values += [
             ('PublishPointCloud.inputs:frameId', 'oak_d_rgb_camera_optical_frame'),

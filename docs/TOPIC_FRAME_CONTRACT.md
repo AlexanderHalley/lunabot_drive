@@ -187,8 +187,10 @@ something we wrote reads the topic and is silently off by 1000×. Two consequenc
 2. `boulder_detector` consumes `/oak_d/points`, not the depth image. The point cloud is metres in
    both cases, so it is byte-comparable between sim and hardware.
 
-`/oak_d/points` is produced by `depth_image_proc/point_cloud_xyz_node` on the robot (decimation 4,
-max range 2.0 m, tuned for Pi bandwidth) and by Isaac's `depth_pcl` camera helper in sim.
+`/oak_d/points` is produced by `rtabmap_util/point_cloud_xyz` from the depth image (decimation 4,
+max range 2.0 m, tuned for Pi bandwidth), from the same launch file on the robot and in sim
+(`point_cloud.launch.py`). Not `depth_image_proc`: Jazzy's `point_cloud_xyz_node` ignores
+`decimation` and `approximate_sync`.
 
 ### Perception
 

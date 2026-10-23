@@ -194,7 +194,9 @@ def _run(args, simulation_app) -> int:
     # everything in it, and losing the camera must not stop /clock.
     clock.build(domain_id=args.domain_id)
     joints.build(articulation_path, domain_id=args.domain_id)
-    camera.build(camera_prim, domain_id=args.domain_id)
+    # No cloud from Isaac: robot.launch.py builds /oak_d/points from depth,
+    # decimated and clipped exactly as on the robot (point_cloud.launch.py).
+    camera.build(camera_prim, domain_id=args.domain_id, publish_pointcloud=False)
     imu.build(imu_prim, domain_id=args.domain_id)
     ground_truth.build(articulation_path, domain_id=args.domain_id)
 

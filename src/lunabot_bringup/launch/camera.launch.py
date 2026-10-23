@@ -20,7 +20,8 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -88,7 +89,7 @@ CONFIG_FOR_PROFILE = {
     'stereo_rect': 'oak_d_s2_stereo_rect.yaml',
 }
 
-# Only these profiles publish a depth image for depth_image_proc to consume.
+# Only these profiles publish a depth image to build the point cloud from.
 PROFILES_WITH_DEPTH = {'default', 'pointcloud'}
 
 
@@ -123,35 +124,18 @@ def _nodes(context, *args, **kwargs):
         # Built on the robot rather than shipped as a depth image and
         # converted offboard. Counter-intuitive but correct: decimated points
         # clipped at 2 m are a fraction of the raw depth image's bytes, so
-        # this trades Pi CPU for network bandwidth, which is scarcer.
+        # this trades Pi CPU for network bandwidth, which is scarcer. The same
+        # file builds Isaac's cloud: see point_cloud.launch.py.
         nodes.append(
-            Node(
-                package='depth_image_proc',
-                executable='point_cloud_xyz_node',
-                name='point_cloud_xyz',
-                remappings=[
-                    ('image_rect', '/oak_d/stereo/image_raw'),
-                    ('camera_info', '/oak_d/stereo/camera_info'),
-                    ('points', '/oak_d/points'),
-                ],
-                parameters=[
-                    {
-                        'queue_size': 10,
-                        # The depth image and its camera_info do not always
-                        # carry identical stamps off the device. Exact sync
-                        # drops everything; approximate sync works.
-                        'approximate_sync': True,
-                        'decimation': int(
-                            LaunchConfiguration('point_cloud_decimation').perform(context)
-                        ),
-                        'min_range': 0.0,
-                        'max_range': float(
-                            LaunchConfiguration('point_cloud_max_range').perform(context)
-                        ),
-                        'use_sim_time': use_sim_time,
-                    }
-                ],
-                output='log',
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    str(Path(get_package_share_directory('lunabot_bringup')) / 'launch' / 'point_cloud.launch.py')
+                ),
+                launch_arguments={
+                    'use_sim_time': str(use_sim_time).lower(),
+                    'decimation': LaunchConfiguration('point_cloud_decimation').perform(context),
+                    'max_range': LaunchConfiguration('point_cloud_max_range').perform(context),
+                }.items(),
             )
         )
 
