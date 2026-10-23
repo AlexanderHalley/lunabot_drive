@@ -169,9 +169,9 @@ def test_amcl_and_map_server_are_not_started(module):
     assert 'map_server' not in started
 
 
-def test_the_initial_survey_is_available_but_off(module, description):
-    """One full turn at the start, opt-in: alone it closed no loops in Isaac."""
+def test_the_initial_survey_is_on_by_default(module, description):
+    """One full turn at the start: the forward camera has seen behind the rover."""
     arguments = {a.name: a for a in description.entities if hasattr(a, 'default_value')}
-    assert arguments['survey'].default_value[0].text == 'false'
+    assert arguments['survey'].default_value[0].text == 'true'
     assert module.INITIAL_SURVEY['executable'] == 'initial_survey.py'
 

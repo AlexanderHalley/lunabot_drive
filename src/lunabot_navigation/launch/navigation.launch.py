@@ -148,11 +148,11 @@ ARGUMENTS = [
     ),
     DeclareLaunchArgument(
         'survey',
-        default_value='false',
+        default_value='true',
         description=(
             'Turn a full circle on the spot once Nav2 is up, so SLAM sees the start area '
-            'from every heading; latches /navigation/survey_done. Off by default: on its '
-            'own it closed no loops in Isaac (see scripts/initial_survey.py).'
+            'from every heading and the costmaps start with the walls behind it; latches '
+            '/navigation/survey_done. survey:=false to skip it.'
         ),
     ),
     DeclareLaunchArgument(

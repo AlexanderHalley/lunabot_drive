@@ -15,14 +15,13 @@ the rover stopped 9 cm from the wall it thought was 29 cm away). One slow
 turn in the start zone gives rtabmap views of the start area from every
 heading, which the return leg can close a loop against.
 
-RESULT IN ISAAC (2026-10-23): on its own it does NOT close the loop. Every
-rtabmap loop-closure attempt on the return found 45-74 feature matches and
-ZERO geometric inliers -- the regolith texture is random, features in one
-patch look like features in many others, and visual matching looking mostly
-at the floor cannot verify a single one. The survey is still the right
-precondition for a loop-closure method that works on this ground (geometry:
-ICP on the depth cloud against walls and boulders; or the start rail's
-fiducials), so it is kept, off by default (launch arg survey:=true).
+It does NOT close the loop by itself (Isaac, 2026-10-23): rtabmap's visual
+loop-closure attempts on the return found 45-74 feature matches and ZERO
+inliers -- random regolith texture, ambiguous features. The return-leg drift
+turned out to be the sim IMU mounted level while its messages claimed the
+camera's 15 deg pitch (fixed in run_sim.py; return leg 0.6 m -> 0.07 m). The
+survey stays on by default for what it does do: the costmaps start with the
+walls and rocks behind the rover, not just the view down the arena.
 
 Once Nav2 is active this asks Nav2's own Spin behaviour (which collision-
 checks against the costmap) for `turn` radians, then latches True on
