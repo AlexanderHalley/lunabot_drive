@@ -413,22 +413,22 @@ def test_observation_ranges_do_not_exceed_the_camera():
     assert checked == 2, f'expected both costmaps to be checked, checked {checked}'
 
 
-def test_camera_obstacles_are_cleared_in_3d():
-    """Every layer fed by the tilted camera must be a VoxelLayer.
+def test_camera_layers_never_clear_in_2d():
+    """A 2D ObstacleLayer that clears erases low rocks.
 
-    A 2D ObstacleLayer clears along the ray to every point, projected flat.
-    The camera looks down over a 26 cm boulder at the ground beyond it, so
-    those rays erase the boulder as fast as it is marked: the global costmap
-    sat empty and Hybrid-A* planned straight through the rock.
+    The camera looks down over a low rock at the ground behind it, and the
+    flat clearing rays to that ground run through the rock's cell. Either
+    clear in 3D (VoxelLayer) or not at all; this configuration does not clear.
     """
     checked = 0
     for path, block in blocks():
         for name, layer in block.items():
             if isinstance(layer, dict) and 'observation_sources' in layer:
-                assert layer['plugin'] == 'nav2_costmap_2d::VoxelLayer', f'{path}/{name}'
+                if layer['plugin'] == 'nav2_costmap_2d::ObstacleLayer':
+                    for source in str(layer['observation_sources']).split():
+                        assert layer[source]['clearing'] is False, f'{path}/{name}/{source}'
                 checked += 1
-    assert checked == 2, f'expected both costmaps to be checked, checked {checked}'
-
+    assert checked == 2
 
 def test_amcl_is_configured_but_never_started():
     """Rtabmap owns map -> odom. AMCL is in this file for completeness only.
@@ -486,13 +486,14 @@ def test_the_costmaps_see_low_rocks():
         for name, layer in block.items():
             if not isinstance(layer, dict) or 'observation_sources' not in layer:
                 continue
-            assert layer['origin_z'] < ground, f'{path}/{name}: voxels start above the ground'
+            if 'origin_z' in layer:  # VoxelLayer
+                assert layer['origin_z'] < ground, f'{path}/{name}: voxels start above the ground'
+                top = layer['origin_z'] + layer['z_resolution'] * layer['z_voxels']
+                assert top >= layer['max_obstacle_height'], f'{path}/{name}: grid too short'
             # The layer's own threshold (default 0.0) applies on top of the
             # source's, so both must be set.
             low = layer['min_obstacle_height']
             assert ground + 0.03 <= low <= ground + 0.10, f'{path}/{name}: layer-level {low}'
-            top = layer['origin_z'] + layer['z_resolution'] * layer['z_voxels']
-            assert top >= layer['max_obstacle_height'], f'{path}/{name}: grid too short'
             for source in str(layer['observation_sources']).split():
                 low = layer[source]['min_obstacle_height']
                 assert ground + 0.03 <= low <= ground + 0.10, (
