@@ -187,7 +187,7 @@ def _run(args, simulation_app) -> int:
     wheel_paths = traction.make_wheels_frictionless(robot_path) if args.sand else None
 
     camera_prim = _find_camera_prim(articulation_path, Path(args.urdf))
-    imu_prim = _create_imu_sensor(articulation_path)
+    imu_prim = _create_imu_sensor(articulation_path, Path(args.urdf))
 
     # ---- ROS 2 graphs ----
     # One graph per concern. A graph that fails to evaluate takes down
@@ -425,18 +425,34 @@ def _origin_matrix(xyz, rpy):
     return matrix
 
 
-def _create_imu_sensor(articulation_path: str) -> str:
+def _create_imu_sensor(articulation_path: str, urdf_path: Path) -> str:
     """Attach an IMU sensor at the camera's IMU frame.
 
     The API differs across versions; compat.create_imu_sensor resolves it.
     6.x samples every physics step and has no frequency setting, so the real
     BNO086's 400 Hz is not reproduced -- the IMU runs at the physics rate.
+
+    The prim gets the URDF's oak_d_imu_frame pose, like the camera. The
+    messages say oak_d_imu_frame, which is pitched down with the camera; a
+    sensor left level at base_link measured the yaw rate the EKF then rotated
+    by that pitch -- every turn read cos(15 deg) short, 6 deg per half turn,
+    and the return leg ended 0.6 m off.
     """
+    import omni.usd
     from lunabot_sim import compat
+    from pxr import Gf, UsdGeom
 
     path = compat.create_imu_sensor(f'{articulation_path}/oak_d_imu')
-    logger.info('created IMU sensor at %s', path)
+    transform = _urdf_frame_transform(urdf_path, 'base_link', IMU_FRAME)
+    xform = UsdGeom.Xformable(omni.usd.get_context().get_stage().GetPrimAtPath(path))
+    xform.ClearXformOpOrder()
+    # Gf matrices are row-vector: the transpose of the column-vector form.
+    xform.AddTransformOp().Set(Gf.Matrix4d(transform.T.tolist()))
+    logger.info('created IMU sensor at %s, at the %s pose', path, IMU_FRAME)
     return path
+
+
+IMU_FRAME = 'oak_d_imu_frame'
 
 
 if __name__ == '__main__':

@@ -306,6 +306,12 @@ image topics comes from the graph configuration, not the prim name.
 
 **The IMU runs at the physics rate, not 400 Hz.** The 6.x IMU sensor has no frequency setting.
 
+**The IMU is mounted at `oak_d_imu_frame`, like the camera.** Its messages carry that frame, which
+the URDF pitches 15° down with the camera, and the EKF rotates the gyro by it into `base_link`. The
+sensor used to sit level at `base_link`: the EKF then read every turn cos 15° short — 6.4° on a
+half turn, which became ~0.6 m of sideways error on the return leg. Check with a pivot: the EKF's
+yaw should match `/sim/ground_truth/odom` within ~0.5°, and the raw gyro z should read ~3.4% short.
+
 **A real-time factor below ~0.3 makes teleop unusable.** `controller_manager` runs at 100 Hz against
 the simulated clock, so everything scales together and stays correct — it is just unpleasant to
 drive. Reduce the render resolution or run `--headless`.
