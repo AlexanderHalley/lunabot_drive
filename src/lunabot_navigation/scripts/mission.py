@@ -191,6 +191,7 @@ def main() -> None:
             p['dig_seconds'],
             p['dump_seconds'],
         )
+        log.info(f'mission: {p["cycles"]} dig-and-dump cycle(s), poses in {p["frame"]}')
         start = node.get_clock().now()
         for step in steps:
             say(step.state)

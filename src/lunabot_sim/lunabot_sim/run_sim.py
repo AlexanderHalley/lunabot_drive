@@ -99,6 +99,12 @@ def parse_args(argv=None):
         help='Publish a chase view and an arena overview on /sim/demo/*, for recording '
         'runs to show people (scene/demo_camera.py). Not sensors.',
     )
+    parser.add_argument(
+        '--demo-excavator',
+        action='store_true',
+        help='A visual-only drum and hopper that dig and dump when /mission/state says so '
+        '(scene/demo_excavator.py). No physics; for videos.',
+    )
     parser.add_argument('--domain-id', type=int, default=42, help='ROS_DOMAIN_ID for the bridge.')
     parser.add_argument(
         '--ground-truth',
@@ -224,6 +230,12 @@ def _run(args, simulation_app) -> int:
         from lunabot_sim.scene.demo_camera import DemoCameras
 
         demo = DemoCameras(articulation_path, config.layout.floor, domain_id=args.domain_id)
+    excavator = None
+    if args.demo_excavator:
+        from lunabot_sim.scene.demo_excavator import DemoExcavator
+
+        # Under base_link, so it moves with the chassis -- as the camera prim does.
+        excavator = DemoExcavator(articulation_path, domain_id=args.domain_id)
 
     world.reset()
     if not args.headless:
@@ -266,6 +278,8 @@ def _run(args, simulation_app) -> int:
             boulder_truth.step(world.current_time)
         if demo is not None:
             demo.step(world.current_time)
+        if excavator is not None:
+            excavator.step(world.current_time)
         if pacer is not None:
             pacer.wait()
 

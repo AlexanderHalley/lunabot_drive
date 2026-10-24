@@ -54,6 +54,63 @@ DEFAULT_ZONES = (
 FOOTPRINT = (0.92, 0.644)  # nav2_params.yaml footprint; for drawing only
 
 
+# What a viewer should take from each mission phase (mission.py's /mission/state),
+# matched on the phase's start: '(1/2)' tags and suffixes do not matter.
+CAPTIONS = (
+    ('WAITING FOR NAVIGATION', 'Starting up: SLAM, localisation and Nav2 come online.'),
+    (
+        'SURVEYING START AREA',
+        'One full turn on the spot: the camera maps the start area and looks for the '
+        'two AprilTags in the corner.',
+    ),
+    (
+        'LOCALISING ON APRILTAGS',
+        'Two tags at known places on the walls tell the rover where it started and which '
+        'way it was facing.',
+    ),
+    (
+        'DRIVING TO EXCAVATION ZONE',
+        'Planning around boulders it has only half seen: the hidden side of a rock counts '
+        'as rock until the camera has seen it.',
+    ),
+    (
+        'EXCAVATING',
+        'Digging. The drum is a stand-in: there is no excavation model or driver yet.',
+    ),
+    (
+        'DRIVING TO CONSTRUCTION ZONE',
+        'Carrying the load to the berm. The plan is redone every 2 s as new rocks come into view.',
+    ),
+    ('DEPOSITING', 'Dumping into the berm area. The hopper is a stand-in, like the drum.'),
+    ('RETURNING TO START', 'Heading home through the rock field.'),
+    ('MISSION COMPLETE', 'Done, with no operator input at any point.'),
+    ('FAILED', 'A leg failed twice, so the mission stopped rather than skip ahead.'),
+)
+
+
+def caption(mission_state: str) -> str:
+    """Return the viewer's caption for a /mission/state line ('' if none)."""
+    if mission_state.endswith('RETRYING'):
+        return 'That leg failed; Nav2 plans again from wherever the rover ended up.'
+    for prefix, text in CAPTIONS:
+        if mission_state.startswith(prefix):
+            return text
+    return ''
+
+
+def wrap(text: str, width_px: int, measure) -> list[str]:
+    """Split text into lines no wider than width_px, by `measure(line) -> px`."""
+    lines, line = [], ''
+    for word in text.split():
+        trial = f'{line} {word}'.strip()
+        if line and measure(trial) > width_px:
+            lines.append(line)
+            line = word
+        else:
+            line = trial
+    return lines + ([line] if line else [])
+
+
 def parse_zones(text: str) -> dict[str, tuple[float, float, float, float]]:
     zones = {}
     for item in filter(None, (s.strip() for s in text.split(';'))):
@@ -110,6 +167,14 @@ def main() -> None:
     output = node.declare_parameter('output', 'lunabot_demo.mp4').value
     fps = float(node.declare_parameter('fps', 15.0).value)
     title = node.declare_parameter('title', 'Lunabot 2027 autonomy - Isaac Sim').value
+    # Shown on the title card under the title, one line per '|'.
+    subtitle = node.declare_parameter(
+        'subtitle',
+        'Simulation: the world is Isaac Sim, the rover software is the real stack.|'
+        'Nobody touches the controls from start to finish.',
+    ).value
+    title_seconds = float(node.declare_parameter('title_seconds', 4.0).value)
+    end_seconds = float(node.declare_parameter('end_seconds', 5.0).value)
     zones = parse_zones(node.declare_parameter('zones', DEFAULT_ZONES).value)
     costmap_service = node.declare_parameter(
         'costmap_service', '/global_costmap/get_costmap'
@@ -330,10 +395,21 @@ def main() -> None:
     def frame():
         now = node.get_clock().now().nanoseconds * 1e-9
         if frames['t0'] is None:
-            if 'chase' not in latest and 'onboard' not in latest:
-                return  # nothing to show yet: do not record a black lead-in
+            # Nothing to show yet: do not record a black lead-in. Wait for the
+            # chase view (sim); on the robot there is none, so the onboard
+            # camera starts it after a 10 s grace.
+            if 'onboard' in latest and frames.get('first_onboard') is None:
+                frames['first_onboard'] = time.monotonic()
+            waited = time.monotonic() - frames.get('first_onboard', time.monotonic())
+            if 'chase' not in latest and not ('onboard' in latest and waited > 10.0):
+                return
             frames['t0'] = now
             log.info(f'recording to {output}')
+            card(
+                [(title, 1.6, (240, 240, 240))]
+                + [(line, 0.9, (190, 190, 190)) for line in subtitle.split('|') if line],
+                title_seconds,
+            )
         update_pose()
         canvas = np.zeros((H, W, 3), np.uint8)
         paste(canvas, to_bgr(latest.get('chase'), CHASE[2:]), CHASE, 'chase view (sim only)')
@@ -343,23 +419,44 @@ def main() -> None:
         x, y, w, h = TEXT
         canvas[y : y + h, x : x + w] = (22, 22, 22)
         elapsed = now - frames['t0']
-        lines = [
-            (title, 0.8, (200, 200, 200)),
-            (state['mission'] or '-', 1.3, (80, 220, 255)),
-            (
-                f'mission clock {int(elapsed // 60):02d}:{int(elapsed % 60):02d}    '
-                f'speed {state["speed"]:.2f} m/s',
-                0.8,
-                (230, 230, 230),
-            ),
-            ('fully autonomous: no operator input', 0.7, (140, 200, 140)),
-        ]
-        ty = y + 60
-        for text, scale, colour in lines:
-            cv2.putText(canvas, text, (x + 30, ty), font, scale, colour, 2, cv2.LINE_AA)
-            ty += int(70 * max(scale, 0.8))
+        frames['elapsed'] = elapsed
+
+        def put(text, ty, scale, colour, thickness=2):
+            cv2.putText(canvas, text, (x + 30, ty), font, scale, colour, thickness, cv2.LINE_AA)
+
+        put(title, y + 45, 0.75, (170, 170, 170))
+        put(state['mission'] or '-', y + 105, 1.3, (80, 220, 255), 3)
+        lines = wrap(caption(state['mission']), w - 60, lambda t: text_width(t, 0.75))
+        for i, line in enumerate(lines[:3]):
+            put(line, y + 160 + 36 * i, 0.75, (235, 235, 235))
+        put(
+            f'mission clock {int(elapsed // 60):02d}:{int(elapsed % 60):02d}    '
+            f'speed {state["speed"]:.2f} m/s',
+            y + 300,
+            0.75,
+            (200, 200, 200),
+        )
+        put('fully autonomous: no operator input', y + 340, 0.65, (140, 200, 140))
         writer.write(canvas)
         frames['n'] += 1
+
+    def text_width(text, scale, thickness=2):
+        return cv2.getTextSize(text, font, scale, thickness)[0][0]
+
+    def card(lines, seconds):
+        """Write `seconds` of a still card: [(text, scale, colour)], centred."""
+        canvas = np.full((H, W, 3), 18, np.uint8)
+        total = sum(int(70 * scale) for _, scale, _ in lines)
+        ty = (H - total) // 2 + 40
+        for text, scale, colour in lines:
+            tx = (W - text_width(text, scale, 3)) // 2
+            cv2.putText(
+                canvas, text, (tx, ty), font, scale, colour, 3 if scale > 1 else 2, cv2.LINE_AA
+            )
+            ty += int(70 * scale)
+        for _ in range(int(seconds * fps)):
+            writer.write(canvas)
+            frames['n'] += 1
 
     node.create_timer(1.0 / fps, frame)
     wall0 = time.monotonic()
@@ -368,6 +465,23 @@ def main() -> None:
     except (KeyboardInterrupt, ExternalShutdownException):
         pass  # Ctrl-C, or SIGINT from ros2 run: both mean "finish the file"
     finally:
+        if frames['t0'] is not None:
+            done = state['mission'] or 'mission not started'
+            elapsed = frames.get('elapsed', 0.0)
+            card(
+                [
+                    (done, 1.4, (80, 220, 255)),
+                    (
+                        f'video clock {int(elapsed // 60):02d}:{int(elapsed % 60):02d}, '
+                        'start-up and the start survey included',
+                        0.8,
+                        (200, 200, 200),
+                    ),
+                    (state['fix_label'], 0.8, (200, 200, 200)),
+                    ('No operator input at any point.', 0.9, (140, 200, 140)),
+                ],
+                end_seconds,
+            )
         writer.release()
         log.info(
             f'wrote {frames["n"]} frames ({frames["n"] / fps:.0f} s of video) to {output} '

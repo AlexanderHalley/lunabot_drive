@@ -45,6 +45,9 @@ if(BUILD_TESTING)
   # bug before this test existed.
   ament_add_pytest_test(test_config_files test/test_config_files.py)
 
+  # demo_recorder.py's captions cover every phase mission.py announces.
+  ament_add_pytest_test(test_demo_recorder test/test_demo_recorder.py)
+
   # Brings the whole stack up on mock hardware and drives it. No hardware, no
   # GPU, no network. This is the highest-value test in the workspace: if
   # /odom moves, the URDF parsed, the plugin loaded, the interfaces were

@@ -11,6 +11,8 @@
 # --no-markings drops the painted zone outlines (use it for SLAM/perception).
 # --demo-cameras publishes a chase view and an arena overview on /sim/demo/* for
 # recording runs (lunabot_bringup demo_recorder.py). Not sensors.
+# --demo-excavator adds a visual-only drum and hopper that dig and dump when the
+# mission says so (scene/demo_excavator.py). No physics.
 # --start-pose x,y,yaw_deg | random: where the rover starts (default 0,0,0). random
 # picks a pose in the start zone from --seed, as the competition does.
 # --lighting arena|lunar: indoor and soft (default), or low sun and black shadows.
@@ -42,6 +44,7 @@ REALTIME=""
 SAND=""
 MARKINGS=""
 DEMO=""
+EXCAVATOR=""
 START_POSE="0,0,0"
 LIGHTING="arena"
 DOMAIN_ID="${ROS_DOMAIN_ID:-42}"
@@ -62,6 +65,7 @@ while [[ $# -gt 0 ]]; do
     --no-sand)   SAND="--no-sand"; shift ;;
     --no-markings) MARKINGS="--no-markings"; shift ;;
     --demo-cameras) DEMO="--demo-cameras"; shift ;;
+    --demo-excavator) EXCAVATOR="--demo-excavator"; shift ;;
     --start-pose) START_POSE="$2"; shift 2 ;;
     --lighting)  LIGHTING="$2"; shift 2 ;;
     -h|--help)   usage 0 ;;
@@ -124,6 +128,7 @@ exec "${ISAAC_SIM_PATH}/python.sh" -m lunabot_sim.run_sim \
   ${REALTIME} \
   ${SAND} \
   ${DEMO} \
+  ${EXCAVATOR} \
   --start-pose="${START_POSE}" \
   --lighting "${LIGHTING}" \
   ${MARKINGS}
