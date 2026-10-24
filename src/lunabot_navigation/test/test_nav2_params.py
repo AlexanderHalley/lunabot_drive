@@ -549,3 +549,26 @@ def test_lattice_primitives_match_the_costmap():
     if planner.get('allow_reverse_expansion'):
         assert node_params('controller_server')['FollowPath'].get('allow_reversing') is True
 
+
+
+def test_the_planner_treats_unseen_space_behind_rocks_as_rock():
+    """The shadow layer runs after everything that marks and before inflation.
+
+    Before the marking layers it has nothing to start from; after inflation
+    the shadows it adds are never inflated, and the inflation layer has
+    already overwritten the unknown cells behind each face with 253 -- which
+    the footprint check lets the rover's outline cross. That was the 0-4 cm
+    passes (docs/NAVIGATION.md, "Rocks behind their seen faces"). It needs
+    unknown cells to exist at all, and to reach as deep as the deepest rock
+    (scene: 30-40 cm across).
+    """
+    costmap = params()['global_costmap']['global_costmap']['ros__parameters']
+    plugins = costmap['plugins']
+    shadow = [p for p in plugins if costmap[p]['plugin'] == 'lunabot_navigation::UnseenShadowLayer']
+    assert len(shadow) == 1
+    index = plugins.index(shadow[0])
+    for marker in ('static_layer', 'obstacle_layer'):
+        assert plugins.index(marker) < index
+    assert index < plugins.index('inflation_layer')
+    assert costmap['track_unknown_space'] is True
+    assert costmap[shadow[0]]['shadow_depth'] >= 0.40

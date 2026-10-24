@@ -2,6 +2,33 @@ cmake_minimum_required(VERSION 3.8)
 project(lunabot_navigation)
 
 find_package(ament_cmake REQUIRED)
+find_package(nav2_costmap_2d REQUIRED)
+find_package(pluginlib REQUIRED)
+find_package(rclcpp REQUIRED)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# Costmap layers, loaded by nav2_costmap_2d through pluginlib
+# (costmap_plugins.xml). UnseenShadowLayer: the unseen space behind a seen
+# obstacle surface is obstacle -- docs/NAVIGATION.md.
+add_library(lunabot_costmap_layers SHARED src/unseen_shadow_layer.cpp)
+target_compile_features(lunabot_costmap_layers PUBLIC cxx_std_17)
+target_include_directories(lunabot_costmap_layers PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/lunabot_navigation>
+)
+ament_target_dependencies(lunabot_costmap_layers PUBLIC nav2_costmap_2d pluginlib rclcpp)
+pluginlib_export_plugin_description_file(nav2_costmap_2d costmap_plugins.xml)
+
+install(
+  TARGETS lunabot_costmap_layers
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+install(DIRECTORY include/ DESTINATION include/lunabot_navigation)
 
 install(
   DIRECTORY launch config maps
@@ -27,6 +54,11 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 
   find_package(ament_cmake_pytest REQUIRED)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  # The shadow rule on small hand-drawn grids. No ROS, no costmap.
+  ament_add_gtest(test_unseen_shadow test/test_unseen_shadow.cpp)
+  target_include_directories(test_unseen_shadow PRIVATE include)
 
   # Pure YAML: the footprint against the chassis in properties.xacro, the
   # velocity limits against diff_drive_controller's, the observation ranges

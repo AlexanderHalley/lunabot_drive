@@ -260,7 +260,7 @@ global_costmap:
       footprint: "[[0.46, 0.322], [0.46, -0.322], [-0.46, -0.322], [-0.46, 0.322]]"
       footprint_padding: 0.03
 
-      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      plugins: ["static_layer", "obstacle_layer", "unseen_shadow_layer", "inflation_layer"]
 
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
@@ -304,6 +304,22 @@ global_costmap:
           # Arena rocks do not move by themselves. The local costmap still
           # clears, so transient noise near the rover goes away.
           clearing: false
+
+      unseen_shadow_layer:
+        # The camera marks only the faces of a rock turned towards it; behind
+        # them nothing was ever seen. Left alone, the inflation layer turns
+        # those unknown cells into 253 ("inscribed"), which Smac's footprint
+        # check lets the rover's outline cross -- plans clipped the unseen
+        # corners of rocks and the rover passed at 0-4 cm, sometimes
+        # touching. This marks unknown cells reachable from a lethal cell
+        # through unknown cells only, up to shadow_depth, as lethal. Seen-free
+        # cells stop it, so nothing is ever marked in front of a seen surface
+        # (the back wall is 0.75 m from the start pose), and far unknown
+        # space stays unknown, so goals beyond the camera still plan. No
+        # shape guess: one depth, the deepest rock (30-40 cm). BEFORE
+        # inflation, so the shadows are inflated too. src/unseen_shadow_layer.cpp
+        plugin: "lunabot_navigation::UnseenShadowLayer"
+        shadow_depth: 0.45
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"

@@ -19,6 +19,9 @@
        itself so the /cmd_vel_nav remappings are ours: nav2_bringup's own
        launch puts velocity_smoother onto /cmd_vel, which belongs to
        twist_mux. -->
+  <depend>nav2_costmap_2d</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
@@ -35,7 +38,6 @@
   <exec_depend>nav2_behaviors</exec_depend>
   <exec_depend>nav2_velocity_smoother</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
-  <exec_depend>nav2_costmap_2d</exec_depend>
 
   <!-- RewrittenYaml, which navigation.launch.py uses to push use_sim_time
        into the costmaps' own parameter blocks. -->
@@ -54,6 +56,7 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>launch</test_depend>
   <test_depend>launch_ros</test_depend>
   <test_depend>python3-pytest</test_depend>

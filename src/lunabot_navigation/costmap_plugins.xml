@@ -1,0 +1,7 @@
+<class_libraries>
+  <library path="lunabot_costmap_layers">
+    <class type="lunabot_navigation::UnseenShadowLayer" base_class_type="nav2_costmap_2d::Layer">
+      <description>Marks the unseen space behind seen obstacle surfaces as obstacle.</description>
+    </class>
+  </library>
+</class_libraries>

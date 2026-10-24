@@ -278,16 +278,30 @@ pose. Any marking scheme that puts cost in front of a seen surface will do this.
 **Also tried and rejected:** `footprint_padding: 0.06`. It kept seed 7 off the rocks only by
 closing its 0.9 m gaps (one leg took 158 s of replanning). A bigger margin hides the problem.
 
-**Recommended direction (not yet tried): plan on what has been seen.**
-- Mark a cell *seen-free* only where the camera actually sees floor points. That is direct
-  evidence of free ground, unlike raytracing through obstacles, which erased low rocks (trap 2).
-  Obstacles stay marked and are never cleared.
-- Make the planner prefer seen-free cells, and avoid or penalise unknown cells near the rover,
-  while still allowing unknown far away (goals lie beyond the 2 m camera range). Open question:
-  how Jazzy's Smac weighs a cost-255 unknown cell with `allow_unknown: true`. The installed
-  package has only headers, so read the nav2_smac_planner source before choosing.
-- It is shape-agnostic, and it also covers **craters**: a forward camera can't see into a
-  crater, and no boulder rule would ever mark one.
+**What was actually wrong (read from the Jazzy 1.3.13 source and the costmap, 2026-10-24).**
+Seen-free space was NOT missing: rtabmap's grid (ray-traced, static layer) leaves only ~13% of
+the arena unknown. The faults were two Nav2 behaviours together:
+- The inflation layer overwrites an *unknown* cell with 253 ("inscribed") whenever it lies within
+  the inscribed radius of a lethal cell (`inflate_unknown: false` only spares lower costs). So the
+  unseen back and corners of a rock read 253, not unknown.
+- Smac's footprint check (`GridCollisionChecker::inCollision`) rejects a pose only if its CENTRE
+  is 253/254 or its OUTLINE crosses a 254. The rover's half-length (0.46 m) exceeds the inscribed
+  radius (0.35 m), so a corner can sweep across 253 cells at a rock's unseen corner.
+
+**Fix: `UnseenShadowLayer`** (`src/unseen_shadow_layer.cpp`, global costmap, between the
+marking layers and inflation). Every UNKNOWN cell reachable from a LETHAL cell through unknown
+cells only, within `shadow_depth` (0.45 m, the deepest rock), becomes lethal. In plain words: the
+space hidden behind a surface you saw counts as part of it.
+- Seen-free cells stop it, so it never marks in front of a seen surface (where the wall and the
+  pivot circle are); unknown space away from obstacles stays unknown, so far goals still plan.
+- No classification, no shape prior; the one number is the depth. It also covers a crater's
+  hidden far side once its near edge is marked.
+
+Isaac seed 7, 3 runs each, before → after: plans crossing a rock after it was seen 11 → **0**;
+closest pass per run +0.6 / **−1.0 (contact)** / +11.2 cm → +0.2 / +11.2 / +6.0 cm; leg times
+unchanged; survey fine. Still open: legal plans run 1–4 cm off lethal cells, and an on-the-spot
+turn beside a rock (RPP rotate-to-heading) used up a 6 cm plan margin. That is margin tuning
+(Smac `cost_penalty`, inflation fall-off) and tracking, not knowledge.
 
 **Measuring clearance — lessons:**
 - One run proves nothing. Identical runs differed by up to 12 cm of clearance, so compare ≥ 3
