@@ -56,6 +56,15 @@ def plan(cycles, dig_pose, dump_pose, home_pose, dig_seconds, dump_seconds) -> l
     return steps
 
 
+def to_map(pose, fix):
+    """An arena-frame (x, y, yaw) in map, given the map origin's pose in arena."""
+    fx, fy, fyaw = fix
+    dx, dy = pose[0] - fx, pose[1] - fy
+    c, s = math.cos(fyaw), math.sin(fyaw)
+    yaw = math.remainder(pose[2] - fyaw, math.tau)
+    return (c * dx + s * dy, -s * dx + c * dy, yaw)
+
+
 def main() -> None:
     import rclpy
     from nav2_msgs.action import NavigateToPose
@@ -64,6 +73,7 @@ def main() -> None:
     from rclpy.node import Node
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from std_msgs.msg import Bool, String
+    from tf2_ros import Buffer, TransformListener
 
     rclpy.init()
     node = Node('mission')
@@ -79,8 +89,14 @@ def main() -> None:
             ('dig_seconds', 8.0),
             ('dump_seconds', 6.0),
             ('wait_for_survey', True),
+            # The poses above are in this frame. 'arena' needs the start fix
+            # (fiducial_localizer.py: arena -> map); 'map' sends them as they are.
+            ('frame', 'arena'),
+            ('fix_timeout', 15.0),
         )
     }
+    tf = Buffer()
+    TransformListener(tf, node)
     log = node.get_logger()
     latched = QoSProfile(
         depth=1,
@@ -119,6 +135,21 @@ def main() -> None:
             return False
         return result.result().status == 4  # GoalStatus.STATUS_SUCCEEDED
 
+    def wait_for_fix(frame):
+        from rclpy.time import Time
+
+        end = node.get_clock().now().nanoseconds + int(p['fix_timeout'] * 1e9)
+        while rclpy.ok() and node.get_clock().now().nanoseconds < end:
+            try:
+                t = tf.lookup_transform(frame, 'map', Time())
+            except Exception:  # noqa: BLE001
+                rclpy.spin_once(node, timeout_sec=0.1)
+                continue
+            q = t.transform.rotation
+            yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+            return (t.transform.translation.x, t.transform.translation.y, yaw)
+        return None
+
     try:
         say('WAITING FOR NAVIGATION')
         nav = ActionClient(node, NavigateToPose, 'navigate_to_pose')
@@ -134,11 +165,24 @@ def main() -> None:
             if not survey['done']:
                 log.warning('the start survey failed; carrying on without it')
 
+        fix = (0.0, 0.0, 0.0)
+        if p['frame'] != 'map':
+            say('LOCALISING ON APRILTAGS')
+            fix = wait_for_fix(p['frame'])
+            if fix is None:
+                fix = (0.0, 0.0, 0.0)
+                log.error(f'no {p["frame"]} -> map after {p["fix_timeout"]:.0f} s: ASSUMING THE '
+                          f'ROVER STARTED AT THE {p["frame"].upper()} ORIGIN. Right only for the '
+                          'default sim spawn.')
+            else:
+                log.info(f'start fix: map origin at {p["frame"]} x {fix[0]:.2f} y {fix[1]:.2f} '
+                         f'yaw {math.degrees(fix[2]):.0f} deg')
+
         steps = plan(
             p['cycles'],
-            p['dig_pose'],
-            p['dump_pose'],
-            p['home_pose'],
+            to_map(p['dig_pose'], fix),
+            to_map(p['dump_pose'], fix),
+            to_map(p['home_pose'], fix),
             p['dig_seconds'],
             p['dump_seconds'],
         )

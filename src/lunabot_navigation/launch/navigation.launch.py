@@ -128,6 +128,15 @@ INITIAL_SURVEY = {
     'name': 'initial_survey',
 }
 
+# Watches the survey for the start corner's AprilTags and publishes the
+# static arena -> map transform when it ends (scripts/fiducial_localizer.py).
+# Runs with the survey: without the spin it sees one wall at best.
+FIDUCIAL_LOCALIZER = {
+    'package': 'lunabot_navigation',
+    'executable': 'fiducial_localizer.py',
+    'name': 'fiducial_localizer',
+}
+
 # Derived, not restated. An unmanaged lifecycle node sits in `unconfigured`
 # forever, producing no output and no error -- so "started but not managed"
 # should not be a state this file can express.
@@ -154,6 +163,13 @@ ARGUMENTS = [
             'from every heading and the costmaps start with the walls behind it; latches '
             '/navigation/survey_done. survey:=false to skip it.'
         ),
+    ),
+    DeclareLaunchArgument(
+        'fiducials_file',
+        default_value=PathJoinSubstitution(
+            [FindPackageShare('lunabot_navigation'), 'config', 'fiducials_ucf.yaml']
+        ),
+        description='Where the start corner\'s AprilTags are, in the arena frame.',
     ),
     DeclareLaunchArgument(
         'autostart',
@@ -242,4 +258,13 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('survey')),
     )
 
-    return LaunchDescription(ARGUMENTS + nodes + [manager, survey])
+    fiducials = Node(
+        package=FIDUCIAL_LOCALIZER['package'],
+        executable=FIDUCIAL_LOCALIZER['executable'],
+        name=FIDUCIAL_LOCALIZER['name'],
+        output='screen',
+        parameters=[LaunchConfiguration('fiducials_file'), {'use_sim_time': use_sim_time}],
+        condition=IfCondition(LaunchConfiguration('survey')),
+    )
+
+    return LaunchDescription(ARGUMENTS + nodes + [manager, survey, fiducials])

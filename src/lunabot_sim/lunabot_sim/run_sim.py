@@ -29,7 +29,9 @@ error, no log line, just a stack that appears hung.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import random
 import signal
 import sys
 import time
@@ -68,6 +70,14 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         '--seed', type=int, default=0, help='Boulder layout seed. Same seed, same scene.'
+    )
+    parser.add_argument(
+        '--start-pose',
+        default='0,0,0',
+        help="Where the rover starts: 'x,y,yaw' (metres, degrees, arena frame) or "
+        "'random' -- anywhere in the start zone that leaves room for the start spin, "
+        'any heading, drawn from --seed. The competition draws the start pose at random; '
+        'the wall AprilTags are how the rover finds out which (fiducial_localizer.py).',
     )
     parser.add_argument('--headless', action='store_true', help='No viewport.')
     parser.add_argument(
@@ -187,7 +197,11 @@ def _run(args, simulation_app) -> int:
         articulation_path = importer.add_to_stage(robot_usd, robot_path)
     else:
         articulation_path = importer.import_urdf(Path(args.urdf), robot_path)
-    _place_on_ground(robot_path, Path(args.urdf))
+    start = _start_pose(args.start_pose, config.layout, args.seed)
+    _place_on_ground(robot_path, Path(args.urdf), start)
+    (Path(args.urdf).parent / 'start_pose.json').write_text(
+        json.dumps({'x': start[0], 'y': start[1], 'yaw_deg': start[2]})
+    )
     articulation.configure(articulation_path, robot_path=robot_path)
     articulation.set_solver_iterations(articulation_path)
     wheel_paths = traction.make_wheels_frictionless(robot_path) if args.sand else None
@@ -373,7 +387,23 @@ CAMERA_CLIPPING_M = (0.2, 20.0)
 SPAWN_CLEARANCE_M = 0.005
 
 
-def _place_on_ground(robot_path: str, urdf_path: Path) -> None:
+def _start_pose(spec: str, layout, seed: int) -> tuple[float, float, float]:
+    """(x, y, yaw degrees) from --start-pose."""
+    if spec != 'random':
+        x, y, yaw = (float(v) for v in spec.split(','))
+        return x, y, yaw
+    area = layout.start_area()
+    if area is None:
+        raise SystemExit(f'--start-pose random needs an arena with a start zone, not {layout.name}')
+    rng = random.Random(seed * 7919 + 1)
+    return (
+        round(rng.uniform(area.x_min, area.x_max), 3),
+        round(rng.uniform(area.y_min, area.y_max), 3),
+        round(rng.uniform(-180.0, 180.0), 1),
+    )
+
+
+def _place_on_ground(robot_path: str, urdf_path: Path, start=(0.0, 0.0, 0.0)) -> None:
     """Raise the robot so its wheels start on the ground, not in it.
 
     Imported as-is, base_link sits at z = 0 with the wheels a full radius
@@ -395,8 +425,10 @@ def _place_on_ground(robot_path: str, urdf_path: Path) -> None:
     height = -footprint[2, 3] - min(lowest_axle, 0.0) + SPAWN_CLEARANCE_M
 
     prim = omni.usd.get_context().get_stage().GetPrimAtPath(robot_path)
-    UsdGeom.XformCommonAPI(prim).SetTranslate(Gf.Vec3d(0.0, 0.0, height))
-    logger.info('placed %s at z = %.3f m', robot_path, height)
+    x, y, yaw = start
+    UsdGeom.XformCommonAPI(prim).SetTranslate(Gf.Vec3d(x, y, height))
+    UsdGeom.XformCommonAPI(prim).SetRotate(Gf.Vec3f(0.0, 0.0, yaw))
+    logger.info('start pose: x %.3f y %.3f yaw %.1f deg, z %.3f m', x, y, yaw, height)
 
 
 def _urdf_frame_transform(urdf_path: Path, parent: str, child: str):

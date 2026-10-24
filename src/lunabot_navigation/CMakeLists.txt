@@ -10,6 +10,7 @@ install(
 
 install(
   PROGRAMS scripts/curvature_limiter.py scripts/initial_survey.py scripts/mission.py
+    scripts/fiducial_localizer.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -46,6 +47,9 @@ if(BUILD_TESTING)
 
   # The mission's step list, and that its UCF poses sit in the right zones.
   ament_add_pytest_test(test_mission test/test_mission.py)
+
+  # The start fix from the wall AprilTags, on synthetic renders of a spin.
+  ament_add_pytest_test(test_fiducial_localizer test/test_fiducial_localizer.py)
 endif()
 
 ament_package()

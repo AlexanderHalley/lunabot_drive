@@ -34,7 +34,11 @@ guidebook) are NOT here: the terrain is flat. See terrain.py.
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import asdict, dataclass, field
+
+from lunabot_sim.scene.fiducials import Fiducial
 
 
 @dataclass(frozen=True)
@@ -113,10 +117,34 @@ class ArenaLayout:
 
     posts: tuple[Post, ...] = field(default_factory=tuple)
 
+    fiducials: tuple[Fiducial, ...] = field(default_factory=tuple)
+    """AprilTags on the walls, for the start-pose fix (fiducials.py)."""
+
     def keep_outs(self) -> tuple[Rect, ...]:
         """Where no boulder may be placed: start, construction, posts."""
         zones = [z for z in (self.start_zone, self.construction_zone) if z is not None]
         return tuple(zones) + tuple(p.footprint() for p in self.posts)
+
+    def start_area(self, wall_clearance: float = 0.65, edge_clearance: float = 0.56) -> Rect | None:
+        """Where the rover's CENTRE may start, any heading: inside the start zone.
+
+        `wall_clearance` keeps the start spin off the walls (the corners sweep
+        a 0.60 m circle, plus Nav2's 0.03 m padding); `edge_clearance` keeps
+        the whole rover (half-diagonal 0.56 m) inside the zone's open edges.
+        """
+        zone, floor = self.start_zone, self.floor
+        if zone is None or floor is None:
+            return None
+
+        def inset(edge, wall):
+            return wall_clearance if abs(edge - wall) < 1e-9 else edge_clearance
+
+        return Rect(
+            zone.x_min + inset(zone.x_min, floor.x_min),
+            zone.x_max - inset(zone.x_max, floor.x_max),
+            zone.y_min + inset(zone.y_min, floor.y_min),
+            zone.y_max - inset(zone.y_max, floor.y_max),
+        )
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -149,6 +177,15 @@ UCF = ArenaLayout(
         Post(x, y, _UCF_POST, 1.0)
         for x in (_UCF_X0, _UCF_X0 + _UCF_HALF, _UCF_X1)
         for y in (_UCF_Y0, _UCF_Y1)
+    ),
+    # Two tags in the start corner, one on each wall, so the start spin sees
+    # both whatever the start heading (fiducial_localizer.py). LOW on purpose:
+    # facing the start wall from the default start, the camera (0.22 m up,
+    # pitched 15 deg down) is 0.34 m from it and sees only up to ~0.27 m.
+    # Placement is ours, not the guidebook's -- check against the rules.
+    fiducials=(
+        Fiducial(0, x=_UCF_X0, y=-0.40, z=0.14, facing=0.0),
+        Fiducial(1, x=0.25, y=_UCF_Y0, z=0.14, facing=math.pi / 2),
     ),
 )
 

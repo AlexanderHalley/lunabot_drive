@@ -86,8 +86,9 @@ def test_every_declared_node_is_constructed(module, description):
     Pinning the count as well catches a node quietly dropped from the
     comprehension.
     """
-    # + curvature_limiter, initial_survey (not lifecycle-managed) + lifecycle_manager
-    assert len(nodes(description)) == len(module.NAV2_NODES) + 3
+    # + curvature_limiter, initial_survey, fiducial_localizer (not lifecycle-managed)
+    # + lifecycle_manager
+    assert len(nodes(description)) == len(module.NAV2_NODES) + 4
 
 
 def test_nav2_never_publishes_to_cmd_vel(module):

@@ -202,13 +202,48 @@ ros2 run lunabot_navigation mission.py --ros-args -p use_sim_time:=true \
 
 - **Digging and dumping are placeholders**: a timed stop. There is no excavation package; when
   there is, `mission.py` calls its actions there.
-- The poses are in the map frame, which starts at the rover's start pose. They are right only
-  for the sim's fixed spawn. On the field the start pose is random, and the start rail's
-  fiducials will have to give map → arena first.
+- The poses are in the **arena** frame (`frame: arena`). The map frame starts wherever the rover
+  starts, so the mission converts them through the AprilTag start fix (next section). With no
+  fix after `fix_timeout` it logs an error and assumes map = arena, which is right only for the
+  sim's default spawn.
 - A failed leg is retried (`retries`), then the mission stops as `FAILED: <phase>` rather than
   skipping ahead from the wrong place.
 
 To record a run as a video for people, see docs/SIM_ISAAC.md, "Demo videos".
+
+---
+
+## Start fix: AprilTags in the start corner
+
+The competition draws the start pose at random, and SLAM's `map` frame starts wherever the rover
+is. Two tag36h11 tags, **id 0 on the end wall and id 1 on the side wall of the start corner**,
+fix where `map` sits in the arena. `scripts/fiducial_localizer.py` (started with the survey,
+`config/fiducials_ucf.yaml`):
+
+1. During the start spin, every camera frame (≤ 10 Hz) is searched with OpenCV's aruco detector
+   (tag36h11 dictionary; no extra packages). Each tag gets a solvePnP pose from its four corners
+   and its known size, gated on size in pixels, reprojection error, range and the image edge.
+2. Each sighting goes into `map` through TF at the image's stamp. The image arrives before TF has
+   that stamp, so sightings are queued and resolved a little later, not looked up in the
+   callback.
+3. On `/navigation/survey_done` (plus 1 s for the last sightings): with both tags seen, a 2D
+   rigid fit of the two tag **centres** (1.2 m apart) gives arena → map; a 16 cm tag's own
+   orientation is a much worse heading than the line between two tags. With one tag, the median
+   of its full-pose estimates. With none, an error and no transform.
+4. Published as a **static TF `arena → map`** and a latched `/localization/arena_fix`
+   (PoseWithCovarianceStamped: the map origin in the arena, covariance from the sightings' spread).
+
+Tag placement is ours, not the guidebook's (check it against the rules), and LOW: from the
+default start the camera is 0.34 m from the end wall and, 0.22 m up and pitched 15° down, sees
+only up to ~0.27 m there. The tags are 16 cm black squares, centres 14 cm up, with a **two-cell**
+white margin: OpenCV misses a one-cell margin on a darker wall once a cell is more than ~8 px
+across, which is the close range of the spin.
+
+It fixes the start only. Re-seeing the tags on the way home could correct SLAM drift later.
+
+Tests: `test/test_fiducial_localizer.py` renders the tags into synthetic camera images over a
+full spin from several start poses and checks the fix (< 3 cm, < 1°), the one-tag fallback, and
+that the config matches the sim's tag positions.
 
 ---
 

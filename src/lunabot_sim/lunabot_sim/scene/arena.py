@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from lunabot_sim.scene import boulders as boulders_module
+from lunabot_sim.scene import fiducials as fiducials_module
 from lunabot_sim.scene import layout as layout_module
 from lunabot_sim.scene import lighting, terrain
 
@@ -214,6 +215,9 @@ def _build_arena(layout: layout_module.ArenaLayout, markings: bool, root: str = 
             color=np.array([0.05, 0.05, 0.05]),
         )
 
+    for fiducial in layout.fiducials:
+        _draw_fiducial(VisualCuboid, f'{root}/Fiducial_{fiducial.tag_id}', fiducial)
+
     if markings:
         for zone, colour in MARKING_COLOURS.items():
             rect = getattr(layout, zone)
@@ -229,6 +233,38 @@ def _build_arena(layout: layout_module.ArenaLayout, markings: bool, root: str = 
         'on' if markings else 'off',
         layout.source,
     )
+
+
+def _draw_fiducial(cls, path: str, tag):
+    """An AprilTag as boxes: a white square MARGIN_CELLS larger all round, black runs on it.
+
+    Proud of the wall by a few millimetres so the render never z-fights.
+    Visual only: the camera sees it, physics and depth do not care.
+    """
+    import numpy as np
+
+    cell = tag.size / fiducials_module.CELLS
+    (xx, xy, _), _, (nx, ny, _) = tag.axes()
+    yaw = np.array([np.cos(tag.facing / 2), 0.0, 0.0, np.sin(tag.facing / 2)])  # w, x, y, z
+
+    def box(name, u, v, depth, width, height, colour):
+        cls(
+            prim_path=f'{path}/{name}',
+            name=f'{path.rsplit("/", 1)[-1]}_{name}'.lower(),
+            position=np.array([tag.x + u * xx + depth * nx, tag.y + u * xy + depth * ny,
+                               tag.z + v]),
+            orientation=yaw,
+            scale=np.array([0.002, width, height]),
+            color=np.array(colour),
+        )
+
+    side = tag.size + 2 * fiducials_module.MARGIN_CELLS * cell
+    box('White', 0.0, 0.0, 0.002, side, side, (0.95, 0.95, 0.95))
+    half = (fiducials_module.CELLS - 1) / 2.0
+    for index, (row, col, length) in enumerate(fiducials_module.black_runs(tag.tag_id)):
+        u = (col + (length - 1) / 2.0 - half) * cell
+        v = (half - row) * cell
+        box(f'Black_{index:02d}', u, v, 0.004, length * cell, cell, (0.02, 0.02, 0.02))
 
 
 def _outline(cls, path: str, rect: layout_module.Rect, colour):

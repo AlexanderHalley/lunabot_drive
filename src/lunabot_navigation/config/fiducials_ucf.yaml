@@ -1,0 +1,14 @@
+# The start corner's AprilTags (tag36h11), in the arena frame -- the frame
+# lunabot_sim/scene/layout.py builds the UCF lane in: origin at the default
+# start pose, +X down the lane, end wall at x = -0.75, lane divider y = -1.0.
+#
+# Must match where the tags really are. test_fiducial_localizer.py checks this
+# against the sim's layout; on the field, measure them.
+fiducial_localizer:
+  ros__parameters:
+    tag_ids: [0, 1]
+    # x, y, z (tag centre, metres), facing (radians: the way the tag looks)
+    # per id. Tag 0 on the end wall facing +X, tag 1 on the side wall facing +Y.
+    tag_poses: [-0.75, -0.40, 0.14, 0.0,
+                0.25, -1.00, 0.14, 1.5707963]
+    tag_size: 0.16  # black square, metres

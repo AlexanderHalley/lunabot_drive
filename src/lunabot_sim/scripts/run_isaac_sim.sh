@@ -11,6 +11,8 @@
 # --no-markings drops the painted zone outlines (use it for SLAM/perception).
 # --demo-cameras publishes a chase view and an arena overview on /sim/demo/* for
 # recording runs (lunabot_bringup demo_recorder.py). Not sensors.
+# --start-pose x,y,yaw_deg | random: where the rover starts (default 0,0,0). random
+# picks a pose in the start zone from --seed, as the competition does.
 # --lighting arena|lunar: indoor and soft (default), or low sun and black shadows.
 #
 # This script is the seam between two Python environments that must not mix:
@@ -40,6 +42,7 @@ REALTIME=""
 SAND=""
 MARKINGS=""
 DEMO=""
+START_POSE="0,0,0"
 LIGHTING="arena"
 DOMAIN_ID="${ROS_DOMAIN_ID:-42}"
 CACHE_DIR="${LUNABOT_SIM_CACHE:-${HOME}/.cache/lunabot_sim}"
@@ -59,6 +62,7 @@ while [[ $# -gt 0 ]]; do
     --no-sand)   SAND="--no-sand"; shift ;;
     --no-markings) MARKINGS="--no-markings"; shift ;;
     --demo-cameras) DEMO="--demo-cameras"; shift ;;
+    --start-pose) START_POSE="$2"; shift 2 ;;
     --lighting)  LIGHTING="$2"; shift 2 ;;
     -h|--help)   usage 0 ;;
     *) echo "unknown argument: $1" >&2; usage 1 ;;
@@ -120,5 +124,6 @@ exec "${ISAAC_SIM_PATH}/python.sh" -m lunabot_sim.run_sim \
   ${REALTIME} \
   ${SAND} \
   ${DEMO} \
+  --start-pose="${START_POSE}" \
   --lighting "${LIGHTING}" \
   ${MARKINGS}

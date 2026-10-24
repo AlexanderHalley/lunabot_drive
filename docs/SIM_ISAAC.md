@@ -203,6 +203,20 @@ a change helped.
 
 ---
 
+## Start pose and the wall AprilTags
+
+`run_isaac_sim.sh --start-pose x,y,yaw_deg` puts the rover anywhere (default `0,0,0`, the
+arena-frame origin); `--start-pose random` draws a pose inside the start zone, clear of the walls
+for the start spin (`ArenaLayout.start_area()`), any heading, from `--seed`. The pose used is
+logged and written to `start_pose.json` next to the expanded URDF: it is the true answer for the
+AprilTag start fix (docs/NAVIGATION.md, "Start fix").
+
+The UCF scene has two tag36h11 tags in the start corner (`scene/fiducials.py`, placed in
+`layout.py`), drawn as thin boxes, one per run of black cells, so no texture files are needed.
+`test_fiducials.py` checks the bit patterns against OpenCV and that the drawn runs detect upright.
+
+---
+
 ## Demo videos
 
 `run_isaac_sim.sh --demo-cameras` adds two cameras that are **not sensors**: a chase view that

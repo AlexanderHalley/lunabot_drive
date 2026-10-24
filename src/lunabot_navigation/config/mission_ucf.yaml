@@ -1,17 +1,19 @@
-# The competition run, as Nav2 goals in the map frame, for the UCF lane
+# The competition run, as Nav2 goals in the ARENA frame, for the UCF lane
 # (lunabot_sim/scene/layout.py: start box at the origin facing +X,
 # excavation half beyond x = 3.32, construction zone in the far +Y corner).
 #
-# The map frame starts at the rover's start pose, so these are only right for
-# the start pose the sim spawns at. The real start pose is drawn at random;
-# the start rail's fiducials will have to fix map -> arena before these mean
-# anything on the field.
+# Poses are in the ARENA frame. The start pose is random (in the competition,
+# and in the sim with --start-pose random); fiducial_localizer.py finds it from
+# the start corner's AprilTags during the start spin and publishes
+# arena -> map, and mission.py converts these through it. Without a fix it
+# falls back to arena = map, which is right only for the default spawn.
 #
 # `dig` and `dump` are PLACEHOLDERS: there is no excavation package yet, so the
 # mission stops for `seconds` and says so on /mission/state. Swap in the real
 # actions when the drum and hopper have drivers.
 mission:
   ros__parameters:
+    frame: arena
     cycles: 1
     leg_timeout: 240.0
     retries: 1

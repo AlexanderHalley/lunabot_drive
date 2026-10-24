@@ -35,7 +35,8 @@ map                                          ← SLAM backend
 
 | Frame | Convention | Notes |
 |---|---|---|
-| `map` | REP-105 | World-fixed, discontinuous (jumps on loop closure) |
+| `arena` | REP-103, z up | The competition arena; zones and mission goals are given in it. Parent of `map` |
+| `map` | REP-105 | World-fixed, discontinuous (jumps on loop closure). Starts where the rover starts |
 | `odom` | REP-105 | Continuous, drifts without bound |
 | `base_link` | REP-103 (X fwd, Y left, Z up) | **TF root.** Chassis geometric centre, at wheel-axle height |
 | `base_footprint` | REP-103 | Child of `base_link` at `z = -wheel_radius`. Ground projection |
@@ -51,6 +52,7 @@ correct in `view_frames` and behaves nondeterministically.
 
 | Transform | Owner | Selected by |
 |---|---|---|
+| `arena → map` | `fiducial_localizer` (static, once, at the end of the start survey) | `survey:=` |
 | `map → odom` | `rtabmap` (`publish_tf: true`) or cuVSLAM (`publish_map_to_odom_tf: true`) | `backend:=` |
 | `odom → base_link` | `diff_drive_controller` \| cuVSLAM \| `ekf_node` | `odom_source:=` |
 | `base_link → *` | `robot_state_publisher` | always |
@@ -213,6 +215,9 @@ speculatively now.)
 |---|---|---|
 | `/map` | `nav_msgs/OccupancyGrid` | rtabmap's grid, or `map_server` |
 | `/goal_pose` | `geometry_msgs/PoseStamped` | RViz, autonomy |
+| `/navigation/survey_done` | `std_msgs/Bool` (latched) | `initial_survey` |
+| `/localization/arena_fix` | `geometry_msgs/PoseWithCovarianceStamped` (latched) | `fiducial_localizer`: the map origin in `arena` |
+| `/mission/state` | `std_msgs/String` (latched) | `mission`: the current phase, one line |
 
 ### Monitoring
 
@@ -236,7 +241,8 @@ situation — a `DiagnosticStatus` carries its own name, so the aggregator merge
 | `/isaac/joint_states` | `sensor_msgs/JointState` | Isaac → `TopicBasedSystem` |
 | `/isaac/joint_commands` | `sensor_msgs/JointState` | `TopicBasedSystem` → Isaac |
 | `/sim/ground_truth/odom` | `nav_msgs/Odometry` | **Evaluation only. Never enters `/tf`** |
-| `/sim/ground_truth/boulders` | `vision_msgs/Detection3DArray` | Seeded scene layout, for scoring. **NOT PUBLISHED YET** |
+| `/sim/ground_truth/boulders` | `vision_msgs/Detection3DArray` | Live boulder poses, for scoring |
+| `/sim/demo/{chase,overview}/image_raw` | `sensor_msgs/Image` | `--demo-cameras` only. For videos; **not sensors** |
 
 Ground truth is published in the **same message type the detector emits**, so scoring the detector
 is a direct comparison rather than a format conversion.

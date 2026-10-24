@@ -24,6 +24,11 @@
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
+  <!-- fiducial_localizer.py -->
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>tf2_ros_py</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
   <exec_depend>nav2_bt_navigator</exec_depend>
   <exec_depend>nav2_controller</exec_depend>
   <exec_depend>nav2_planner</exec_depend>
@@ -53,6 +58,8 @@
   <test_depend>launch_ros</test_depend>
   <test_depend>python3-pytest</test_depend>
   <test_depend>python3-yaml</test_depend>
+  <test_depend>python3-opencv</test_depend>
+  <test_depend>python3-numpy</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
