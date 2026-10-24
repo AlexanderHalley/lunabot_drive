@@ -189,6 +189,29 @@ modelling gap, not a tuning parameter.
 
 ---
 
+## The mission
+
+`scripts/mission.py` runs the competition run as Nav2 goals, from `config/mission_ucf.yaml`:
+wait for the start survey, then per cycle drive to the dig pose, dig, drive to the dump pose,
+dump; then drive home. Each phase is latched as one line of text on `/mission/state`.
+
+```bash
+ros2 run lunabot_navigation mission.py --ros-args -p use_sim_time:=true \
+  --params-file $(ros2 pkg prefix lunabot_navigation)/share/lunabot_navigation/config/mission_ucf.yaml
+```
+
+- **Digging and dumping are placeholders**: a timed stop. There is no excavation package; when
+  there is, `mission.py` calls its actions there.
+- The poses are in the map frame, which starts at the rover's start pose. They are right only
+  for the sim's fixed spawn. On the field the start pose is random, and the start rail's
+  fiducials will have to give map → arena first.
+- A failed leg is retried (`retries`), then the mission stops as `FAILED: <phase>` rather than
+  skipping ahead from the wrong place.
+
+To record a run as a video for people, see docs/SIM_ISAAC.md, "Demo videos".
+
+---
+
 ## Rocks behind their seen faces — READ before changing obstacle handling
 
 **Symptom (Isaac seed 7, 2026-10-23):** the rover passes boulders at 0–4 cm and sometimes touches

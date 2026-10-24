@@ -203,6 +203,26 @@ a change helped.
 
 ---
 
+## Demo videos
+
+`run_isaac_sim.sh --demo-cameras` adds two cameras that are **not sensors**: a chase view that
+follows the rover on a smoothed heading, and a fixed overview of the arena, on
+`/sim/demo/chase/image_raw` and `/sim/demo/overview/image_raw` (1280x720, 15 Hz, headless too;
+RTF stays 1.00 on the desktop). Nothing in the stack may drive from them.
+
+`lunabot_bringup`'s `demo_recorder.py` composites them with the onboard camera, the rover's own
+map (global costmap, `/plan`, its map-frame pose and trail) and `/mission/state` into one
+1920x1080 H.264 file, at sim-time frame rate. Ctrl-C finishes the file.
+
+```bash
+ros2 run lunabot_bringup demo_recorder.py --ros-args -p use_sim_time:=true -p output:=$HOME/run.mp4
+```
+
+The map panel shows what the rover knows, not ground truth; the zone outlines come from the
+`zones` parameter (default: the UCF lane) and are only a viewer's guide.
+
+---
+
 ## Version sensitivity
 
 Isaac Sim 4.5 renamed essentially every namespace:

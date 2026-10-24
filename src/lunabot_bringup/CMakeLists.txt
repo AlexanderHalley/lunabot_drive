@@ -15,6 +15,7 @@ install(
   PROGRAMS
     scripts/check_stack.py
     scripts/robot_health.py
+    scripts/demo_recorder.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

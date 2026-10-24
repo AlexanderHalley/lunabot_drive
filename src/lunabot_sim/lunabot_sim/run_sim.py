@@ -83,6 +83,12 @@ def parse_args(argv=None):
         help='Plain PhysX friction under the wheels instead of the sand model '
         '(robot/soil.py). For comparison only: it pivots, and barely arcs.',
     )
+    parser.add_argument(
+        '--demo-cameras',
+        action='store_true',
+        help='Publish a chase view and an arena overview on /sim/demo/*, for recording '
+        'runs to show people (scene/demo_camera.py). Not sensors.',
+    )
     parser.add_argument('--domain-id', type=int, default=42, help='ROS_DOMAIN_ID for the bridge.')
     parser.add_argument(
         '--ground-truth',
@@ -199,6 +205,11 @@ def _run(args, simulation_app) -> int:
     camera.build(camera_prim, domain_id=args.domain_id, publish_pointcloud=False)
     imu.build(imu_prim, domain_id=args.domain_id)
     ground_truth.build(articulation_path, domain_id=args.domain_id)
+    demo = None
+    if args.demo_cameras:
+        from lunabot_sim.scene.demo_camera import DemoCameras
+
+        demo = DemoCameras(articulation_path, config.layout.floor, domain_id=args.domain_id)
 
     world.reset()
     if not args.headless:
@@ -239,6 +250,8 @@ def _run(args, simulation_app) -> int:
         world.step(render=True)
         if boulder_truth is not None:
             boulder_truth.step(world.current_time)
+        if demo is not None:
+            demo.step(world.current_time)
         if pacer is not None:
             pacer.wait()
 

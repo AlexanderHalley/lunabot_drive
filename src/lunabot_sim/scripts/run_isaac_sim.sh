@@ -9,6 +9,8 @@
 # back under the wheels instead of the sand model (robot/soil.py).
 # --scene ucf|ksc|open picks the arena (scene/layout.py; default ucf).
 # --no-markings drops the painted zone outlines (use it for SLAM/perception).
+# --demo-cameras publishes a chase view and an arena overview on /sim/demo/* for
+# recording runs (lunabot_bringup demo_recorder.py). Not sensors.
 # --lighting arena|lunar: indoor and soft (default), or low sun and black shadows.
 #
 # This script is the seam between two Python environments that must not mix:
@@ -37,6 +39,7 @@ HEADLESS=""
 REALTIME=""
 SAND=""
 MARKINGS=""
+DEMO=""
 LIGHTING="arena"
 DOMAIN_ID="${ROS_DOMAIN_ID:-42}"
 CACHE_DIR="${LUNABOT_SIM_CACHE:-${HOME}/.cache/lunabot_sim}"
@@ -55,6 +58,7 @@ while [[ $# -gt 0 ]]; do
     --no-realtime) REALTIME="--no-realtime"; shift ;;
     --no-sand)   SAND="--no-sand"; shift ;;
     --no-markings) MARKINGS="--no-markings"; shift ;;
+    --demo-cameras) DEMO="--demo-cameras"; shift ;;
     --lighting)  LIGHTING="$2"; shift 2 ;;
     -h|--help)   usage 0 ;;
     *) echo "unknown argument: $1" >&2; usage 1 ;;
@@ -115,5 +119,6 @@ exec "${ISAAC_SIM_PATH}/python.sh" -m lunabot_sim.run_sim \
   ${HEADLESS} \
   ${REALTIME} \
   ${SAND} \
+  ${DEMO} \
   --lighting "${LIGHTING}" \
   ${MARKINGS}

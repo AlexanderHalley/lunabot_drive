@@ -51,6 +51,11 @@
   <exec_depend>diagnostic_aggregator</exec_depend>
   <exec_depend>lunabot_msgs</exec_depend>
   <exec_depend>vision_msgs</exec_depend>
+  <!-- demo_recorder.py -->
+  <exec_depend>nav2_msgs</exec_depend>
+  <exec_depend>tf2_ros_py</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
 
   <!-- Foxglove Studio's WebSocket bridge, started by foxglove:=true. Exec-only
        and off by default, so a machine without it loses foxglove.launch.py and

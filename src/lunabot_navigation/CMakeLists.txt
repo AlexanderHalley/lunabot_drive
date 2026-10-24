@@ -9,7 +9,7 @@ install(
 )
 
 install(
-  PROGRAMS scripts/curvature_limiter.py scripts/initial_survey.py
+  PROGRAMS scripts/curvature_limiter.py scripts/initial_survey.py scripts/mission.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -43,6 +43,9 @@ if(BUILD_TESTING)
   # The curvature limiter's clamp, and that it never commands tighter than the
   # planner plans. Pure Python; the node imports rclpy only in main().
   ament_add_pytest_test(test_curvature_limiter test/test_curvature_limiter.py)
+
+  # The mission's step list, and that its UCF poses sit in the right zones.
+  ament_add_pytest_test(test_mission test/test_mission.py)
 endif()
 
 ament_package()

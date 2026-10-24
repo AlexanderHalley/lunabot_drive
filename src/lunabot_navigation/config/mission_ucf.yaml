@@ -1,0 +1,23 @@
+# The competition run, as Nav2 goals in the map frame, for the UCF lane
+# (lunabot_sim/scene/layout.py: start box at the origin facing +X,
+# excavation half beyond x = 3.32, construction zone in the far +Y corner).
+#
+# The map frame starts at the rover's start pose, so these are only right for
+# the start pose the sim spawns at. The real start pose is drawn at random;
+# the start rail's fiducials will have to fix map -> arena before these mean
+# anything on the field.
+#
+# `dig` and `dump` are PLACEHOLDERS: there is no excavation package yet, so the
+# mission stops for `seconds` and says so on /mission/state. Swap in the real
+# actions when the drum and hopper have drivers.
+mission:
+  ros__parameters:
+    cycles: 1
+    leg_timeout: 240.0
+    retries: 1
+    # [x, y, yaw] in metres / radians.
+    dig_pose: [4.0, 0.8, 0.0]
+    dump_pose: [6.09, 2.57, 0.0]
+    home_pose: [0.0, 0.0, 3.1416]
+    dig_seconds: 8.0
+    dump_seconds: 6.0
