@@ -117,11 +117,15 @@ jobs:
 
       # The image is deliberately lean. action-ros-ci shells out to all of
       # these, and runs `sudo` even as root, which the image does not ship.
+      # After the tests it also runs `colcon lcov-result` and `colcon
+      # coveragepy-result`: without those two verbs the job failed with every
+      # test passed ("invalid choice: 'lcov-result'").
       - name: Tools action-ros-ci expects
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            sudo python3-colcon-common-extensions python3-rosdep python3-vcstool
+            sudo python3-colcon-common-extensions python3-rosdep python3-vcstool \
+            python3-colcon-lcov-result python3-colcon-coveragepy-result lcov
 
       # Cheap, and it makes the next failure self-explanatory rather than
       # another round of guessing. If the resource index below is empty, the
