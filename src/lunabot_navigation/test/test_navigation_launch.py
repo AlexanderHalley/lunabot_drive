@@ -124,7 +124,7 @@ def test_only_the_smoother_publishes_the_nav_topic(module):
 
 
 def test_the_smoother_consumes_what_the_others_produce(module):
-    """controller -> curvature limiter -> smoother, and recoveries -> smoother.
+    """Controller -> curvature limiter -> smoother, and recoveries -> smoother.
 
     Each internal hop has to match at both ends or the chain is two disconnected halves, each of
     which looks healthy on its own. The controller must NOT bypass the limiter: that is the rover
@@ -175,4 +175,3 @@ def test_the_initial_survey_is_on_by_default(module, description):
     arguments = {a.name: a for a in description.entities if hasattr(a, 'default_value')}
     assert arguments['survey'].default_value[0].text == 'true'
     assert module.INITIAL_SURVEY['executable'] == 'initial_survey.py'
-

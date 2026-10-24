@@ -114,4 +114,3 @@ LIGHTING_PRESETS = {
     ),
     'lunar': LightingConfig(),
 }
-

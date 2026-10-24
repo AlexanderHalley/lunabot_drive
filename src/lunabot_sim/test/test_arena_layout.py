@@ -20,7 +20,9 @@ from lunabot_sim.scene import arena
 from lunabot_sim.scene.boulders import scatter
 from lunabot_sim.scene.layout import LAYOUTS, UCF, Rect
 
-WALLED = [layout for name, layout in LAYOUTS.items() if layout.floor is not None and name != 'default']
+WALLED = [
+    layout for name, layout in LAYOUTS.items() if layout.floor is not None and name != 'default'
+]
 
 # The rover at the spawn pose: chassis + wheels, from nav2_params.yaml's
 # footprint. It spawns at the origin facing +X.
@@ -68,8 +70,11 @@ def test_no_post_stands_on_the_spawn(layout):
 
 
 def test_ucf_lane_matches_the_guidebook_figure():
-    """UCF 2025 Guidebook Figure 1: 8.14 m x 4.57 m lane, zones 4.07 m long,
-    construction zone 2.6 m x 2 m; Figure 4: target berm area 1.5 m x 0.9 m."""
+    """UCF lane and zones match the 2025 guidebook.
+
+    Figure 1: 8.14 m x 4.57 m lane, zones 4.07 m long, construction zone
+    2.6 m x 2 m; Figure 4: target berm area 1.5 m x 0.9 m.
+    """
     assert UCF.floor.size == pytest.approx((8.14, 4.57))
     assert UCF.obstacle_zone.size[0] == pytest.approx(4.07)
     assert UCF.excavation_zone.size[0] == pytest.approx(4.07)
@@ -105,7 +110,9 @@ def test_most_rocks_are_in_the_field_not_just_the_dig_site():
     """The obstacle zone is where navigation is tested; it must not come out empty."""
     config = arena.scene_config('ucf', seed=7)
     in_obstacle_zone = [
-        b for b in scatter(config.arena, 7) if config.layout.obstacle_zone.contains(*b.position[:2])
+        b
+        for b in scatter(config.arena, 7)
+        if config.layout.obstacle_zone.contains(*b.position[:2])
     ]
     assert len(in_obstacle_zone) >= 3  # the guidebook's minimum
 
@@ -204,17 +211,21 @@ def test_unreported_boulders_keep_their_placed_pose():
 @pytest.mark.parametrize('name', ['ucf', 'ksc'])
 @pytest.mark.parametrize('seed', range(10))
 def test_arena_boulders_are_competition_sized_and_fixed(name, seed):
-    """30-40 cm boulders, never pushable, at least three in the obstacle zone,
-    and never closer than a rover-width gap."""
+    """Arena boulders follow the competition's description.
+
+    30-40 cm, never pushable, at least three in the obstacle zone, and never
+    closer than a rover-width gap.
+    """
     config = arena.scene_config(name, seed=seed)
     placed = scatter(config.arena, seed)
     assert all(b.static for b in placed)
-    assert all(0.30 <= b.dimensions[0] <= 0.40 and b.dimensions[1] == b.dimensions[0] for b in placed)
+    assert all(
+        0.30 <= b.dimensions[0] <= 0.40 and b.dimensions[1] == b.dimensions[0] for b in placed
+    )
     in_field = [b for b in placed if config.layout.obstacle_zone.contains(*b.position[:2])]
     assert len(in_field) >= 3
     for i, a in enumerate(placed):
-        for b in placed[i + 1:]:
+        for b in placed[i + 1 :]:
             gap = math.hypot(a.position[0] - b.position[0], a.position[1] - b.position[1])
             gap -= (math.hypot(*a.dimensions[:2]) + math.hypot(*b.dimensions[:2])) / 2
             assert gap > 0.70, f'{a.position} and {b.position} leave only {gap:.2f} m'
-

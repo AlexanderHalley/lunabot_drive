@@ -96,9 +96,9 @@ class MapView:
 def main() -> None:
     import cv2
     import rclpy
+    from nav2_msgs.srv import GetCostmap
     from nav_msgs.msg import Path
     from rclpy.executors import ExternalShutdownException
-    from nav2_msgs.srv import GetCostmap
     from rclpy.node import Node
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
     from sensor_msgs.msg import Image
@@ -111,12 +111,23 @@ def main() -> None:
     fps = float(node.declare_parameter('fps', 15.0).value)
     title = node.declare_parameter('title', 'Lunabot 2027 autonomy - Isaac Sim').value
     zones = parse_zones(node.declare_parameter('zones', DEFAULT_ZONES).value)
-    costmap_service = node.declare_parameter('costmap_service', '/global_costmap/get_costmap').value
+    costmap_service = node.declare_parameter(
+        'costmap_service', '/global_costmap/get_costmap'
+    ).value
     log = node.get_logger()
 
     latest = {}
-    state = {'mission': '', 'plan': [], 'trail': [], 'costmap': None, 'pose': None, 'speed': 0.0,
-             'fix': (0.0, 0.0, 0.0), 'fix_label': 'no start fix yet: map = arena', 'fixed': False}
+    state = {
+        'mission': '',
+        'plan': [],
+        'trail': [],
+        'costmap': None,
+        'pose': None,
+        'speed': 0.0,
+        'fix': (0.0, 0.0, 0.0),
+        'fix_label': 'no start fix yet: map = arena',
+        'fixed': False,
+    }
 
     def keep(key):
         def cb(msg):
@@ -131,7 +142,9 @@ def main() -> None:
     ):
         node.create_subscription(Image, topic, keep(key), qos_profile_sensor_data)
     latched = QoSProfile(
-        depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE
+        depth=1,
+        durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        reliability=ReliabilityPolicy.RELIABLE,
     )
     node.create_subscription(
         String, '/mission/state', lambda m: state.__setitem__('mission', m.data), latched
@@ -194,8 +207,16 @@ def main() -> None:
         x, y, w, h = rect
         if img is None:
             canvas[y : y + h, x : x + w] = (48, 48, 48)
-            cv2.putText(canvas, 'no signal', (x + w // 2 - 70, y + h // 2), font, 0.9,
-                        (150, 150, 150), 2, cv2.LINE_AA)
+            cv2.putText(
+                canvas,
+                'no signal',
+                (x + w // 2 - 70, y + h // 2),
+                font,
+                0.9,
+                (150, 150, 150),
+                2,
+                cv2.LINE_AA,
+            )
         else:
             canvas[y : y + h, x : x + w] = img
         cv2.rectangle(canvas, (x, y), (x + 8 + 11 * len(label), y + 26), (0, 0, 0), -1)
@@ -215,18 +236,29 @@ def main() -> None:
             fx, fy, fyaw = state['fix']
             c, sn = math.cos(fyaw), math.sin(fyaw)
             k = view.scale * res
-            warp = np.array([
-                [k * c, -k * sn,
-                 view.scale * (c * ox - sn * oy + fx - view.x0) + view.ox],
-                [-k * sn, -k * c,
-                 view.scale * (view.y1 - (sn * ox + c * oy + fy)) + view.oy],
-            ])
-            panel = cv2.warpAffine(costmap_image(data), warp, (w, h), flags=cv2.INTER_NEAREST,
-                                   borderMode=cv2.BORDER_CONSTANT, borderValue=(30, 30, 30))
+            warp = np.array(
+                [
+                    [k * c, -k * sn, view.scale * (c * ox - sn * oy + fx - view.x0) + view.ox],
+                    [-k * sn, -k * c, view.scale * (view.y1 - (sn * ox + c * oy + fy)) + view.oy],
+                ]
+            )
+            panel = cv2.warpAffine(
+                costmap_image(data),
+                warp,
+                (w, h),
+                flags=cv2.INTER_NEAREST,
+                borderMode=cv2.BORDER_CONSTANT,
+                borderValue=(30, 30, 30),
+            )
         else:
             panel = np.full((h, w, 3), 30, np.uint8)
-        colours = {'arena': (220, 220, 220), 'excavation': (0, 200, 255),
-                   'construction': (255, 170, 60), 'berm': (255, 120, 255), 'start': (120, 255, 120)}
+        colours = {
+            'arena': (220, 220, 220),
+            'excavation': (0, 200, 255),
+            'construction': (255, 170, 60),
+            'berm': (255, 120, 255),
+            'start': (120, 255, 120),
+        }
         for name, (x0, x1, y0, y1) in zones.items():
             c = colours.get(name, (200, 200, 200))
             cv2.rectangle(panel, view.px(x0, y1), view.px(x1, y0), c, 1, cv2.LINE_AA)
@@ -234,8 +266,9 @@ def main() -> None:
                 px, py = view.px(x0, y1)
                 cv2.putText(panel, name, (px + 3, py + 13), font, 0.4, c, 1, cv2.LINE_AA)
         if state['fix_label']:
-            cv2.putText(panel, state['fix_label'], (8, h - 10), font, 0.45, (200, 200, 200), 1,
-                        cv2.LINE_AA)
+            cv2.putText(
+                panel, state['fix_label'], (8, h - 10), font, 0.45, (200, 200, 200), 1, cv2.LINE_AA
+            )
         if len(state['trail']) > 1:
             pts = np.array([view.px(*arena_xy(x, y)) for x, y in state['trail']], np.int32)
             cv2.polylines(panel, [pts], False, (180, 180, 60), 1, cv2.LINE_AA)
@@ -249,8 +282,9 @@ def main() -> None:
             c, s = math.cos(yaw), math.sin(yaw)
             hl, hw = FOOTPRINT[0] / 2, FOOTPRINT[1] / 2
             corners = [(hl, hw), (hl, -hw), (-hl, -hw), (-hl, hw)]
-            pts = np.array([view.px(x + c * a - s * b, y + s * a + c * b) for a, b in corners],
-                           np.int32)
+            pts = np.array(
+                [view.px(x + c * a - s * b, y + s * a + c * b) for a, b in corners], np.int32
+            )
             cv2.polylines(panel, [pts], True, (255, 255, 255), 2, cv2.LINE_AA)
             cv2.line(panel, view.px(x, y), view.px(x + hl * c, y + hl * s), (255, 255, 255), 2)
         return panel
@@ -266,8 +300,10 @@ def main() -> None:
         yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
         state['fix'] = (t.transform.translation.x, t.transform.translation.y, yaw)
         state['fixed'] = True
-        state['fix_label'] = (f'AprilTag start fix: x {state["fix"][0]:.2f} '
-                              f'y {state["fix"][1]:.2f} yaw {math.degrees(yaw):.0f} deg')
+        state['fix_label'] = (
+            f'AprilTag start fix: x {state["fix"][0]:.2f} '
+            f'y {state["fix"][1]:.2f} yaw {math.degrees(yaw):.0f} deg'
+        )
 
     def update_pose():
         update_fix()
@@ -285,8 +321,10 @@ def main() -> None:
             state['speed'] = 0.7 * state['speed'] + 0.3 * speed
         frames['last_pose'] = (x, y, stamp)
         state['pose'] = (x, y, yaw)
-        if not state['trail'] or math.hypot(x - state['trail'][-1][0],
-                                            y - state['trail'][-1][1]) > 0.03:
+        if (
+            not state['trail']
+            or math.hypot(x - state['trail'][-1][0], y - state['trail'][-1][1]) > 0.03
+        ):
             state['trail'].append((x, y))
 
     def frame():
@@ -308,8 +346,12 @@ def main() -> None:
         lines = [
             (title, 0.8, (200, 200, 200)),
             (state['mission'] or '-', 1.3, (80, 220, 255)),
-            (f'mission clock {int(elapsed // 60):02d}:{int(elapsed % 60):02d}    '
-             f'speed {state["speed"]:.2f} m/s', 0.8, (230, 230, 230)),
+            (
+                f'mission clock {int(elapsed // 60):02d}:{int(elapsed % 60):02d}    '
+                f'speed {state["speed"]:.2f} m/s',
+                0.8,
+                (230, 230, 230),
+            ),
             ('fully autonomous: no operator input', 0.7, (140, 200, 140)),
         ]
         ty = y + 60
@@ -327,8 +369,10 @@ def main() -> None:
         pass  # Ctrl-C, or SIGINT from ros2 run: both mean "finish the file"
     finally:
         writer.release()
-        log.info(f'wrote {frames["n"]} frames ({frames["n"] / fps:.0f} s of video) to {output} '
-                 f'in {time.monotonic() - wall0:.0f} s')
+        log.info(
+            f'wrote {frames["n"]} frames ({frames["n"] / fps:.0f} s of video) to {output} '
+            f'in {time.monotonic() - wall0:.0f} s'
+        )
         node.destroy_node()
         rclpy.try_shutdown()
 

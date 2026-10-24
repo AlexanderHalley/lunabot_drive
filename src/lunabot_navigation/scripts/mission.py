@@ -8,7 +8,8 @@
 """Run the competition mission: dig, dump, repeat, go home.
 
     ros2 run lunabot_navigation mission.py --ros-args \
-        --params-file $(ros2 pkg prefix lunabot_navigation)/share/lunabot_navigation/config/mission_ucf.yaml
+        --params-file $(ros2 pkg prefix lunabot_navigation)/share/lunabot_navigation/config/\
+mission_ucf.yaml
 
 Waits for the start survey (/navigation/survey_done), then for each cycle
 drives to the dig pose, digs, drives to the dump pose, dumps; then drives
@@ -42,7 +43,7 @@ class Step:
 
 
 def plan(cycles, dig_pose, dump_pose, home_pose, dig_seconds, dump_seconds) -> list[Step]:
-    """The mission as a flat list of steps. Pure: tested without ROS."""
+    """Return the mission as a flat list of steps. Pure: tested without ROS."""
     steps = []
     for i in range(1, int(cycles) + 1):
         tag = f' ({i}/{cycles})' if cycles > 1 else ''
@@ -57,7 +58,7 @@ def plan(cycles, dig_pose, dump_pose, home_pose, dig_seconds, dump_seconds) -> l
 
 
 def to_map(pose, fix):
-    """An arena-frame (x, y, yaw) in map, given the map origin's pose in arena."""
+    """Convert an arena-frame (x, y, yaw) into map, given the map origin's pose in arena."""
     fx, fy, fyaw = fix
     dx, dy = pose[0] - fx, pose[1] - fy
     c, s = math.cos(fyaw), math.sin(fyaw)
@@ -171,12 +172,16 @@ def main() -> None:
             fix = wait_for_fix(p['frame'])
             if fix is None:
                 fix = (0.0, 0.0, 0.0)
-                log.error(f'no {p["frame"]} -> map after {p["fix_timeout"]:.0f} s: ASSUMING THE '
-                          f'ROVER STARTED AT THE {p["frame"].upper()} ORIGIN. Right only for the '
-                          'default sim spawn.')
+                log.error(
+                    f'no {p["frame"]} -> map after {p["fix_timeout"]:.0f} s: ASSUMING THE '
+                    f'ROVER STARTED AT THE {p["frame"].upper()} ORIGIN. Right only for the '
+                    'default sim spawn.'
+                )
             else:
-                log.info(f'start fix: map origin at {p["frame"]} x {fix[0]:.2f} y {fix[1]:.2f} '
-                         f'yaw {math.degrees(fix[2]):.0f} deg')
+                log.info(
+                    f'start fix: map origin at {p["frame"]} x {fix[0]:.2f} y {fix[1]:.2f} '
+                    f'yaw {math.degrees(fix[2]):.0f} deg'
+                )
 
         steps = plan(
             p['cycles'],

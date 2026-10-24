@@ -310,8 +310,14 @@ def _resolve_odom_source(source, hw):
     """
     return PythonExpression(
         [
-            "('wheel' if '", hw, "' == 'mock' else 'ekf')",
-            " if '", source, "' == 'auto' else '", source, "'",
+            "('wheel' if '",
+            hw,
+            "' == 'mock' else 'ekf')",
+            " if '",
+            source,
+            "' == 'auto' else '",
+            source,
+            "'",
         ]
     )
 

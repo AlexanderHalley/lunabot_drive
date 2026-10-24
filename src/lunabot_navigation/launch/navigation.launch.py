@@ -50,8 +50,8 @@ serialisation cost between costmap and controller is measurable.
 """
 
 from launch import LaunchDescription
-from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -169,7 +169,7 @@ ARGUMENTS = [
         default_value=PathJoinSubstitution(
             [FindPackageShare('lunabot_navigation'), 'config', 'fiducials_ucf.yaml']
         ),
-        description='Where the start corner\'s AprilTags are, in the arena frame.',
+        description="Where the start corner's AprilTags are, in the arena frame.",
     ),
     DeclareLaunchArgument(
         'autostart',

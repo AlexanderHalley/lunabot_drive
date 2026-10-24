@@ -35,7 +35,6 @@ guidebook) are NOT here: the terrain is flat. See terrain.py.
 from __future__ import annotations
 
 import math
-
 from dataclasses import asdict, dataclass, field
 
 from lunabot_sim.scene.fiducials import Fiducial
@@ -59,7 +58,7 @@ class Rect:
         return ((self.x_min + self.x_max) / 2.0, (self.y_min + self.y_max) / 2.0)
 
     def contains(self, x: float, y: float, margin: float = 0.0) -> bool:
-        """True if (x, y) lies inside, after growing the rectangle by `margin`."""
+        """Return True if (x, y) lies inside, after growing the rectangle by `margin`."""
         return (
             self.x_min - margin <= x <= self.x_max + margin
             and self.y_min - margin <= y <= self.y_max + margin
@@ -125,7 +124,9 @@ class ArenaLayout:
         zones = [z for z in (self.start_zone, self.construction_zone) if z is not None]
         return tuple(zones) + tuple(p.footprint() for p in self.posts)
 
-    def start_area(self, wall_clearance: float = 0.65, edge_clearance: float = 0.56) -> Rect | None:
+    def start_area(
+        self, wall_clearance: float = 0.65, edge_clearance: float = 0.56
+    ) -> Rect | None:
         """Where the rover's CENTRE may start, any heading: inside the start zone.
 
         `wall_clearance` keeps the start spin off the walls (the corners sweep

@@ -51,7 +51,7 @@ class SceneConfig:
 def scene_config(
     name: str = 'default', seed: int = 0, markings: bool = True, light: str = 'arena'
 ) -> SceneConfig:
-    """The scene for a layout name ('ucf' default, 'ksc', 'open') and lighting preset."""
+    """Build the scene config for a layout name ('ucf' default, 'ksc', 'open') and lighting."""
     try:
         layout = layout_module.LAYOUTS[name]
     except KeyError:
@@ -84,7 +84,7 @@ def scene_config(
             diameter_min=0.30,
             diameter_max=0.40,
             footprint_variation=0.0,  # exactly 30-40 cm across
-            height_variation=0.5,     # "random heights": 0.5-1.5 x the diameter
+            height_variation=0.5,  # "random heights": 0.5-1.5 x the diameter
             # At least three in the obstacle zone, some allowed in the
             # excavation zone. Spaced so every gap fits the 0.70 m-wide
             # (padded) rover: the judges build a slalom, not a wall.
@@ -236,7 +236,7 @@ def _build_arena(layout: layout_module.ArenaLayout, markings: bool, root: str = 
 
 
 def _draw_fiducial(cls, path: str, tag):
-    """An AprilTag as boxes: a white square MARGIN_CELLS larger all round, black runs on it.
+    """Draw an AprilTag as boxes: a white square MARGIN_CELLS larger all round, black runs on it.
 
     Proud of the wall by a few millimetres so the render never z-fights.
     Visual only: the camera sees it, physics and depth do not care.
@@ -251,8 +251,9 @@ def _draw_fiducial(cls, path: str, tag):
         cls(
             prim_path=f'{path}/{name}',
             name=f'{path.rsplit("/", 1)[-1]}_{name}'.lower(),
-            position=np.array([tag.x + u * xx + depth * nx, tag.y + u * xy + depth * ny,
-                               tag.z + v]),
+            position=np.array(
+                [tag.x + u * xx + depth * nx, tag.y + u * xy + depth * ny, tag.z + v]
+            ),
             orientation=yaw,
             scale=np.array([0.002, width, height]),
             color=np.array(colour),

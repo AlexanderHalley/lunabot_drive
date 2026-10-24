@@ -35,7 +35,7 @@ PRIM_PATH = '/World/Boulders/Boulder_{index:03d}'  # arena._spawn's naming
 
 
 def current_boulders(placed: list[Boulder], dynamic_poses: dict[int, tuple]) -> list[Boulder]:
-    """The placed boulders, with live poses for the dynamic ones.
+    """Return the placed boulders, with live poses for the dynamic ones.
 
     dynamic_poses maps a boulder's index to (x, y, z, qx, qy, qz, qw). Static
     boulders cannot move, so they keep their placed pose.
@@ -69,7 +69,9 @@ class BoulderTruthPublisher:
             rclpy.init(domain_id=domain_id)
         self._node = Node('sim_boulder_truth')
         self._pub = self._node.create_publisher(Detection3DArray, TOPIC, 10)
-        logger.info('publishing %d boulders (%d movable) on %s', len(placed), len(self._dynamic), TOPIC)
+        logger.info(
+            'publishing %d boulders (%d movable) on %s', len(placed), len(self._dynamic), TOPIC
+        )
 
     def _attach(self) -> bool:
         from isaacsim.core.simulation_manager import SimulationManager
@@ -78,7 +80,9 @@ class BoulderTruthPublisher:
         if view is None:
             return False
         if self._dynamic:
-            self._view = view.create_rigid_body_view([PRIM_PATH.format(index=i) for i in self._dynamic])
+            self._view = view.create_rigid_body_view(
+                [PRIM_PATH.format(index=i) for i in self._dynamic]
+            )
         else:
             self._view = False
         return True
@@ -94,7 +98,7 @@ class BoulderTruthPublisher:
         if self._view:
             raw = self._view.get_transforms()
             raw = raw.cpu().numpy() if hasattr(raw, 'cpu') else raw
-            for index, row in zip(self._dynamic, raw.reshape(-1, 7)):
+            for index, row in zip(self._dynamic, raw.reshape(-1, 7), strict=True):
                 poses[index] = tuple(float(v) for v in row)
         self._pub.publish(self._message(current_boulders(self._placed, poses), sim_time))
 

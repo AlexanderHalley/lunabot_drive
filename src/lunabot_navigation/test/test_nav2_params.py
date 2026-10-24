@@ -305,7 +305,9 @@ def test_turning_in_place_is_all_or_nothing():
     planner = node_params('planner_server')['GridBased']
     limiter = node_params('curvature_limiter')
     behaviors = node_params('behavior_server')
-    spins = any(behaviors[n]['plugin'] == 'nav2_behaviors::Spin' for n in behaviors['behavior_plugins'])
+    spins = any(
+        behaviors[n]['plugin'] == 'nav2_behaviors::Spin' for n in behaviors['behavior_plugins']
+    )
 
     if planner['plugin'] == HYBRID:
         assert follow['use_rotate_to_heading'] is False
@@ -430,6 +432,7 @@ def test_camera_layers_never_clear_in_2d():
                 checked += 1
     assert checked == 2
 
+
 def test_amcl_is_configured_but_never_started():
     """Rtabmap owns map -> odom. AMCL is in this file for completeness only.
 
@@ -532,7 +535,9 @@ def test_inflation_covers_the_robot(name):
         reach = costmap['robot_radius']
     else:
         pad = costmap.get('footprint_padding', 0.0)
-        reach = max(math.hypot(abs(x) + pad, abs(y) + pad) for x, y in yaml.safe_load(costmap['footprint']))
+        reach = max(
+            math.hypot(abs(x) + pad, abs(y) + pad) for x, y in yaml.safe_load(costmap['footprint'])
+        )
     assert costmap['inflation_layer']['inflation_radius'] >= reach
 
 
@@ -541,14 +546,17 @@ def test_lattice_primitives_match_the_costmap():
     planner = node_params('planner_server')['GridBased']
     if planner['plugin'] != 'nav2_smac_planner::SmacPlannerLattice':
         return
-    resolution_cm = round(params()['global_costmap']['global_costmap']['ros__parameters']['resolution'] * 100)
+    resolution_cm = round(
+        params()['global_costmap']['global_costmap']['ros__parameters']['resolution'] * 100
+    )
     assert planner['lattice_filepath'].startswith(f'{resolution_cm}cm_resolution/')
-    assert '/diff/' in planner['lattice_filepath'], 'differential-drive primitives (rotate in place)'
+    assert '/diff/' in planner['lattice_filepath'], (
+        'differential-drive primitives (rotate in place)'
+    )
     launch = (PKG / 'launch' / 'navigation.launch.py').read_text()
     assert "'lattice_filepath'" in launch, 'the launch must rewrite it to the installed path'
     if planner.get('allow_reverse_expansion'):
         assert node_params('controller_server')['FollowPath'].get('allow_reversing') is True
-
 
 
 def test_the_planner_treats_unseen_space_behind_rocks_as_rock():
@@ -564,7 +572,9 @@ def test_the_planner_treats_unseen_space_behind_rocks_as_rock():
     """
     costmap = params()['global_costmap']['global_costmap']['ros__parameters']
     plugins = costmap['plugins']
-    shadow = [p for p in plugins if costmap[p]['plugin'] == 'lunabot_navigation::UnseenShadowLayer']
+    shadow = [
+        p for p in plugins if costmap[p]['plugin'] == 'lunabot_navigation::UnseenShadowLayer'
+    ]
     assert len(shadow) == 1
     index = plugins.index(shadow[0])
     for marker in ('static_layer', 'obstacle_layer'):

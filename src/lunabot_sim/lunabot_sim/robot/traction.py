@@ -44,7 +44,7 @@ the sand model's stability caps scale with load, so jitter becomes buzz."""
 
 
 def wheel_radius(urdf_path: Path) -> float:
-    """The wheel collider's radius, from the expanded URDF."""
+    """Read the wheel collider's radius from the expanded URDF."""
     root = ET.parse(urdf_path).getroot()
     for link in root.iter('link'):
         if link.get('name') == WHEEL_LINKS[0]:
@@ -97,8 +97,14 @@ def make_wheels_frictionless(robot_path: str, config: SoilConfig | None = None) 
 class SandTraction:
     """Applies soil.wheel_forces() to the wheels every physics step."""
 
-    def __init__(self, world, articulation_path: str, wheel_paths: list[str], radius: float,
-                 config: SoilConfig | None = None):
+    def __init__(
+        self,
+        world,
+        articulation_path: str,
+        wheel_paths: list[str],
+        radius: float,
+        config: SoilConfig | None = None,
+    ):
         self._config = config or SoilConfig()
         self._radius = radius
         self._articulation_path = articulation_path
@@ -140,7 +146,11 @@ class SandTraction:
         self._indices = self._out(np.arange(self._wheels.count, dtype=np.int32))
         logger.info(
             'sand traction on %d wheels (%s): rover %.1f kg, yaw inertia %.2f kg m^2, %s',
-            self._wheels.count, self._device, self._mass, self._yaw_inertia, self._config,
+            self._wheels.count,
+            self._device,
+            self._mass,
+            self._yaw_inertia,
+            self._config,
         )
         return True
 
@@ -186,8 +196,10 @@ class SandTraction:
             share = self._loads / max(self._loads.sum(), 1e-9)
             logger.info(
                 'wheel load share at rest: %s',
-                ', '.join(f'{p.rsplit("/", 1)[-1].replace("_wheel_link", "")} {100 * f:.0f}%'
-                          for p, f in zip(self._wheel_paths, share)),
+                ', '.join(
+                    f'{p.rsplit("/", 1)[-1].replace("_wheel_link", "")} {100 * f:.0f}%'
+                    for p, f in zip(self._wheel_paths, share, strict=True)
+                ),
             )
         return self._loads
 
@@ -200,7 +212,7 @@ class SandTraction:
 
 
 def _np(data):
-    """A numpy float64 copy of whatever tensor type the view hands back."""
+    """Copy whatever tensor type the view hands back into a numpy float64 array."""
     if hasattr(data, 'cpu'):
         data = data.cpu().numpy()
     elif hasattr(data, 'numpy'):
@@ -232,7 +244,7 @@ def _rover_inertia(view, articulation_path: str) -> tuple[float, float]:
     com_world = links[:, :3] + _rotate(links[:, 3:7], coms[:, :3])
     centre = np.average(com_world[:, :2], axis=0, weights=masses)
     yaw = 0.0
-    for q, inertia, m, p in zip(links[:, 3:7], inertias, masses, com_world):
+    for q, inertia, m, p in zip(links[:, 3:7], inertias, masses, com_world, strict=True):
         rot = _matrix(q)
         yaw += (rot @ inertia @ rot.T)[2, 2] + m * np.sum((p[:2] - centre) ** 2)
     return float(masses.sum()), float(yaw)
@@ -240,11 +252,13 @@ def _rover_inertia(view, articulation_path: str) -> tuple[float, float]:
 
 def _matrix(q):
     x, y, z, w = q
-    return np.array([
-        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
-        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
-    ])
+    return np.array(
+        [
+            [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+        ]
+    )
 
 
 def _rotate(quats, vectors):

@@ -63,8 +63,8 @@ void UnseenShadowLayer::updateCosts(
   max_i = std::min(max_i, static_cast<int>(master_grid.getSizeInCellsX()));
   max_j = std::min(max_j, static_cast<int>(master_grid.getSizeInCellsY()));
   markUnseenShadows(
-    master_grid.getCharMap(), static_cast<int>(master_grid.getSizeInCellsX()), min_i, min_j,
-    max_i, max_j, shadow_depth_ / master_grid.getResolution());
+    master_grid.getCharMap(), static_cast<int>(master_grid.getSizeInCellsX()), min_i, min_j, max_i,
+    max_j, shadow_depth_ / master_grid.getResolution());
 }
 
 }  // namespace lunabot_navigation

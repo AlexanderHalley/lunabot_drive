@@ -129,7 +129,11 @@ def _nodes(context, *args, **kwargs):
         nodes.append(
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
-                    str(Path(get_package_share_directory('lunabot_bringup')) / 'launch' / 'point_cloud.launch.py')
+                    str(
+                        Path(get_package_share_directory('lunabot_bringup'))
+                        / 'launch'
+                        / 'point_cloud.launch.py'
+                    )
                 ),
                 launch_arguments={
                     'use_sim_time': str(use_sim_time).lower(),

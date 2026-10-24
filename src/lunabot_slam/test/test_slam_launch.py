@@ -191,4 +191,3 @@ def test_the_config_leaves_odometry_tf_to_the_launch_file():
     odometry = config['rgbd_odometry']['ros__parameters']
     assert 'publish_tf' not in odometry
     assert 'odom_frame_id' not in odometry
-

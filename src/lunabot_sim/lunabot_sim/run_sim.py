@@ -328,7 +328,7 @@ class RealTimePacer:
 
 
 def _find_camera_prim(articulation_path: str, urdf_path: Path) -> str:
-    """The camera prim for the OAK-D's RGB optical frame, created if absent.
+    """Find the camera prim for the OAK-D's RGB optical frame, creating it if absent.
 
     The URDF has no camera sensor tag, and importer.py merges fixed joints, so
     the optical frames do not survive as prims. A Camera is created under the
@@ -394,7 +394,9 @@ def _start_pose(spec: str, layout, seed: int) -> tuple[float, float, float]:
         return x, y, yaw
     area = layout.start_area()
     if area is None:
-        raise SystemExit(f'--start-pose random needs an arena with a start zone, not {layout.name}')
+        raise SystemExit(
+            f'--start-pose random needs an arena with a start zone, not {layout.name}'
+        )
     rng = random.Random(seed * 7919 + 1)
     return (
         round(rng.uniform(area.x_min, area.x_max), 3),
@@ -458,7 +460,12 @@ def _origin_matrix(xyz, rpy):
     """URDF <origin>: translate, then fixed-axis roll-pitch-yaw (Rz @ Ry @ Rx)."""
     roll, pitch, yaw = rpy
     cr, sr, cp, sp, cy, sy = (
-        np.cos(roll), np.sin(roll), np.cos(pitch), np.sin(pitch), np.cos(yaw), np.sin(yaw)
+        np.cos(roll),
+        np.sin(roll),
+        np.cos(pitch),
+        np.sin(pitch),
+        np.cos(yaw),
+        np.sin(yaw),
     )
     matrix = np.eye(4)
     matrix[:3, :3] = np.array(
@@ -486,8 +493,9 @@ def _create_imu_sensor(articulation_path: str, urdf_path: Path) -> str:
     and the return leg ended 0.6 m off.
     """
     import omni.usd
-    from lunabot_sim import compat
     from pxr import Gf, UsdGeom
+
+    from lunabot_sim import compat
 
     path = compat.create_imu_sensor(f'{articulation_path}/oak_d_imu')
     transform = _urdf_frame_transform(urdf_path, 'base_link', IMU_FRAME)

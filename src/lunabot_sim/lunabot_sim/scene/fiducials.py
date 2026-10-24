@@ -77,8 +77,11 @@ class Fiducial:
         return (-s, c, 0.0), (0.0, 0.0, 1.0), (c, s, 0.0)
 
     def corners(self):
-        """The black square's corners in the arena frame, in OpenCV's order:
-        top-left, top-right, bottom-right, bottom-left, as the viewer sees it."""
+        """Return the black square's corners in the arena frame.
+
+        In OpenCV's order: top-left, top-right, bottom-right, bottom-left, as
+        the viewer sees it.
+        """
         (xx, xy, _), _, _ = self.axes()
         h = self.size / 2.0
         out = []

@@ -402,5 +402,3 @@ def test_the_ekf_fuses_visual_odometry_where_the_launch_publishes_it():
     config = ekf['odom1_config']
     assert config[6] is True  # vx
     assert not any(config[:6]), 'visual odometry pose must not be fused'
-
-

@@ -67,7 +67,7 @@ def look_at_rows(eye, target):
 
     A USD camera looks down its -Z axis with +Y up; world up is +Z.
     """
-    f = [t - e for t, e in zip(target, eye)]
+    f = [t - e for t, e in zip(target, eye, strict=True)]
     n = math.sqrt(sum(v * v for v in f))
     f = [v / n for v in f]
     r = [f[1], -f[0], 0.0]  # f x (0, 0, 1)
@@ -106,8 +106,9 @@ class DemoCameras:
             (CHASE_PRIM, CHASE_TOPIC, 'Chase'),
             (OVERVIEW_PRIM, OVERVIEW_TOPIC, 'Overview'),
         ):
-            _build_graph(path, topic, f'/World/Graphs/Demo{name}', width, height, frame_skip,
-                         domain_id)
+            _build_graph(
+                path, topic, f'/World/Graphs/Demo{name}', width, height, frame_skip, domain_id
+            )
         logger.info('demo cameras on /%s and /%s', CHASE_TOPIC, OVERVIEW_TOPIC)
 
     def _set(self, path, eye, target):
@@ -179,6 +180,4 @@ def _build_graph(camera_prim, topic, graph_path, width, height, frame_skip, doma
         ('RenderProduct.outputs:renderProductPath', 'Publish.inputs:renderProductPath'),
         ('Context.outputs:context', 'Publish.inputs:context'),
     ]
-    return context.create_graph(
-        graph_path, og.Controller.Keys, nodes, values, connections
-    )
+    return context.create_graph(graph_path, og.Controller.Keys, nodes, values, connections)

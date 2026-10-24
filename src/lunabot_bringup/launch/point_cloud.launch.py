@@ -52,7 +52,9 @@ def generate_launch_description():
         name='point_cloud_xyz',
         parameters=[
             {
-                'use_sim_time': ParameterValue(LaunchConfiguration('use_sim_time'), value_type=bool),
+                'use_sim_time': ParameterValue(
+                    LaunchConfiguration('use_sim_time'), value_type=bool
+                ),
                 'decimation': ParameterValue(LaunchConfiguration('decimation'), value_type=int),
                 'max_depth': ParameterValue(LaunchConfiguration('max_range'), value_type=float),
                 'min_depth': 0.0,

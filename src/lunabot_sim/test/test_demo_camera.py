@@ -9,7 +9,6 @@
 import math
 
 import pytest
-
 from lunabot_sim.scene import demo_camera
 from lunabot_sim.scene.layout import UCF
 
@@ -31,7 +30,7 @@ def test_chase_camera_sits_behind_and_above_looking_ahead():
 def test_look_at_points_the_camera_minus_z_at_the_target(heading):
     eye, target = demo_camera.chase_pose(0.5, -0.3, heading)
     rows = demo_camera.look_at_rows(eye, target)
-    direction = [t - e for t, e in zip(target, eye)]
+    direction = [t - e for t, e in zip(target, eye, strict=True)]
     n = math.sqrt(sum(v * v for v in direction))
     assert [-v for v in rows[2][:3]] == pytest.approx([v / n for v in direction])
     assert rows[1][2] > 0.0  # image up is world up-ish

@@ -64,8 +64,11 @@ def test_ucf_poses_are_in_their_zones():
 
 @pytest.mark.parametrize('fix', [(0.0, 0.0, 0.0), (0.4, -0.2, 2.3), (-0.1, 0.3, -1.0)])
 def test_arena_poses_go_through_the_start_fix(fix):
-    """A goal at the map origin's own arena pose is the map origin itself, and
-    the arena origin seen from map lands back on it."""
+    """Arena poses round-trip through the start fix.
+
+    A goal at the map origin's own arena pose is the map origin itself, and
+    the arena origin seen from map lands back on it.
+    """
     assert mission.to_map(fix, fix) == pytest.approx((0.0, 0.0, 0.0), abs=1e-9)
     x, y, yaw = mission.to_map((0.0, 0.0, 0.0), fix)
     c, s = math.cos(fix[2]), math.sin(fix[2])

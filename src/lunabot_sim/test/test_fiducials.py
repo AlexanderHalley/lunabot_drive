@@ -10,7 +10,6 @@ import math
 
 import numpy as np
 import pytest
-
 from lunabot_sim.scene import fiducials
 from lunabot_sim.scene.layout import UCF
 

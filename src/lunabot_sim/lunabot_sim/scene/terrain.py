@@ -141,8 +141,11 @@ def write_png(path: Path, grey: np.ndarray) -> Path:
     raw = b''.join(b'\x00' + grey[row].tobytes() for row in range(height))
 
     def chunk(kind: bytes, data: bytes) -> bytes:
-        return struct.pack('>I', len(data)) + kind + data + struct.pack(
-            '>I', zlib.crc32(kind + data) & 0xFFFFFFFF
+        return (
+            struct.pack('>I', len(data))
+            + kind
+            + data
+            + struct.pack('>I', zlib.crc32(kind + data) & 0xFFFFFFFF)
         )
 
     header = struct.pack('>IIBBBBB', width, height, 8, 0, 0, 0, 0)
@@ -243,7 +246,9 @@ def _texture_floor(prim_path, config, texture_dir, seed, origin):
 
     half = config.size / 2.0
     mesh = UsdGeom.Mesh.Define(stage, f'{prim_path}Visual/Floor')
-    mesh.CreatePointsAttr([(-half, -half, 0.0), (half, -half, 0.0), (half, half, 0.0), (-half, half, 0.0)])
+    mesh.CreatePointsAttr(
+        [(-half, -half, 0.0), (half, -half, 0.0), (half, half, 0.0), (-half, half, 0.0)]
+    )
     mesh.CreateFaceVertexCountsAttr([4])
     mesh.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
     mesh.CreateNormalsAttr([(0.0, 0.0, 1.0)] * 4)
@@ -253,8 +258,14 @@ def _texture_floor(prim_path, config, texture_dir, seed, origin):
     )
     tile = config.texture_tile_m
     ox, oy = origin
-    st.Set(Vt.Vec2fArray([Gf.Vec2f((x - ox) / tile, (y - oy) / tile) for x, y in
-                          ((-half, -half), (half, -half), (half, half), (-half, half))]))
+    st.Set(
+        Vt.Vec2fArray(
+            [
+                Gf.Vec2f((x - ox) / tile, (y - oy) / tile)
+                for x, y in ((-half, -half), (half, -half), (half, half), (-half, half))
+            ]
+        )
+    )
 
     material = UsdShade.Material.Define(stage, f'{prim_path}Visual/Regolith')
     shader = UsdShade.Shader.Define(stage, f'{prim_path}Visual/Regolith/Surface')
@@ -278,4 +289,3 @@ def _texture_floor(prim_path, config, texture_dir, seed, origin):
     )
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), 'surface')
     UsdShade.MaterialBindingAPI.Apply(mesh.GetPrim()).Bind(material)
-

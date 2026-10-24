@@ -273,7 +273,7 @@ def test_exactly_one_node_owns_odom_to_base_link(odom_source):
     ],
 )
 def test_odom_source_auto_resolves_by_hardware(odom_source, hw, resolved):
-    """auto is the EKF wherever there is an IMU, and wheel odometry on mock.
+    """Auto is the EKF wherever there is an IMU, and wheel odometry on mock.
 
     The EKF takes rotation from the gyro because skid-steer wheel yaw is
     fiction; mock has no camera, so no IMU, and its wheels cannot slip. An

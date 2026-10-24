@@ -24,8 +24,9 @@ if not hasattr(cv2, 'aruco'):
     pytest.skip('OpenCV without aruco', allow_module_level=True)
 
 PKG = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('fiducial_localizer', PKG / 'scripts' /
-                                              'fiducial_localizer.py')
+spec = importlib.util.spec_from_file_location(
+    'fiducial_localizer', PKG / 'scripts' / 'fiducial_localizer.py'
+)
 loc = importlib.util.module_from_spec(spec)
 sys.modules['fiducial_localizer'] = loc
 spec.loader.exec_module(loc)
@@ -55,7 +56,7 @@ def camera_in_base():
 
 
 def render(t_arena_cam):
-    """The scene's tags as the camera would see them: a grey wall, white tags."""
+    """Render the scene's tags as the camera would see them: a grey wall, white tags."""
     img = np.full((H, W), 120, np.uint8)
     d = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
     for tag_id, t_arena_tag in TAGS.items():
@@ -71,13 +72,14 @@ def render(t_arena_cam):
             continue
         uv = (K @ pts.T).T
         uv = uv[:, :2] / uv[:, 2:]
-        src = np.array([(0, 0), (cells * px, 0), (cells * px, cells * px), (0, cells * px)],
-                       np.float32)
+        src = np.array(
+            [(0, 0), (cells * px, 0), (cells * px, cells * px), (0, cells * px)], np.float32
+        )
         warp = cv2.getPerspectiveTransform(src, uv[:4].astype(np.float32))
-        patch = cv2.warpPerspective(marker, warp, (W, H), flags=cv2.INTER_LINEAR,
-                                    borderValue=0)
-        mask = cv2.warpPerspective(np.full_like(marker, 255), warp, (W, H),
-                                   flags=cv2.INTER_NEAREST, borderValue=0)
+        patch = cv2.warpPerspective(marker, warp, (W, H), flags=cv2.INTER_LINEAR, borderValue=0)
+        mask = cv2.warpPerspective(
+            np.full_like(marker, 255), warp, (W, H), flags=cv2.INTER_NEAREST, borderValue=0
+        )
         img[mask > 0] = patch[mask > 0]
     return img
 
@@ -101,8 +103,12 @@ def survey(start, steps=36, noise=0.0, rng=None):
 
 @pytest.mark.parametrize(
     'start',
-    [(0.0, 0.0, 0.0), (0.3, 0.2, math.radians(130)), (0.6, -0.3, math.radians(-75)),
-     (-0.1, 0.4, math.radians(200))],
+    [
+        (0.0, 0.0, 0.0),
+        (0.3, 0.2, math.radians(130)),
+        (0.6, -0.3, math.radians(-75)),
+        (-0.1, 0.4, math.radians(200)),
+    ],
 )
 def test_a_full_spin_recovers_the_start_pose(start):
     obs = survey(start, noise=4.0, rng=np.random.default_rng(1))
@@ -136,7 +142,8 @@ def test_config_matches_the_sim_arena():
     for tag in fiducials:
         n = IDS.index(tag.tag_id)
         assert PARAMS['tag_poses'][4 * n : 4 * n + 4] == pytest.approx(
-            [tag.x, tag.y, tag.z, tag.facing], abs=1e-6)
+            [tag.x, tag.y, tag.z, tag.facing], abs=1e-6
+        )
         assert tag.size == pytest.approx(SIZE)
 
 

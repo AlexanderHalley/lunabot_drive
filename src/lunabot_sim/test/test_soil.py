@@ -208,4 +208,3 @@ def test_loads_default_to_an_even_split():
     """Passing the even split explicitly changes nothing."""
     even = np.full(4, MASS * 9.81 / 4)
     assert drive(0.0, 0.5, loads=even)[1] == pytest.approx(drive(0.0, 0.5)[1], abs=1e-9)
-

@@ -96,7 +96,7 @@ def detect(gray, k, d, size: float, ids, cv2=None):
     model = np.array([(-h, h, 0.0), (h, h, 0.0), (h, -h, 0.0), (-h, -h, 0.0)])
     height, width = gray.shape[:2]
     out = []
-    for image_corners, tag_id in zip(corners, found.ravel()):
+    for image_corners, tag_id in zip(corners, found.ravel(), strict=True):
         if int(tag_id) not in ids:
             continue
         pts = image_corners.reshape(4, 2).astype(np.float64)
@@ -125,7 +125,7 @@ def detect(gray, k, d, size: float, ids, cv2=None):
 
 
 def solve(observations, tags):
-    """arena -> map from tag sightings in map.
+    """Arena -> map from tag sightings in map.
 
     observations: [(id, T_map_tag 4x4)]; tags: {id: T_arena_tag 4x4}.
     Returns (x, y, yaw, method, spread) with spread = (sd_x, sd_y, sd_yaw), or
@@ -144,8 +144,9 @@ def solve(observations, tags):
     seen = sorted({i for i, _ in observations})
     if len(seen) >= 2:
         # Rigid 2D fit (Kabsch) of tag centres: map -> arena.
-        src = np.array([np.mean([t[:2, 3] for j, t in observations if j == i], axis=0)
-                        for i in seen])
+        src = np.array(
+            [np.mean([t[:2, 3] for j, t in observations if j == i], axis=0) for i in seen]
+        )
         dst = np.array([tags[i][:2, 3] for i in seen])
         src_c, dst_c = src - src.mean(axis=0), dst - dst.mean(axis=0)
         u, _, vt = np.linalg.svd(src_c.T @ dst_c)
@@ -189,11 +190,20 @@ def main() -> None:
     TransformListener(tf, node)
     static = StaticTransformBroadcaster(node)
     latched = QoSProfile(
-        depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE
+        depth=1,
+        durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        reliability=ReliabilityPolicy.RELIABLE,
     )
     fix_pub = node.create_publisher(PoseWithCovarianceStamped, FIX_TOPIC, latched)
-    state = {'info': None, 'last': -math.inf, 'observations': [], 'done': False, 'frames': 0,
-             'pending': [], 'dropped': 0}
+    state = {
+        'info': None,
+        'last': -math.inf,
+        'observations': [],
+        'done': False,
+        'frames': 0,
+        'pending': [],
+        'dropped': 0,
+    }
 
     def on_info(msg):
         state['info'] = (np.array(msg.k, dtype=float).reshape(3, 3), np.array(msg.d, dtype=float))
@@ -233,8 +243,10 @@ def main() -> None:
                     keep.append((stamp, frame, found))
                 else:
                     state['dropped'] += 1
-                    log.warning(f'dropped a sighting: no {map_frame} -> camera at its stamp '
-                                f'({exc})', throttle_duration_sec=5.0)
+                    log.warning(
+                        f'dropped a sighting: no {map_frame} -> camera at its stamp ({exc})',
+                        throttle_duration_sec=5.0,
+                    )
                 continue
             q, p = cam.transform.rotation, cam.transform.translation
             t_map_cam = np.eye(4)
@@ -242,9 +254,11 @@ def main() -> None:
             t_map_cam[:3, 3] = (p.x, p.y, p.z)
             for tag_id, t_cam_tag, error, side in found:
                 state['observations'].append((tag_id, t_map_cam @ t_cam_tag))
-                log.info(f'tag {tag_id}: {side:.0f} px, reprojection {error:.2f} px, '
-                         f'{np.linalg.norm(t_cam_tag[:3, 3]):.2f} m away',
-                         throttle_duration_sec=1.0)
+                log.info(
+                    f'tag {tag_id}: {side:.0f} px, reprojection {error:.2f} px, '
+                    f'{np.linalg.norm(t_cam_tag[:3, 3]):.2f} m away',
+                    throttle_duration_sec=1.0,
+                )
         state['pending'] = keep
 
     def on_survey(msg):
@@ -260,14 +274,18 @@ def main() -> None:
         counts = {i: sum(1 for j, _ in obs if j == i) for i in ids}
         result = solve(obs, tags)
         if result is None:
-            log.error(f'NO START FIX: no tag seen in {state["frames"]} frames of the survey '
-                      f'(looking for ids {ids}). arena -> map is not published.')
+            log.error(
+                f'NO START FIX: no tag seen in {state["frames"]} frames of the survey '
+                f'(looking for ids {ids}). arena -> map is not published.'
+            )
             return
         x, y, yaw, method, (sx, sy, syaw) = result
-        log.info(f'start fix ({method}, sightings {counts}, {state["frames"]} frames, '
-                 f'{state["dropped"]} dropped): map origin at arena '
-                 f'x {x:.3f} y {y:.3f} yaw {math.degrees(yaw):.1f} deg; spread '
-                 f'{sx:.3f} / {sy:.3f} m, {math.degrees(syaw):.1f} deg')
+        log.info(
+            f'start fix ({method}, sightings {counts}, {state["frames"]} frames, '
+            f'{state["dropped"]} dropped): map origin at arena '
+            f'x {x:.3f} y {y:.3f} yaw {math.degrees(yaw):.1f} deg; spread '
+            f'{sx:.3f} / {sy:.3f} m, {math.degrees(syaw):.1f} deg'
+        )
         now = node.get_clock().now().to_msg()
         t = TransformStamped()
         t.header.stamp = now
@@ -287,10 +305,18 @@ def main() -> None:
         fix.pose.covariance = cov
         fix_pub.publish(fix)
 
-    node.create_subscription(CameraInfo, node.declare_parameter(
-        'camera_info_topic', '/oak_d/rgb/camera_info').value, on_info, qos_profile_sensor_data)
-    node.create_subscription(Image, node.declare_parameter(
-        'image_topic', '/oak_d/rgb/image_rect').value, on_image, qos_profile_sensor_data)
+    node.create_subscription(
+        CameraInfo,
+        node.declare_parameter('camera_info_topic', '/oak_d/rgb/camera_info').value,
+        on_info,
+        qos_profile_sensor_data,
+    )
+    node.create_subscription(
+        Image,
+        node.declare_parameter('image_topic', '/oak_d/rgb/image_rect').value,
+        on_image,
+        qos_profile_sensor_data,
+    )
     node.create_subscription(Bool, SURVEY_TOPIC, on_survey, latched)
     node.create_timer(0.25, resolve)
     try:

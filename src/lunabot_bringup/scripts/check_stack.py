@@ -133,9 +133,9 @@ TF_OWNERS = {
 SLAM_TF_OWNERS = {'rtabmap': {'rtabmap'}, 'cuvslam': {'visual_slam_node'}, 'none': set()}
 
 
-
 def _stamp_seconds(message) -> float:
     return message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
+
 
 class Result:
     """One check, its verdict, and enough detail to act on a failure."""
@@ -164,7 +164,7 @@ def parse_args(argv):
         default=None,
         choices=['wheel', 'visual', 'ekf'],
         help='Must match the odom_source the stack was launched with. Default: as '
-        "odom_source:=auto resolves it -- wheel for --profile mock, ekf otherwise.",
+        'odom_source:=auto resolves it -- wheel for --profile mock, ekf otherwise.',
     )
     parser.add_argument(
         '--slam',

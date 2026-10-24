@@ -82,7 +82,7 @@ def convert_urdf(urdf_path: Path) -> Path | None:
 
 
 def add_to_stage(usd_path: Path, prim_path: str = '/World/Lunabot') -> str:
-    """Reference the converted robot into the open stage. Returns the articulation root."""
+    """Add the converted robot to the open stage by reference; return the articulation root."""
     import omni.usd
     from pxr import Usd, UsdPhysics
 
