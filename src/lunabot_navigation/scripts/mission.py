@@ -42,28 +42,69 @@ class Step:
     seconds: float = 0.0
 
 
-def plan(cycles, dig_pose, dump_pose, home_pose, dig_seconds, dump_seconds) -> list[Step]:
-    """Return the mission as a flat list of steps. Pure: tested without ROS."""
+def plan(cycles, dig_pose, dump_poses, home_pose, dig_seconds, dump_seconds) -> list[Step]:
+    """Return the mission as a flat list of steps. Pure: tested without ROS.
+
+    dump_poses: where to park for each dump, used in turn and repeated, so
+    successive loads go to different spots along the berm.
+    """
     steps = []
     for i in range(1, int(cycles) + 1):
         tag = f' ({i}/{cycles})' if cycles > 1 else ''
         steps += [
             Step('DRIVING TO EXCAVATION ZONE' + tag, pose=tuple(dig_pose)),
             Step('EXCAVATING' + tag, seconds=dig_seconds),
-            Step('DRIVING TO CONSTRUCTION ZONE' + tag, pose=tuple(dump_pose)),
+            Step(
+                'DRIVING TO CONSTRUCTION ZONE' + tag,
+                pose=tuple(dump_poses[(i - 1) % len(dump_poses)]),
+            ),
             Step('DEPOSITING' + tag, seconds=dump_seconds),
         ]
     steps.append(Step('RETURNING TO START', pose=tuple(home_pose)))
     return steps
 
 
+def park_pose(target, reach):
+    """Return where to park so the load lands on target = (x, y, heading).
+
+    The excavator pours `reach` metres BEHIND base_link, so the rover parks
+    that far ahead of the target point, facing `heading`.
+    """
+    x, y, yaw = target
+    return (x + reach * math.cos(yaw), y + reach * math.sin(yaw), yaw)
+
+
+def dump_targets(flat):
+    """Split a flat [x, y, heading, x, y, heading, ...] list into triples."""
+    if not flat or len(flat) % 3:
+        raise ValueError('dump_targets needs x, y, heading per spot')
+    return [tuple(flat[i : i + 3]) for i in range(0, len(flat), 3)]
+
+
 def to_map(pose, fix):
-    """Convert an arena-frame (x, y, yaw) into map, given the map origin's pose in arena."""
+    """Convert an arena-frame (x, y[, yaw]) into map, given the map origin's pose in arena.
+
+    A pose without a yaw stays without one: its heading is free (arrive_heading()).
+    """
     fx, fy, fyaw = fix
     dx, dy = pose[0] - fx, pose[1] - fy
     c, s = math.cos(fyaw), math.sin(fyaw)
-    yaw = math.remainder(pose[2] - fyaw, math.tau)
-    return (c * dx + s * dy, -s * dx + c * dy, yaw)
+    xy = (c * dx + s * dy, -s * dx + c * dy)
+    if len(pose) == 2:
+        return xy
+    return xy + (math.remainder(pose[2] - fyaw, math.tau),)
+
+
+def arrive_heading(goal, start) -> float:
+    """Return the heading for a goal given as [x, y]: the way the rover drives there.
+
+    For goals where the heading does not matter (the dig spot), so the rover
+    is not asked to turn round on arrival -- arriving from the far side and
+    made to face a fixed way, it planned small loops on the spot.
+    """
+    if len(goal) == 3:
+        return goal[2]
+    return math.atan2(goal[1] - start[1], goal[0] - start[0])
 
 
 def main() -> None:
@@ -84,9 +125,10 @@ def main() -> None:
             ('cycles', 1),
             ('leg_timeout', 240.0),
             ('retries', 1),
-            ('dig_pose', [4.0, 0.8, 0.0]),
-            ('dump_pose', [6.09, 2.57, 0.0]),
-            ('home_pose', [0.0, 0.0, math.pi]),
+            ('dig_pose', [4.0, 0.8]),
+            ('dump_targets', [5.95, 2.57, -math.pi / 2, 6.23, 2.57, -math.pi / 2]),
+            ('dump_reach', 0.97),
+            ('home_pose', [0.4, 0.0]),
             ('dig_seconds', 8.0),
             ('dump_seconds', 6.0),
             ('wait_for_survey', True),
@@ -117,11 +159,20 @@ def main() -> None:
             rclpy.spin_once(node, timeout_sec=0.05)
 
     def drive(pose) -> bool:
+        yaw = pose[2] if len(pose) == 3 else None
+        if yaw is None:
+            try:
+                t = tf.lookup_transform('map', 'base_link', rclpy.time.Time())
+                here = (t.transform.translation.x, t.transform.translation.y)
+            except Exception:  # noqa: BLE001
+                here = (0.0, 0.0)
+                log.warning('no map -> base_link: heading for a free-heading goal from (0, 0)')
+            yaw = arrive_heading(pose, here)
         goal = NavigateToPose.Goal()
         goal.pose.header.frame_id = 'map'
         goal.pose.pose.position.x, goal.pose.pose.position.y = float(pose[0]), float(pose[1])
-        goal.pose.pose.orientation.z = math.sin(pose[2] / 2.0)
-        goal.pose.pose.orientation.w = math.cos(pose[2] / 2.0)
+        goal.pose.pose.orientation.z = math.sin(yaw / 2.0)
+        goal.pose.pose.orientation.w = math.cos(yaw / 2.0)
         sent = nav.send_goal_async(goal)
         rclpy.spin_until_future_complete(node, sent)
         handle = sent.result()
@@ -186,7 +237,7 @@ def main() -> None:
         steps = plan(
             p['cycles'],
             to_map(p['dig_pose'], fix),
-            to_map(p['dump_pose'], fix),
+            [to_map(park_pose(t, p['dump_reach']), fix) for t in dump_targets(p['dump_targets'])],
             to_map(p['home_pose'], fix),
             p['dig_seconds'],
             p['dump_seconds'],

@@ -98,6 +98,16 @@ def caption(mission_state: str) -> str:
     return ''
 
 
+def shows_plan(mission_state: str) -> bool:
+    """Return True while the rover is driving a plan worth drawing.
+
+    Once a leg ends, /plan keeps its last message -- sometimes a heading
+    fix-up computed in the leg's final second -- and drawing that while the
+    rover digs or dumps showed loops it never drove.
+    """
+    return mission_state == '' or mission_state.startswith(('DRIVING', 'RETURNING'))
+
+
 def wrap(text: str, width_px: int, measure) -> list[str]:
     """Split text into lines no wider than width_px, by `measure(line) -> px`."""
     lines, line = [], ''
@@ -337,7 +347,7 @@ def main() -> None:
         if len(state['trail']) > 1:
             pts = np.array([view.px(*arena_xy(x, y)) for x, y in state['trail']], np.int32)
             cv2.polylines(panel, [pts], False, (180, 180, 60), 1, cv2.LINE_AA)
-        if len(state['plan']) > 1:
+        if len(state['plan']) > 1 and shows_plan(state['mission']):
             pts = np.array([view.px(*arena_xy(x, y)) for x, y in state['plan']], np.int32)
             cv2.polylines(panel, [pts], False, (60, 255, 60), 2, cv2.LINE_AA)
         if state['pose'] is not None:

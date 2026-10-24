@@ -17,9 +17,25 @@ mission:
     cycles: 1
     leg_timeout: 240.0
     retries: 1
-    # [x, y, yaw] in metres / radians.
-    dig_pose: [4.0, 0.8, 0.0]
-    dump_pose: [6.09, 2.57, 0.0]
-    home_pose: [0.0, 0.0, 3.1416]
+    # [x, y, yaw] in metres / radians; [x, y] alone = heading free: the rover
+    # faces the way it drove there (no turning round on the spot to dig).
+    dig_pose: [4.0, 0.8]
+    # Where each load must LAND, [x, y, heading] per spot, used one per
+    # cycle in turn: the berm is built ALONG the target (x 5.34-6.84,
+    # y 2.12-3.02), not piled in one place. The excavator pours dump_reach
+    # metres behind base_link, so the rover parks that far ahead of the
+    # spot -- here south of the berm, facing -Y, pouring north onto it.
+    # Why so: parked facing +X, the parking spot sits right in front of the
+    # first mound, and the second visit could not park (Isaac, 2026-10-24).
+    # 0.97 m keeps a parked rover's rear and its pivot clear of a mound
+    # (tested in test_mission.py).
+    dump_targets: [5.95, 2.57, -1.5708,
+                   6.23, 2.57, -1.5708]
+    dump_reach: 0.97
+    # Heading free, and 1.15 m from the end wall: facing the wall at (0, 0)
+    # the goal sat in the wall's no-go band whenever the floor at its foot
+    # was never seen (the shadow layer extends the wall into unseen floor),
+    # and the return leg failed ("Start occupied").
+    home_pose: [0.4, 0.0]
     dig_seconds: 8.0
     dump_seconds: 6.0

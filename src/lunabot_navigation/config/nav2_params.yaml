@@ -96,8 +96,12 @@ controller_server:
     goal_checker_plugins: ["goal_checker"]
     goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.3
+      # 0.15, not 0.25: the dump has to put its load inside a 0.9 m-wide
+      # berm target, and the rover stops up to this short of the goal.
+      xy_goal_tolerance: 0.15
+      # 0.1 rad, not 0.3: the dump pours 0.7 m behind the rover, so a 0.3 rad
+      # heading error put the load 0.2 m sideways -- out of the berm target.
+      yaw_goal_tolerance: 0.1
       stateful: true
 
     # Nav2's output. twist_mux arbitrates between this and teleop, and teleop
@@ -370,7 +374,13 @@ planner_server:
       max_on_approach_iterations: 1000
       max_planning_time: 5.0
       analytic_expansion_ratio: 3.5
-      analytic_expansion_max_length: 3.0
+      # Analytic expansions shortcut the search with a direct curve to the
+      # goal: Dubins here (forward only, 0.5 m radius). Arriving at the goal
+      # spot 35 deg off its heading, the shortest Dubins curve is a full ~3 m
+      # LOOP, which 3.0 m let through -- the rover drove circles at the dump
+      # pose instead of turning two lattice steps on the spot. 1.0 m still
+      # covers the final straight-in approach.
+      analytic_expansion_max_length: 1.0
       analytic_expansion_max_cost: 200.0
       analytic_expansion_max_cost_override: false
       lookup_table_size: 20.0

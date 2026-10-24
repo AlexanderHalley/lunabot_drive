@@ -56,7 +56,7 @@ def test_stowed_drum_stays_inside_the_chassis_outline_and_clear_of_the_tipped_ho
 def test_a_full_hopper_makes_a_low_mound_and_two_make_a_bigger_one():
     r1, h1 = ex.pile_size(ex.LOAD_VOLUME)
     r2, h2 = ex.pile_size(2 * ex.LOAD_VOLUME)
-    assert 0.2 < r1 < 0.5 and h1 < 0.2
+    assert 0.2 < r1 < 0.5 and h1 < 0.3
     assert r2 > r1 and h2 > h1
     # The mound holds what was poured: half-ellipsoid volume.
     assert (2 / 3) * math.pi * r1 * r1 * h1 == pytest.approx(ex.LOAD_VOLUME)

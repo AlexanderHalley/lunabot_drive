@@ -208,6 +208,21 @@ ros2 run lunabot_navigation mission.py --ros-args -p use_sim_time:=true \
   sim's default spawn.
 - A failed leg is retried (`retries`), then the mission stops as `FAILED: <phase>` rather than
   skipping ahead from the wrong place.
+- **Dumping builds a berm, not a heap.** `dump_targets` lists where each load must *land*, used
+  one per cycle in turn along the berm target. The excavator pours `dump_reach` (0.97 m) behind
+  `base_link`, so the rover parks that far ahead of the spot: south of the berm, facing −Y,
+  pouring north. Parked facing +X with one spot, the second visit could not park in front of
+  its own mound. Tests check each load fits the target with the worst pour errors measured in
+  Isaac (0.18 m along the pour heading, 0.33 m across: the turn on the spot skids after the goal
+  checker has latched the position), and that a parked rover and its turn clear every mound.
+- **Free-heading goals.** A pose given as `[x, y]` (the dig spot, home) gets the heading the rover
+  drives there with. Home is (0.4, 0), 1.15 m from the end wall: at (0, 0) facing the wall, the
+  goal sat in the wall's no-go band whenever the floor at its foot was never seen (the shadow
+  layer extends the wall into unseen floor), and the return leg failed with "Start occupied". Made to face a fixed way, a rover arriving from the far side planned small
+  loops on the spot to turn round.
+- **No loops at the goal:** Smac's `analytic_expansion_max_length` is 1.0 m. At 3.0 m a rover
+  at the goal spot but 35° off heading took the Dubins shortcut — a full ~3 m loop — instead
+  of two lattice steps turning on the spot.
 
 To record a run as a video for people, see docs/SIM_ISAAC.md, "Demo videos".
 

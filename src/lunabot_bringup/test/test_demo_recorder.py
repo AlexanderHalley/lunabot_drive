@@ -35,7 +35,7 @@ mission = _load('mission', SRC / 'lunabot_navigation' / 'scripts' / 'mission.py'
 @pytest.mark.parametrize('cycles', [1, 3])
 def test_every_phase_the_mission_can_announce_has_a_caption(cycles):
     pose = (0.0, 0.0, 0.0)
-    states = [step.state for step in mission.plan(cycles, pose, pose, pose, 1.0, 1.0)]
+    states = [step.state for step in mission.plan(cycles, pose, [pose], pose, 1.0, 1.0)]
     states += [
         'WAITING FOR NAVIGATION',
         'SURVEYING START AREA',
@@ -51,6 +51,14 @@ def test_every_phase_the_mission_can_announce_has_a_caption(cycles):
 def test_retrying_is_not_captioned_as_the_leg_itself():
     leg = 'DRIVING TO EXCAVATION ZONE (1/2)'
     assert recorder.caption(f'{leg} - RETRYING') != recorder.caption(leg)
+
+
+def test_the_plan_is_drawn_only_while_driving():
+    assert recorder.shows_plan('DRIVING TO EXCAVATION ZONE (1/2)')
+    assert recorder.shows_plan('RETURNING TO START')
+    assert recorder.shows_plan('')  # no mission running: show whatever Nav2 does
+    for state in ('EXCAVATING (1/2)', 'DEPOSITING', 'MISSION COMPLETE in 132 s', 'SURVEYING'):
+        assert not recorder.shows_plan(state)
 
 
 def test_wrapping_keeps_every_line_inside_the_width_and_loses_no_words():

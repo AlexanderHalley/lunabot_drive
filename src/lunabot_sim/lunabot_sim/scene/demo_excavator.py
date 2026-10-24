@@ -56,9 +56,11 @@ EMPTY_RATE = 0.5  # per second once the hopper is tipped past EMPTY_FROM
 EMPTY_FROM = -35.0
 # Regolith per full hopper (m^3): 80% of the hopper's inside.
 LOAD_VOLUME = 0.8 * HOPPER_SIZE[0] * HOPPER_SIZE[1] * HOPPER_SIZE[2]
-PILE_BEHIND = 0.80  # m behind base_link, where the tipped hopper pours
-PILE_ASPECT = 0.4  # height / radius: a low mound
-PILE_MERGE = 0.6  # m: a dump this close to an existing pile adds to it
+# m behind base_link, where the tipped hopper pours. mission_ucf.yaml's
+# dump_reach must match (tested), or the load misses the berm target.
+PILE_BEHIND = 0.97
+PILE_ASPECT = 1.0  # height / radius: a hemisphere, the narrowest mound per load
+PILE_MERGE = 0.15  # m: a dump this close to an existing pile adds to it
 
 
 def _towards(value: float, target: float, step: float) -> float:
@@ -153,6 +155,13 @@ class DemoExcavator:
             x, y = x - PILE_BEHIND * math.cos(yaw), y - PILE_BEHIND * math.sin(yaw)
             near = [p for p in self._piles if math.hypot(p[0] - x, p[1] - y) < PILE_MERGE]
             self._pile = near[0] if near else self._new_pile(x, y)
+            logger.info(
+                'pouring at (%.2f, %.2f) onto the pile at (%.2f, %.2f)',
+                x,
+                y,
+                self._pile[0],
+                self._pile[1],
+            )
         self._pile[2] += fraction * LOAD_VOLUME
         r, h = pile_size(self._pile[2])
         self._pile[3].Set((r, r, h))
