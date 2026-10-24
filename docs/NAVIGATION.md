@@ -299,9 +299,20 @@ space hidden behind a surface you saw counts as part of it.
 
 Isaac seed 7, 3 runs each, before → after: plans crossing a rock after it was seen 11 → **0**;
 closest pass per run +0.6 / **−1.0 (contact)** / +11.2 cm → +0.2 / +11.2 / +6.0 cm; leg times
-unchanged; survey fine. Still open: legal plans run 1–4 cm off lethal cells, and an on-the-spot
-turn beside a rock (RPP rotate-to-heading) used up a 6 cm plan margin. That is margin tuning
-(Smac `cost_penalty`, inflation fall-off) and tracking, not knowledge.
+unchanged; survey fine.
+
+**Margin, then: `smooth_path: false`.** Smac's smoother checks only the centre line, and pulled
+curves in towards corners. Without it, 3 runs: +4.6 / +7.1 / +5.5 cm (and ≥ 4.6 cm in all 9
+unsmoothed runs of the tuning below). Tried on top and dropped, 3 runs each: `cost_penalty` 6
+(+7.4 / +5.7 / +12.4 cm, but two legs slowed from ~12–22 s to ~31 s) and global
+`footprint_padding` 0.045 (+7.5 / +5.4 / +7.7 cm, more grazing plans). Neither beat run-to-run
+noise.
+
+**What limits the margin now:** Smac's outline check is exact only to a 5 cm cell, which eats the
+3 cm padding, and it checks pivots only at discrete headings, so planned on-the-spot turns beside a
+rock just coming into view can graze it in the plan (later replans fix them). Executed passes stay
+≥ ~5 cm. The local costmap cannot take the shadow layer: with no static layer and no clearing it
+never holds seen-free cells, so shadows would spread in front of faces too.
 
 **Measuring clearance — lessons:**
 - One run proves nothing. Identical runs differed by up to 12 cm of clearance, so compare ≥ 3

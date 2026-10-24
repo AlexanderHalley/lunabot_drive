@@ -377,7 +377,14 @@ planner_server:
       cache_obstacle_heuristic: false
       debug_visualizations: false
 
-      smooth_path: true
+      # OFF. Smac's smoother checks only the path's centre line against the
+      # costmap, so it pulls curves in towards rock corners the footprint
+      # check had kept clear. Isaac seed 7, 3 runs each with the shadow
+      # layer: closest pass +0.2/+11.2/+6.0 cm smoothed, +4.6/+7.1/+5.5 cm
+      # not, leg times unchanged. (cost_penalty 6 and footprint_padding
+      # 0.045 were tried on top: no better beyond run-to-run noise, and
+      # cost_penalty 6 slowed two legs from ~12-22 s to ~31 s.)
+      smooth_path: false
       smoother:
         max_iterations: 1000
         w_smooth: 0.3
