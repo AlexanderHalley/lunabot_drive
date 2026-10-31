@@ -125,6 +125,14 @@ small slip angles and turns. Calibrated, for the 2026-style four-wheeler, to: **
 tightest achieved arc ≈ 1.5 m** — an assumed number until the real one is measured. `test/test_soil.py` pins this down in CI.
 `run_isaac_sim.sh --no-sand` puts plain PhysX friction back, for comparison.
 
+Traction and side force are solved **implicitly**: at the velocity the rover will have at the end of
+the step, with all wheels coupled through the rigid body (a few Newton iterations, ~0.2 ms a step).
+That keeps a locked pivot locked and makes turning independent of speed, as it is in sand. Until
+2026-10-31 the side force was judged after traction alone acted, which added a fixed error to every
+slip angle: at 240 Hz a 1.5 m arc came out 3.9 m wide at 0.075 m/s and 1.6 m at 0.3 m/s (six
+wheels); now 1.73 m at every speed. `alpha_0` was refitted (0.5 → 0.34) to keep the 1.5 m
+assumption.
+
 **Loads and sinkage.** Each wheel's load is the vertical part of its PhysX contact force, read
 every step — that is what lets the six-wheel drop-centre work, since its middle axle carries more
 than an even share. The wheel contact is also *compliant* (a spring-damper, `SoilConfig.sinkage_*`):

@@ -70,16 +70,20 @@ class SoilConfig:
     """Slip ratio at which traction reaches ~76% of its peak (tanh(1)). Sand
     needs a lot of slip to push against; rigid ground would be ~0.03."""
 
-    alpha_0: float = 0.5
+    alpha_0: float = 0.34
     """Slip angle, rad, at which sideways resistance reaches ~76% of its peak.
-    Sets the minimum arc radius: 0.35 gives ~2.5 m, 0.5 ~1.5 m, 0.7 ~0.9 m.
-    Raised too far (~1.0 with mu_lat 0.75) and the pivot starts to creep."""
+    Sets the minimum arc radius, the same at any speed: 0.34 gives ~1.5 m,
+    0.4 ~1.3 m, 0.5 ~1.0 m. (Fitted as 0.5 before 2026-10-31, when the side
+    force was judged after traction alone; that made arcs wider, and wider
+    the slower the rover went.)"""
 
     rolling_resistance: float = 0.05
     """Fraction of the normal load that resists rolling (compaction)."""
 
-    v_eps: float = 0.003
-    """m/s. Keeps the slip ratio and angle defined at standstill."""
+    v_eps: float = 0.001
+    """m/s. Keeps the slip ratio and angle defined at standstill. Below it
+    the sand acts like a thick fluid: a locked pivot creeps at about
+    1.6 * v_eps rad/s (0.0016 here, 0.1 deg/s)."""
 
     contact_tolerance: float = 0.02
     """m. A wheel whose centre is within radius + this of the ground is on it."""
@@ -138,26 +142,41 @@ def wheel_forces(
         load = np.where(on_ground, mass * _G / max(int(on_ground.sum()), 1), 0.0)
     else:
         load = np.where(on_ground, np.maximum(np.asarray(loads, dtype=float), 0.0), 0.0)
-    # The mass each wheel would have to stop on its own, for the step caps.
+    # The mass each wheel would have to stop on its own, for the rolling cap.
     share = load / _G
 
-    # ---- Along the wheel: traction and rolling resistance ----
-    # Slip ratio: + driving (rim faster than travel), - braking.
-    kappa = -slip / np.maximum(np.maximum(np.abs(v_x), np.abs(surface)), config.v_eps)
-    f_trac = config.mu_long * load * np.tanh(kappa / config.kappa_0)
+    # ---- Along the wheel: rolling resistance (small, explicit) ----
     f_roll = -config.rolling_resistance * load * np.tanh(v_x / config.v_eps)
+    f_roll = np.clip(f_roll, -share / dt * np.abs(v_x), share / dt * np.abs(v_x))
 
-    # ---- Across the wheel: side force from the slip angle ----
-    # Evaluated at the velocity the rover WILL have once traction acts, not
-    # the one it has. From standstill the slip angle is otherwise zero, side
-    # force zero, and traction gets one free step of rotation every time --
-    # a pivot that should be locked creeps.
-    along = (f_trac + f_roll)[:, None] * forward
-    v_pred = _predict(centre, v_centre, omega, along, point, mass, yaw_inertia, dt)
-    v_px = np.einsum('ij,ij->i', v_pred, forward)
-    v_py = np.einsum('ij,ij->i', v_pred, lateral)
-    alpha = np.arctan2(v_py, np.abs(v_px) + config.v_eps)
-    f_side = -config.mu_lat * load * np.tanh(alpha / config.alpha_0)
+    # ---- Traction (slip ratio) and side force (slip angle), implicit ----
+    # Both are worked out at the velocity the rover WILL have at the end of
+    # the step, with the forces themselves acting (backward Euler, every
+    # wheel coupled through the rigid body). Two things depend on that:
+    #   * a locked pivot stays locked: from standstill the slip angle is
+    #     otherwise zero, side force zero, and traction gets a free step of
+    #     rotation every time -- the pivot creeps;
+    #   * turning does not depend on speed. Judging the side force after
+    #     traction alone acts (the old way) added a fixed, speed-independent
+    #     error to every slip angle -- the yaw that traction's moment would
+    #     add in one step if nothing resisted it -- so at 240 Hz slow arcs came
+    #     out far too wide (1.5 m commanded: 3.9 m at 0.075 m/s, 1.6 at 0.3).
+    f_trac, f_side = _implicit_forces(
+        config,
+        load,
+        slip,
+        v_x,
+        surface,
+        v_centre,
+        forward,
+        lateral,
+        point,
+        centre,
+        f_roll,
+        mass,
+        yaw_inertia,
+        dt,
+    )
 
     # Combined slip: traction and side force share one friction ellipse.
     use = np.hypot(f_trac / config.mu_long, f_side / config.mu_lat) / np.maximum(load, 1e-9)
@@ -165,29 +184,103 @@ def wheel_forces(
     f_trac *= scale
     f_side *= scale
 
-    # Never push harder than it takes to stop the motion in one step. The
-    # force curves are near vertical at standstill; integrated explicitly they
-    # are a very stiff spring and the rover buzzes in place.
-    cap = share / dt
-    f_trac = np.clip(f_trac, -cap * np.abs(slip), cap * np.abs(slip))
-    f_roll = np.clip(f_roll, -cap * np.abs(v_x), cap * np.abs(v_x))
-
-    # Side forces resist motion; they may stop it but never reverse it. Done
-    # for the rover as a whole, because what they hold in a pivot is a yaw
-    # moment, which no single wheel's velocity measures.
-    # Judged against the FINAL traction: the ellipse has just cut it, and a
-    # side force sized to cancel the uncut traction would kick the rover
-    # backwards.
-    along = (f_trac + f_roll)[:, None] * forward
-    v_pred = _predict(centre, v_centre, omega, along, point, mass, yaw_inertia, dt)
-    side = f_side[:, None] * lateral
-    side *= _no_reversal(centre, v_pred, side, point, mass, yaw_inertia, dt)
-
-    force = along + side
+    # No separate guard against side forces reversing the motion: forces
+    # judged at the end-of-step velocity oppose that velocity, so they stop
+    # motion without reversing it. (The old guard, judged against traction
+    # alone, trimmed balanced side forces and let a locked pivot creep.)
+    force = (f_trac + f_roll)[:, None] * forward + f_side[:, None] * lateral
     return force, point
 
 
 _G = 9.81
+
+
+_NEWTON_ITERATIONS = 20
+
+
+def _implicit_forces(
+    config,
+    load,
+    slip,
+    v_x,
+    surface,
+    v_centre,
+    forward,
+    lateral,
+    point,
+    centre,
+    f_roll,
+    mass,
+    yaw_inertia,
+    dt,
+):
+    """Traction and side force per wheel at the END-of-step velocities.
+
+    Unknowns F = [traction; side], 2n. The end-of-step slip (along) and side
+    velocity (across) of each wheel are linear in F through the rigid planar
+    rover: c = c0 + dt * W @ F, W the contact mobility. Solve F = phi(c) by
+    Newton; the force laws oppose motion, so the system is well conditioned
+    however steep the curves get at standstill. The wheels hold their spin.
+    """
+    n = len(load)
+    mid = centre[:, :2].mean(axis=0)
+    lever = point[:, :2] - mid
+    dirs = np.concatenate([forward[:, :2], lateral[:, :2]])
+    arms = np.concatenate([lever, lever])
+    moment = arms[:, 0] * dirs[:, 1] - arms[:, 1] * dirs[:, 0]
+    mobility = dt * (dirs @ dirs.T / mass + np.outer(moment, moment) / yaw_inertia)
+
+    v_ref = np.maximum(np.maximum(np.abs(v_x), np.abs(surface)), config.v_eps)
+    k_trac = 1.0 / (v_ref * config.kappa_0)
+    trac_max = config.mu_long * load
+    side_max = config.mu_lat * load
+    c0 = np.concatenate([slip, np.einsum('ij,ij->i', v_centre, lateral)])
+    c0 = c0 + mobility[:, :n] @ f_roll
+
+    eye = np.eye(2 * n)
+    bound = np.concatenate([trac_max, side_max])
+
+    def phi(forces):
+        """Force laws at the end-of-step velocities, and their Jacobian."""
+        c = c0 + mobility @ forces
+        s, u = c[:n], c[n:]
+        # Traction: + driving (rim faster than travel), - braking.
+        t = np.tanh(-s * k_trac)
+        dt_ds = -trac_max * (1.0 - t * t) * k_trac
+        # Side force from the slip angle; the wheel's forward speed is
+        # s + surface (the rim speed is held).
+        w = s + surface
+        den = np.abs(w) + config.v_eps
+        a = np.tanh(np.arctan2(u, den) / config.alpha_0)
+        ds_dalpha = -side_max * (1.0 - a * a) / config.alpha_0
+        rr = u * u + den * den
+        jac = np.zeros((2 * n, 2 * n))
+        jac[np.arange(n), np.arange(n)] = dt_ds
+        jac[n + np.arange(n), np.arange(n)] = ds_dalpha * -u * np.sign(w) / rr
+        jac[n + np.arange(n), n + np.arange(n)] = ds_dalpha * den / rr
+        return np.concatenate([trac_max * t, -side_max * a]), jac @ mobility
+
+    # Newton with a backtracking line search: near standstill the curves are
+    # nearly vertical and a full step can overshoot into the clamp and back.
+    forces = np.zeros(2 * n)
+    target, d_phi = phi(forces)
+    residual = forces - target
+    tolerance = 1e-6 * (1.0 + load.max(initial=0.0))
+    for _ in range(_NEWTON_ITERATIONS):
+        if np.max(np.abs(residual)) < tolerance:
+            break
+        step = np.linalg.solve(eye - d_phi, -residual)
+        norm = np.linalg.norm(residual)
+        lam = 1.0
+        while True:
+            trial = np.clip(forces + lam * step, -bound, bound)
+            trial_target, trial_d_phi = phi(trial)
+            trial_residual = trial - trial_target
+            if np.linalg.norm(trial_residual) < norm or lam < 1e-3:
+                break
+            lam *= 0.5
+        forces, target, d_phi, residual = trial, trial_target, trial_d_phi, trial_residual
+    return forces[:n], forces[n:]
 
 
 def _kinematics(centre, axis, v_centre, omega, radius):
@@ -203,50 +296,3 @@ def _kinematics(centre, axis, v_centre, omega, radius):
     slip = np.einsum('ij,ij->i', v_contact, forward)  # contact point over ground
     v_x = np.einsum('ij,ij->i', v_centre, forward)
     return forward, lateral, point, slip, v_x
-
-
-def _planar(centre, v_centre, omega):
-    """Rover body state in the plane, about the middle of the wheels."""
-    mid = centre[:, :2].mean(axis=0)
-    arm = centre[:, :2] - mid
-    yaw_rate = omega[:, 2].mean()  # the spin axes are horizontal
-    v_mid = v_centre[:, :2].mean(axis=0)
-    return arm, v_mid, yaw_rate
-
-
-def _wrench(centre, force, point):
-    mid = centre[:, :2].mean(axis=0)
-    lever = point[:, :2] - mid
-    torque = np.sum(lever[:, 0] * force[:, 1] - lever[:, 1] * force[:, 0])
-    return force[:, :2].sum(axis=0), torque
-
-
-def _predict(centre, v_centre, omega, force, point, mass, yaw_inertia, dt):
-    """Wheel centre velocities after one step under `force`, rover rigid."""
-    arm, v_mid, yaw_rate = _planar(centre, v_centre, omega)
-    f, torque = _wrench(centre, force, point)
-    v_mid = v_mid + f / mass * dt
-    yaw_rate = yaw_rate + torque / yaw_inertia * dt
-    v = v_mid + yaw_rate * np.c_[-arm[:, 1], arm[:, 0]]
-    return np.c_[v, np.zeros(len(centre))]
-
-
-def _no_reversal(centre, v_pred, side, point, mass, yaw_inertia, dt):
-    """Largest scale in [0, 1] at which `side` reverses no body velocity."""
-    _, v_mid, _ = _planar(centre, v_pred, np.zeros((len(centre), 3)))
-    arm = centre[:, :2] - centre[:, :2].mean(axis=0)
-    # Yaw rate from the predicted velocities (least squares over the wheels).
-    yaw_rate = np.sum(arm[:, 0] * v_pred[:, 1] - arm[:, 1] * v_pred[:, 0]) / max(
-        np.sum(arm**2), 1e-9
-    )
-    f, torque = _wrench(centre, side, point)
-
-    scale = 1.0
-    for momentum, push in (
-        (mass * v_mid[0], f[0] * dt),
-        (mass * v_mid[1], f[1] * dt),
-        (yaw_inertia * yaw_rate, torque * dt),
-    ):
-        if push * momentum < 0 and abs(push) > abs(momentum):
-            scale = min(scale, abs(momentum) / abs(push))
-    return scale
