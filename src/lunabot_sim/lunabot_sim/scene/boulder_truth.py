@@ -88,6 +88,10 @@ class BoulderTruthPublisher:
         return True
 
     def step(self, sim_time: float) -> None:
+        # On Ctrl-C rclpy's own SIGINT handler shuts the context down while the
+        # sim loop still runs one more step; publishing then raises.
+        if not self._node.context.ok():
+            return
         if sim_time - self._last < self._period:
             return
         if self._view is None and not self._attach():
