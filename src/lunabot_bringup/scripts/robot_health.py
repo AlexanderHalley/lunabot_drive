@@ -59,6 +59,7 @@ import rclpy
 from controller_manager_msgs.srv import ListControllers
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from nav_msgs.msg import Odometry
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import CameraInfo, Imu, JointState
@@ -385,12 +386,16 @@ def main(argv=None):
     node = RobotHealth()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except RuntimeError:
+        # SIGINT can shut the context down while the executor is mid-take, and
+        # the take then fails with a pybind error rather than a clean shutdown.
+        if rclpy.ok():
+            raise
     finally:
         node.destroy_node()
-        if rclpy.ok():
-            rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

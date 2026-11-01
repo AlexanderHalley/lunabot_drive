@@ -47,6 +47,7 @@ def limit(linear: float, angular: float, min_turning_radius: float) -> tuple[flo
 def main() -> None:
     import rclpy
     from geometry_msgs.msg import TwistStamped
+    from rclpy.executors import ExternalShutdownException
     from rclpy.node import Node
 
     class CurvatureLimiter(Node):
@@ -80,8 +81,12 @@ def main() -> None:
     node = CurvatureLimiter()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except RuntimeError:
+        # A take interrupted by SIGINT's shutdown (see robot_health.py).
+        if rclpy.ok():
+            raise
     finally:
         node.destroy_node()
         rclpy.try_shutdown()
