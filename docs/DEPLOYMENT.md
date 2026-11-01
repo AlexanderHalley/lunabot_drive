@@ -57,8 +57,9 @@ below (idempotent; rerun after a reflash). The steps, for what it does and why:
    lines from HARDWARE_CAN.md in a systemd unit instead.
 5. The data tree: `mkdir -p ~/lunabotics/data/{bags,logs/ros}` (bags and ROS logs land there).
 6. The repository, for the compose and env files only: `git clone` it anywhere. Nothing is built.
-7. If the package on ghcr.io is private (GitHub → the repo → Packages → robot → settings):
-   `docker login ghcr.io -u <github user>` with a token that has `read:packages`.
+7. Nothing: the package on ghcr.io is public (checked 2026-11-01 with an anonymous pull), so no
+   `docker login`. If it is ever made private: `docker login ghcr.io -u <github user>` with a
+   token that has `read:packages`.
 
 ## Deploy, update, roll back
 
@@ -134,7 +135,14 @@ libraries matching the host's L4T driver — NVIDIA's L4T images are 22.04-based
 image with GPU access is a deliberate piece of work, not a flag. Build TensorRT engines on the Orin
 itself (lunabotics-filesystem-setup.md §8).
 
-## What has been verified (2026-10-31, desktop, amd64)
+## What has been verified
+
+**CI, first run (2026-11-01, run 41267370951):** both architectures built on native runners
+(amd64 12 min, arm64 11 min, cold cache), the mock stack driven inside each (`check_stack.py
+--drive`), and `:develop-2027` published as one multi-arch manifest (amd64 + arm64), pullable
+without logging in.
+
+**Desktop, amd64 (2026-10-31):**
 
 - The image builds (cold: ~7 min; after a code-only change the dependency layers are cached).
 - Mock stack inside it: `check_stack.py --drive`, 13/13.
@@ -156,8 +164,8 @@ itself (lunabotics-filesystem-setup.md §8).
 
 ## Not done yet
 
-- **Not yet run on the Orin itself.** CI builds and smoke-tests the arm64 image on an arm64
-  runner; the first run on the rover proves the devices (CAN, OAK-D over USB, joystick).
+- **Not yet run on the Orin itself.** The arm64 image builds and drives the mock stack on
+  an arm64 runner; the first run on the rover proves the devices (CAN, OAK-D over USB, joystick).
 - **Size: 6.2 GB on disk, 1.4 GB to pull.** No apt recommends and no nav2_bringup already took
   1.6 GB off. Most of the rest is build-time only (PCL/VTK headers and their Java, compilers) or
   rviz2's graphics stack (several LLVMs): an exec-only runtime stage would drop it, once CI can
