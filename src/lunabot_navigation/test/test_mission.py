@@ -163,3 +163,68 @@ def _sim_layout():
     """
     sys.path.append(str(PKG.parent / 'lunabot_sim'))
     return pytest.importorskip('lunabot_sim.scene.layout')
+
+
+def test_without_autostart_nothing_runs_until_start():
+    control = mission.Control(autostart=False)
+    assert control.mode() == 'READY'
+    assert control.pause() == (False, 'not started')
+    assert control.start() == (True, 'started')
+    assert control.mode() == 'RUNNING'
+    assert control.start()[0] is False
+
+
+def test_pause_and_resume_round_trip():
+    control = mission.Control(autostart=True)
+    assert control.resume() == (False, 'not paused')
+    assert control.pause()[0] and control.paused and control.mode() == 'PAUSED'
+    assert control.pause()[0] is False
+    assert control.resume()[0] and not control.paused and control.mode() == 'RUNNING'
+
+
+def test_releasing_the_e_stop_does_not_drive_off():
+    """The e-stop pauses; only an explicit resume, after release, moves the rover."""
+    control = mission.Control(autostart=True)
+    control.set_e_stop(True)
+    assert control.paused and control.mode() == 'E-STOP'
+    assert control.resume() == (False, 'e-stop engaged: release it first')
+    control.set_e_stop(False)
+    assert control.paused and control.mode() == 'PAUSED'
+    assert control.resume()[0] and control.mode() == 'RUNNING'
+
+
+def test_a_repeated_e_stop_message_does_not_undo_a_resume():
+    """twist_mux and the mission see every message; a second False changes nothing."""
+    control = mission.Control(autostart=True)
+    control.set_e_stop(True)
+    control.set_e_stop(False)
+    control.resume()
+    control.set_e_stop(False)
+    assert not control.paused
+
+
+def test_start_is_refused_while_the_e_stop_is_engaged():
+    control = mission.Control(autostart=False)
+    control.set_e_stop(True)
+    assert control.start()[0] is False and not control.started
+    control.set_e_stop(False)
+    assert control.start()[0] and not control.paused  # starts running, not paused
+
+
+@pytest.mark.parametrize('final', ['ABORTED', 'FAILED', 'COMPLETE'])
+def test_nothing_is_accepted_once_the_mission_is_over(final):
+    control = mission.Control(autostart=True)
+    if final == 'ABORTED':
+        assert control.abort() == (True, 'aborted')
+    else:
+        control.final = final
+    assert control.mode() == final
+    for name in mission.COMMANDS:
+        accepted, message = getattr(control, name)()
+        assert not accepted and 'restart mission.py' in message
+    assert control.aborted == (final == 'ABORTED')
+
+
+def test_every_command_is_a_control_method():
+    for name in mission.COMMANDS:
+        assert callable(getattr(mission.Control(autostart=True), name))

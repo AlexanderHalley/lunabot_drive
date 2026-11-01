@@ -1,0 +1,44 @@
+# What `record:=true` (launch/record.launch.py) puts in the bag: enough to
+# replay a run in Foxglove with the mission control layout and to see why a
+# leg failed -- the mission's states, what Nav2 knew (costmaps, plan, pose)
+# and what it was told (commands from every source). Small topics only: a
+# 30-minute run stays well under 1 GB.
+#
+# NOT here, on purpose: raw images and /oak_d/points (GBs per run, and
+# recording them makes the camera produce them -- the lazy publisher). The
+# operator camera's 2 fps JPEG stands in. Add a raw topic by hand for a
+# perception debugging session, not by default.
+topics:
+  # time and frames
+  - /clock
+  - /tf
+  - /tf_static
+  - /robot_description
+  - /joint_states
+  # the mission and the operator
+  - /mission/state
+  - /mission/mode
+  - /mission/started
+  - /e_stop
+  - /navigation/survey_done
+  - /localization/arena_fix
+  # what navigation knew
+  - /odom
+  - /map
+  - /global_costmap/costmap
+  - /local_costmap/costmap
+  - /plan
+  - /perception/boulders
+  - /perception/debug/markers
+  # what the wheels were told, by whom
+  - /cmd_vel
+  - /cmd_vel_nav
+  - /cmd_vel_joy
+  - /drive/status
+  # sensors, small
+  - /oak_d/imu/data
+  - /oak_d/rgb/camera_info
+  - /operator/camera/compressed
+  # health and logs
+  - /diagnostics
+  - /rosout

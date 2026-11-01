@@ -1,0 +1,353 @@
+{
+  "configById": {
+    "3D!arena": {
+      "foxglovePanelTitle": "Arena: costmap, plan, rover",
+      "lichtblickPanelTitle": "Arena: costmap, plan, rover",
+      "followTf": "arena",
+      "followMode": "follow-none",
+      "cameraState": {
+        "distance": 11,
+        "perspective": false,
+        "phi": 0,
+        "target": [
+          3.2,
+          1.0,
+          0
+        ],
+        "targetOffset": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "thetaOffset": 90,
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "scene": {
+        "transforms": {
+          "showLabel": false,
+          "axisScale": 0.3
+        }
+      },
+      "transforms": {},
+      "topics": {
+        "/global_costmap/costmap": {
+          "visible": true,
+          "colorMode": "costmap",
+          "alpha": 0.7
+        },
+        "/plan": {
+          "visible": true
+        },
+        "/robot_description": {
+          "visible": true
+        },
+        "/perception/debug/markers": {
+          "visible": true
+        }
+      },
+      "layers": {
+        "grid": {
+          "visible": true,
+          "frameLocked": true,
+          "label": "Grid (1 m)",
+          "instanceId": "grid",
+          "layerId": "foxglove.Grid",
+          "frameId": "arena",
+          "size": 10,
+          "divisions": 10,
+          "lineWidth": 1,
+          "color": "#8888884d",
+          "position": [
+            3,
+            1,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "order": 1
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {}
+    },
+    "Plot!speed": {
+      "foxglovePanelTitle": "Speed: measured vs commanded (m/s)",
+      "lichtblickPanelTitle": "Speed: measured vs commanded (m/s)",
+      "paths": [
+        {
+          "value": "/odom.twist.twist.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "measured"
+        },
+        {
+          "value": "/cmd_vel.twist.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "commanded"
+        },
+        {
+          "value": "/odom.twist.twist.angular.z",
+          "enabled": false,
+          "timestampMethod": "receiveTime",
+          "label": "yaw rate (rad/s)"
+        }
+      ],
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": true,
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "followingViewWidth": 60,
+      "sidebarDimension": 240
+    },
+    "Indicator!mode": {
+      "foxglovePanelTitle": "Mission mode",
+      "lichtblickPanelTitle": "Mission mode",
+      "path": "/mission/mode.data",
+      "style": "background",
+      "fallbackColor": "#6b7280",
+      "fallbackLabel": "NO MISSION NODE",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "READY",
+          "color": "#2563eb",
+          "label": "READY: press Start"
+        },
+        {
+          "operator": "=",
+          "rawValue": "RUNNING",
+          "color": "#16a34a",
+          "label": "RUNNING"
+        },
+        {
+          "operator": "=",
+          "rawValue": "PAUSED",
+          "color": "#d97706",
+          "label": "PAUSED"
+        },
+        {
+          "operator": "=",
+          "rawValue": "E-STOP",
+          "color": "#dc2626",
+          "label": "E-STOP"
+        },
+        {
+          "operator": "=",
+          "rawValue": "ABORTED",
+          "color": "#dc2626",
+          "label": "ABORTED"
+        },
+        {
+          "operator": "=",
+          "rawValue": "FAILED",
+          "color": "#dc2626",
+          "label": "FAILED"
+        },
+        {
+          "operator": "=",
+          "rawValue": "COMPLETE",
+          "color": "#16a34a",
+          "label": "COMPLETE"
+        }
+      ]
+    },
+    "Indicator!estop": {
+      "foxglovePanelTitle": "Software e-stop",
+      "lichtblickPanelTitle": "Software e-stop",
+      "path": "/e_stop.data",
+      "style": "bulb",
+      "fallbackColor": "#6b7280",
+      "fallbackLabel": "e-stop: never pressed",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "true",
+          "color": "#dc2626",
+          "label": "E-STOP ENGAGED"
+        },
+        {
+          "operator": "=",
+          "rawValue": "false",
+          "color": "#16a34a",
+          "label": "e-stop released"
+        }
+      ]
+    },
+    "RawMessages!state": {
+      "foxglovePanelTitle": "Mission state",
+      "lichtblickPanelTitle": "Mission state",
+      "topicPath": "/mission/state.data",
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "diffEnabled": false,
+      "showFullMessageForDiff": false,
+      "fontSize": 18
+    },
+    "CallService!start": {
+      "foxglovePanelTitle": "Start",
+      "lichtblickPanelTitle": "Start",
+      "serviceName": "/mission/start",
+      "requestPayload": "{}",
+      "layout": "vertical",
+      "buttonText": "Start",
+      "buttonColor": "#16a34a",
+      "buttonTooltip": "Start the mission (mission.py with autostart:=false waits for this)."
+    },
+    "CallService!pause": {
+      "foxglovePanelTitle": "Pause",
+      "lichtblickPanelTitle": "Pause",
+      "serviceName": "/mission/pause",
+      "requestPayload": "{}",
+      "layout": "vertical",
+      "buttonText": "Pause",
+      "buttonColor": "#d97706",
+      "buttonTooltip": "Cancel the current leg and hold; dig/dump timers stop."
+    },
+    "CallService!resume": {
+      "foxglovePanelTitle": "Resume",
+      "lichtblickPanelTitle": "Resume",
+      "serviceName": "/mission/resume",
+      "requestPayload": "{}",
+      "layout": "vertical",
+      "buttonText": "Resume",
+      "buttonColor": "#2563eb",
+      "buttonTooltip": "Carry on: the interrupted leg is planned again from here."
+    },
+    "CallService!abort": {
+      "foxglovePanelTitle": "Abort",
+      "lichtblickPanelTitle": "Abort",
+      "serviceName": "/mission/abort",
+      "requestPayload": "{}",
+      "layout": "vertical",
+      "buttonText": "Abort",
+      "buttonColor": "#dc2626",
+      "buttonTooltip": "End the mission. Final: restart mission.py to run again."
+    },
+    "Image!camera": {
+      "foxglovePanelTitle": "Onboard camera (2 fps, 424 px)",
+      "lichtblickPanelTitle": "Onboard camera (2 fps, 424 px)",
+      "imageMode": {
+        "imageTopic": "/operator/camera/compressed"
+      }
+    },
+    "DiagnosticSummary!health": {
+      "foxglovePanelTitle": "Stack health (/diagnostics)",
+      "lichtblickPanelTitle": "Stack health (/diagnostics)",
+      "minLevel": 0,
+      "pinnedIds": [],
+      "topicToRender": "/diagnostics",
+      "hardwareIdFilter": "",
+      "sortByLevel": true,
+      "secondsUntilStale": 5
+    },
+    "CallService!estop": {
+      "foxglovePanelTitle": "E-STOP",
+      "lichtblickPanelTitle": "E-STOP",
+      "serviceName": "/e_stop/set",
+      "requestPayload": "{\"data\": true}",
+      "layout": "vertical",
+      "buttonText": "E-STOP",
+      "buttonColor": "#dc2626",
+      "buttonTooltip": "Cut every velocity source (twist_mux lock) and pause the mission."
+    },
+    "CallService!release": {
+      "foxglovePanelTitle": "Release e-stop",
+      "lichtblickPanelTitle": "Release e-stop",
+      "serviceName": "/e_stop/set",
+      "requestPayload": "{\"data\": false}",
+      "layout": "vertical",
+      "buttonText": "Release e-stop",
+      "buttonColor": "#6b7280",
+      "buttonTooltip": "Unlock twist_mux. The mission stays paused until Resume."
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "first": {
+      "first": "3D!arena",
+      "second": "Plot!speed",
+      "direction": "column",
+      "splitPercentage": 72
+    },
+    "second": {
+      "first": {
+        "first": {
+          "first": {
+            "first": "Indicator!mode",
+            "second": "Indicator!estop",
+            "direction": "row",
+            "splitPercentage": 65
+          },
+          "second": "RawMessages!state",
+          "direction": "column",
+          "splitPercentage": 55
+        },
+        "second": {
+          "first": {
+            "first": {
+              "first": "CallService!start",
+              "second": "CallService!pause",
+              "direction": "row",
+              "splitPercentage": 50
+            },
+            "second": {
+              "first": "CallService!resume",
+              "second": "CallService!abort",
+              "direction": "row",
+              "splitPercentage": 50
+            },
+            "direction": "row",
+            "splitPercentage": 50
+          },
+          "second": {
+            "first": "CallService!estop",
+            "second": "CallService!release",
+            "direction": "row",
+            "splitPercentage": 50
+          },
+          "direction": "row",
+          "splitPercentage": 66
+        },
+        "direction": "column",
+        "splitPercentage": 60
+      },
+      "second": {
+        "first": "Image!camera",
+        "second": "DiagnosticSummary!health",
+        "direction": "column",
+        "splitPercentage": 50
+      },
+      "direction": "column",
+      "splitPercentage": 30
+    },
+    "direction": "row",
+    "splitPercentage": 60
+  }
+}

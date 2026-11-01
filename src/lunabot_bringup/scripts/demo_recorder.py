@@ -83,6 +83,10 @@ CAPTIONS = (
     ),
     ('DEPOSITING', 'Dumping into the berm area. The hopper is a stand-in, like the drum.'),
     ('RETURNING TO START', 'Heading home through the rock field.'),
+    ('READY', 'Waiting for the operator to press Start in mission control.'),
+    ('PAUSED', 'Paused from mission control: the leg is cancelled and picks up on resume.'),
+    ('E-STOP', 'Software e-stop: every velocity source is cut off until it is released.'),
+    ('ABORTED', 'Aborted from mission control.'),
     ('MISSION COMPLETE', 'Done, with no operator input at any point.'),
     ('FAILED', 'A leg failed twice, so the mission stopped rather than skip ahead.'),
 )

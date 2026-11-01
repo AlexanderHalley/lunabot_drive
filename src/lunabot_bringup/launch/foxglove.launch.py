@@ -8,10 +8,15 @@
 
     ros2 launch lunabot_bringup robot.launch.py hw:=sim foxglove:=true
 
-Then open Foxglove and connect to ws://<robot>:8765. The bridge is Apache-2.0
-and the Studio app has a free tier; students and researchers get the paid
-tier free on a .edu or .ac address, which is what makes this worth wiring in
-rather than leaving as a README suggestion.
+Then open Foxglove and connect to ws://<robot>:8765, and import the mission
+control layout, config/foxglove/mission_control.json (docs/MONITORING.md
+"Mission control"). Over the competition WiFi add foxglove_profile:=field.
+
+The bridge is Apache-2.0 and the Studio app has a free tier; students and
+researchers get the paid tier free on a .edu or .ac address, which is what
+makes this worth wiring in rather than leaving as a README suggestion. Lichtblick
+(the open-source fork) also connects: bridge 3.x speaks only the
+foxglove.sdk.v1 WebSocket subprotocol, which both offer.
 
 Why this and not rosbridge: foxglove_bridge reads each publisher's QoS off
 the graph and matches it per topic. rosbridge subscribes RELIABLE by default,
@@ -39,8 +44,10 @@ that applies to any network service on a machine you cannot re-image quickly.
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 ARGUMENTS = [
     DeclareLaunchArgument(
@@ -62,12 +69,21 @@ ARGUMENTS = [
         ),
     ),
     DeclareLaunchArgument(
-        'topic_whitelist',
-        default_value='.*',
+        'profile',
+        default_value='bench',
+        choices=['bench', 'field'],
         description=(
-            'Regex of topics to expose. The default exposes everything; narrow '
-            'it before running over the competition WiFi, where the image '
-            'topics will not fit.'
+            'bench: every topic, service and parameter, for a wired LAN. field: only '
+            'what the mission control layout draws, and only its buttons back -- for '
+            'the competition WiFi. config/foxglove/<profile>.yaml.'
+        ),
+    ),
+    DeclareLaunchArgument(
+        'operator_camera',
+        default_value='true',
+        description=(
+            'Republish the onboard camera small and slow as /operator/camera/compressed '
+            '(scripts/operator_camera.py). Lazy: it costs nothing until a panel watches it.'
         ),
     ),
 ]
@@ -79,11 +95,18 @@ def generate_launch_description():
         executable='foxglove_bridge',
         name='foxglove_bridge',
         parameters=[
+            PathJoinSubstitution(
+                [
+                    FindPackageShare('lunabot_bringup'),
+                    'config',
+                    'foxglove',
+                    [LaunchConfiguration('profile'), '.yaml'],
+                ]
+            ),
             {
                 'use_sim_time': LaunchConfiguration('use_sim_time'),
                 'port': LaunchConfiguration('port'),
                 'address': LaunchConfiguration('address'),
-                'topic_whitelist': [LaunchConfiguration('topic_whitelist')],
                 # Compress the WebSocket stream. The link to the rover is the
                 # bottleneck, not its CPU -- the same reasoning that set the
                 # camera to 400P in oak_d_s2.yaml.
@@ -94,9 +117,31 @@ def generate_launch_description():
                 # range does not make the bridge grow without bound on a
                 # machine with 8 GB.
                 'send_buffer_limit': 10000000,
-            }
+            },
         ],
         output='log',
     )
 
-    return LaunchDescription(ARGUMENTS + [bridge])
+    camera = Node(
+        package='lunabot_bringup',
+        executable='operator_camera.py',
+        name='operator_camera',
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        condition=IfCondition(LaunchConfiguration('operator_camera')),
+        output='log',
+    )
+
+    # The layout's E-STOP / Release buttons call its /e_stop/set service.
+    # NOT respawn=True: launch respawned it AFTER Ctrl-C while slower nodes
+    # were still stopping, again and again, so the launch never exited (Isaac,
+    # 2026-10-31) -- in the rover container, every `docker stop` would end in
+    # SIGKILL. If it dies, release from a shell: ros2 topic pub --once /e_stop
+    # std_msgs/msg/Bool '{data: false}'.
+    e_stop = Node(
+        package='lunabot_bringup',
+        executable='operator_e_stop.py',
+        name='operator_e_stop',
+        output='log',
+    )
+
+    return LaunchDescription(ARGUMENTS + [bridge, camera, e_stop])

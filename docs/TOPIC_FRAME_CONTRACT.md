@@ -218,6 +218,11 @@ speculatively now.)
 | `/navigation/survey_done` | `std_msgs/Bool` (latched) | `initial_survey` |
 | `/localization/arena_fix` | `geometry_msgs/PoseWithCovarianceStamped` (latched) | `fiducial_localizer`: the map origin in `arena` |
 | `/mission/state` | `std_msgs/String` (latched) | `mission`: the current phase, one line |
+| `/mission/mode` | `std_msgs/String` (latched) | `mission`: one word for indicator lights (READY, RUNNING, PAUSED, E-STOP, ABORTED, FAILED, COMPLETE) |
+| `/mission/started` | `std_msgs/Bool` (latched) | `mission`: true once started; `initial_survey` waits for it with `wait_for_start:=true` |
+| `/mission/start`, `/pause`, `/resume`, `/abort` | `std_srvs/Trigger` (services) | `mission`: operator commands, from the Foxglove mission control layout |
+| `/e_stop` | `std_msgs/Bool` | `operator_e_stop` (service `/e_stop/set`, std_srvs/SetBool, from Foxglove): twist_mux's `e_stop` lock, priority 255; `mission` pauses on true |
+| `/operator/camera/compressed` | `sensor_msgs/CompressedImage` | `operator_camera`: 424 px JPEG at 2 fps, only while watched |
 
 ### Monitoring
 

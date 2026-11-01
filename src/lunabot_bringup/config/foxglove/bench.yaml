@@ -1,0 +1,9 @@
+# foxglove_bridge on a bench or a wired LAN: everything, both ways.
+# foxglove.launch.py profile:=bench (the default). See field.yaml for the WiFi one.
+/**:
+  ros__parameters:
+    topic_whitelist: ['.*']
+    service_whitelist: ['.*']
+    client_topic_whitelist: ['.*']
+    param_whitelist: ['.*']
+    capabilities: [clientPublish, parameters, parametersSubscribe, services, connectionGraph, assets]

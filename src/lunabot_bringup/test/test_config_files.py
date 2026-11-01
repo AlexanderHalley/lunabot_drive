@@ -25,7 +25,7 @@ import pytest
 import yaml
 
 CONFIG_DIR = Path(__file__).resolve().parent.parent / 'config'
-CONFIG_FILES = sorted(CONFIG_DIR.glob('*.yaml'))
+CONFIG_FILES = sorted(CONFIG_DIR.rglob('*.yaml'))
 
 # The other half of the kinematic contract, in the sibling package.
 PROPERTIES = (

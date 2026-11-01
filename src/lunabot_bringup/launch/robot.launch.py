@@ -128,6 +128,14 @@ ARGUMENTS = [
         ),
     ),
     DeclareLaunchArgument(
+        'wait_for_start',
+        default_value='false',
+        description=(
+            'With nav:=true: hold the start survey until mission.py (autostart:=false) '
+            'is started from mission control, so nothing moves before start.'
+        ),
+    ),
+    DeclareLaunchArgument(
         'diagnostics',
         default_value='true',
         description=(
@@ -153,6 +161,28 @@ ARGUMENTS = [
         description=(
             'Start foxglove_bridge, so Foxglove Studio can attach over a '
             'WebSocket. Off by default because it opens a port.'
+        ),
+    ),
+    DeclareLaunchArgument(
+        'record',
+        default_value='false',
+        description=(
+            'Record config/record_topics.yaml to ~/lunabotics/data/bags/run_<time>/ '
+            '(record.launch.py): the mission, what Nav2 knew, every command. No raw images.'
+        ),
+    ),
+    DeclareLaunchArgument(
+        'bag_dir',
+        default_value='~/lunabotics/data/bags',
+        description='record:=true writes run_<date>_<time>/ here (the rover image: /data/bags).',
+    ),
+    DeclareLaunchArgument(
+        'foxglove_profile',
+        default_value='bench',
+        choices=['bench', 'field'],
+        description=(
+            "foxglove_bridge's exposure: bench = everything; field = the mission "
+            'control layout only, for the competition WiFi (foxglove.launch.py).'
         ),
     ),
 ]
@@ -263,6 +293,7 @@ def generate_launch_description():
                 FindPackageShare('lunabot_navigation'),
                 'navigation.launch.py',
                 condition=IfCondition(LaunchConfiguration('nav')),
+                wait_for_start=LaunchConfiguration('wait_for_start'),
             ),
             # Monitoring last, and deliberately after the things it watches:
             # robot_health reports "never received" until a publisher appears,
@@ -295,6 +326,13 @@ def generate_launch_description():
                 bringup,
                 'foxglove.launch.py',
                 condition=IfCondition(LaunchConfiguration('foxglove')),
+                profile=LaunchConfiguration('foxglove_profile'),
+            ),
+            include(
+                bringup,
+                'record.launch.py',
+                condition=IfCondition(LaunchConfiguration('record')),
+                bag_dir=LaunchConfiguration('bag_dir'),
             ),
         ]
     )

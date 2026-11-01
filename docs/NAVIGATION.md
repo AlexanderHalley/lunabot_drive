@@ -223,6 +223,14 @@ ros2 run lunabot_navigation mission.py --ros-args -p use_sim_time:=true \
 - **No loops at the goal:** Smac's `analytic_expansion_max_length` is 1.0 m. At 3.0 m a rover
   at the goal spot but 35° off heading took the Dubins shortcut — a full ~3 m loop — instead
   of two lattice steps turning on the spot.
+- **Operator control.** `/mission/start|pause|resume|abort` (std_srvs/Trigger) and the software
+  e-stop on `/e_stop`, from the Foxglove mission control layout — see docs/MONITORING.md,
+  "Mission control". A pause cancels the leg's Nav2 goal; resume sends it again from wherever
+  the rover stopped, and a dig or dump keeps the time it had left. A pause is not a failure:
+  it does not use up a retry. `autostart: false` waits in `READY` for start; pair it with
+  `wait_for_start:=true` on the launch so the start survey waits too. The survey is its own
+  node, so an e-stop during it stops the wheels and fails the spin; the mission then holds
+  before the first leg until resumed, and carries on with whatever the survey saw.
 
 To record a run as a video for people, see docs/SIM_ISAAC.md, "Demo videos".
 

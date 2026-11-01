@@ -31,7 +31,19 @@ twist_mux:
         timeout: 0.5
         priority: 10
 
-    # Locks would go here -- an e-stop topic that blocks all output above a
-    # given priority. Not configured yet because there is no e-stop node to
-    # publish one; adding the lock without the publisher would give a false
-    # sense of having one.
+    # The software e-stop: while /e_stop last said true, every source below
+    # priority 255 -- all of them, teleop included -- is cut off. twist_mux
+    # then publishes nothing, and diff_drive_controller's cmd_vel_timeout
+    # (0.5 s, controllers.yaml) stops the wheels. mission.py listens to the
+    # same topic and pauses, so releasing it does not drive off: resume does.
+    #
+    # timeout 0: latching, not a heartbeat. A heartbeat lock (no message for
+    # N s = locked) is the safer design for a radio link, but nothing
+    # publishes one yet, and with it on, the autonomous run in the sim would
+    # sit locked. This is NOT the competition e-stop, which is the physical
+    # button cutting power; it is the operator's first, gentler stop.
+    locks:
+      e_stop:
+        topic: e_stop
+        timeout: 0.0
+        priority: 255

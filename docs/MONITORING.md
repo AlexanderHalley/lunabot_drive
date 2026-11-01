@@ -18,6 +18,87 @@ Everything here is optional and none of it is on the control path. The one excep
 | A health tree with lights | `ros2 run rqt_robot_monitor rqt_robot_monitor` |
 | Plot a number over time | `ros2 run plotjuggler plotjuggler` |
 | All of the above from a laptop, in a browser-grade UI | `robot.launch.py foxglove:=true` |
+| Run the mission from a laptop: start, pause, abort, e-stop | [Mission control](#mission-control) |
+| Record a run to replay later | `robot.launch.py record:=true` |
+
+---
+
+## Mission control
+
+One Foxglove layout to watch and command the autonomous run:
+`lunabot_bringup/config/foxglove/mission_control.json`. Foxglove → Layouts → Import from file.
+
+```bash
+# the robot (or the sim: sim.launch.py takes the same four arguments)
+ros2 launch lunabot_bringup robot.launch.py hw:=real nav:=true slam:=rtabmap \
+  foxglove:=true foxglove_profile:=field wait_for_start:=true record:=true
+ros2 run lunabot_navigation mission.py --ros-args -p autostart:=false \
+  --params-file $(ros2 pkg prefix lunabot_navigation)/share/lunabot_navigation/config/mission_ucf.yaml
+```
+
+Then connect Foxglove to `ws://<robot>:8765` and load the layout. Nothing moves until **Start**:
+the mission waits in `READY`, and `wait_for_start:=true` holds the start survey until the mission
+latches `/mission/started`.
+
+| Panel | Shows / does |
+|---|---|
+| Arena (3D, `arena` frame) | global costmap, the current plan, the rover model, boulder markers |
+| Mission mode | `/mission/mode`: READY, RUNNING, PAUSED, E-STOP, ABORTED, FAILED, COMPLETE |
+| Software e-stop | `/e_stop` as a light |
+| Mission state | `/mission/state`, the phase line (`DRIVING TO EXCAVATION ZONE (1/2)`, ...) |
+| Start / Pause / Resume / Abort | `/mission/<name>`, std_srvs/Trigger; the reply says why a refused one was refused |
+| E-STOP / Release e-stop | `/e_stop/set` (std_srvs/SetBool), served by `operator_e_stop`, which publishes `/e_stop` |
+| Onboard camera | `/operator/camera/compressed`: 424 px JPEG at 2 fps, ~15 kB/s (Isaac) |
+| Speed | `/odom` measured vs `/cmd_vel` commanded |
+| Stack health | `/diagnostics` |
+
+**What the buttons do** (`mission.py`, class `Control`; unit-tested):
+
+- **Pause** cancels the leg's Nav2 goal and holds. **Resume** sends the leg again from wherever
+  the rover stopped; a dig or dump carries on with the time it had left. A pause never counts
+  as a failed leg.
+- **E-STOP** is twist_mux's `e_stop` lock (priority 255, above teleop): while `/e_stop` last said
+  `true`, no velocity source reaches the controller, and `cmd_vel_timeout` stops the wheels in
+  0.5 s (Isaac, through the bridge: wheels stopped 1.0 s after the button).
+  `scripts/operator_e_stop.py` republishes `true` every second while engaged, so a twist_mux or
+  mission that restarts mid-stop locks again; it never republishes `false`. The mission sees the same message and pauses. **Releasing it does not drive off:** the
+  mission stays `PAUSED` until Resume, and Resume is refused while the e-stop is engaged.
+- **Abort** cancels the goal and ends the mission (`ABORTED: <phase>`). Final: restart
+  `mission.py` to run again. Teleop still works after an abort.
+- The lock is **latching, not a heartbeat**: one `true` holds until a `false`. If the laptop
+  drops off the WiFi the rover carries on autonomously, which is what the run wants; it is not a
+  dead-man. It is also **not the competition e-stop**, which is the physical button that cuts
+  power. It is the operator's first, gentler stop.
+
+**`foxglove_profile:=field`** (`config/foxglove/field.yaml`) exposes only the topics the layout
+draws and accepts only its buttons back: five services, and **no publishing from the laptop at
+all**. That last part is forced: foxglove_bridge 3.x reads `client_topic_whitelist` and never
+applies it (3.6.3, `clientAdvertise`) — measured, a client allowed only `/e_stop` got
+`/cmd_vel_joy` messages through, and teleop outranks Nav2. Dropping the `clientPublish`
+capability IS enforced, so the e-stop is a service. Also no parameters capability (a misclick in
+a settings panel cannot retune Nav2 mid-run), no raw images, no point clouds, no local costmap.
+`bench` (the default) is everything, both ways, publishing included.
+`test_mission_control.py` checks that every panel's topic gets through `field` and is recorded,
+and that every button is a service the mission serves.
+
+**Lichtblick** (the open-source Foxglove fork) loads the same layout and connects too: bridge 3.x
+speaks only the `foxglove.sdk.v1` WebSocket subprotocol, which both offer.
+
+**The operator camera** (`scripts/operator_camera.py`, started with `foxglove:=true`,
+`operator_camera:=false` to skip it) subscribes to the camera only while something subscribes
+to it, so it costs nothing until a panel or a recording watches it.
+
+Verified in Isaac through the bridge, as the laptop would: `~/lunabotics/tools/mission_control/
+live_check.sh` (desktop only) runs the stack as above and checks each button against `/odom`.
+
+### Recording a run
+
+`record:=true` (`launch/record.launch.py`) writes `config/record_topics.yaml` to
+`~/lunabotics/data/bags/run_<date>_<time>/` (`bag_dir:=` elsewhere): mission state, costmaps,
+plan, pose, every command source, the operator camera, diagnostics, `/rosout`. No raw images or
+clouds — they are gigabytes, and recording them would make the camera produce them. Jazzy writes
+MCAP, which Foxglove opens directly: load the mission control layout on the bag and the replay
+looks like the live run.
 
 ---
 
@@ -133,10 +214,10 @@ It is the same trap the RViz configs pin their QoS to avoid.
 Foxglove has no renderer for `vision_msgs/Detection3DArray` either. Use
 `/perception/debug/markers`, same as RViz.
 
-**Bandwidth.** `topic_whitelist` defaults to `.*`, which is right on a bench and wrong over
-competition WiFi: the camera publishes 1080p RGB at 15 fps with no compressed transport configured
-(see [`OAK_D_S2_INTEGRATION.md`](OAK_D_S2_INTEGRATION.md)). Narrow the whitelist before relying on
-a link you do not control.
+**Bandwidth.** `foxglove_profile:=bench` (the default) exposes every topic, which is right on a
+bench and wrong over competition WiFi: the camera publishes 1080p RGB at 15 fps with no compressed
+transport configured (see [`OAK_D_S2_INTEGRATION.md`](OAK_D_S2_INTEGRATION.md)). Use
+`foxglove_profile:=field` on a link you do not control — see [Mission control](#mission-control).
 
 Offline, `ros2 bag record` on Jazzy writes MCAP by default, which Foxglove opens directly.
 
@@ -177,7 +258,8 @@ they read the standard interfaces, which this stack does not deviate from.
   same ground with QoS that actually matches.
 - **No compressed image transport configured.** `image_transport_plugins` will republish
   `/oak_d/rgb/image_raw/compressed` if installed, but no launch file sets it up and it is not a
-  declared dependency. Raw images over WiFi will not work; this is a wired-LAN assumption, and the
-  10 MB CycloneDDS receive buffer in `OAK_D_S2_INTEGRATION.md` is part of it.
-- **No recording preset.** `ros2 bag record` works, but there is no curated topic list for a
-  competition run.
+  declared dependency. Over WiFi, use the operator camera (2 fps, small) in the mission control
+  layout; full-rate images are a wired-LAN assumption, and the 10 MB CycloneDDS receive buffer in
+  `OAK_D_S2_INTEGRATION.md` is part of it.
+- **No teleop in the layout.** Foxglove's Teleop panel publishes unstamped `Twist`; twist_mux
+  here takes `TwistStamped`. Teleop is the joystick.

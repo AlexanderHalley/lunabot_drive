@@ -22,6 +22,16 @@ package yet; when there is, `_work()` calls its actions instead.
 A failed leg is retried `retries` times (Nav2 replans from wherever the rover
 ended up); a leg that still fails ends the mission as FAILED rather than
 skipping ahead, because the next leg starts from the wrong place.
+
+Operator control (docs/MONITORING.md "Mission control"): std_srvs/Trigger
+services /mission/start, /mission/pause, /mission/resume, /mission/abort, and
+the software e-stop, std_msgs/Bool on /e_stop (lunabot_bringup's
+operator_e_stop.py) -- twist_mux's lock cuts every velocity source, and this
+node pauses (see Control). /mission/mode is one word
+for indicator lights: READY, RUNNING, PAUSED, E-STOP, ABORTED, FAILED, COMPLETE.
+With autostart false the mission waits in READY for /mission/start, and
+latches True on /mission/started when it gets it -- the start survey waits for
+that when launched with wait_for_start:=true, so nothing moves before start.
 """
 
 from __future__ import annotations
@@ -30,7 +40,92 @@ import math
 from dataclasses import dataclass
 
 STATE_TOPIC = '/mission/state'
+MODE_TOPIC = '/mission/mode'
+STARTED_TOPIC = '/mission/started'
 SURVEY_TOPIC = '/navigation/survey_done'
+E_STOP_TOPIC = '/e_stop'
+# std_srvs/Trigger services, /mission/<name>, each calling Control.<name>().
+COMMANDS = ('start', 'pause', 'resume', 'abort')
+
+
+class Control:
+    """The operator's commands, as state the sequencer polls. Pure: tested without ROS.
+
+    Each command returns (accepted, message): the Trigger response. The e-stop
+    pauses too, and releasing it does NOT resume -- motion restarts only on an
+    explicit resume, once someone has looked. A pause cancels the Nav2 goal; on
+    resume the interrupted leg is sent again from wherever the rover stopped,
+    and a dig or dump carries on with the time it had left. Abort is final:
+    restart the node to run again.
+    """
+
+    def __init__(self, autostart: bool):
+        self.started = bool(autostart)
+        self.paused = False
+        self.e_stop = False
+        self.final = ''  # ABORTED, FAILED or COMPLETE once over
+
+    def _over(self):
+        return False, f'mission {self.final.lower()}: restart mission.py to run again'
+
+    def start(self):
+        if self.final:
+            return self._over()
+        if self.started:
+            return False, 'already started'
+        if self.e_stop:
+            return False, 'e-stop engaged: release it first'
+        self.started, self.paused = True, False
+        return True, 'started'
+
+    def pause(self):
+        if self.final:
+            return self._over()
+        if not self.started:
+            return False, 'not started'
+        if self.paused:
+            return False, 'already paused'
+        self.paused = True
+        return True, 'paused'
+
+    def resume(self):
+        if self.final:
+            return self._over()
+        if self.e_stop:
+            return False, 'e-stop engaged: release it first'
+        if not self.paused:
+            return False, 'not paused'
+        self.paused = False
+        return True, 'resumed'
+
+    def abort(self):
+        if self.final:
+            return self._over()
+        self.final = 'ABORTED'
+        return True, 'aborted'
+
+    def set_e_stop(self, engaged: bool) -> None:
+        if engaged and not self.e_stop:
+            self.paused = True
+        self.e_stop = bool(engaged)
+
+    @property
+    def aborted(self) -> bool:
+        return self.final == 'ABORTED'
+
+    def mode(self) -> str:
+        """Return /mission/mode: one word, for indicator lights."""
+        if self.final:
+            return self.final
+        if self.e_stop:
+            return 'E-STOP'
+        if not self.started:
+            return 'READY'
+        return 'PAUSED' if self.paused else 'RUNNING'
+
+
+class Aborted(Exception):
+    """The operator aborted the mission."""
 
 
 @dataclass(frozen=True)
@@ -108,6 +203,8 @@ def arrive_heading(goal, start) -> float:
 
 
 def main() -> None:
+    import time
+
     import rclpy
     from nav2_msgs.action import NavigateToPose
     from rclpy.action import ActionClient
@@ -115,6 +212,7 @@ def main() -> None:
     from rclpy.node import Node
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from std_msgs.msg import Bool, String
+    from std_srvs.srv import Trigger
     from tf2_ros import Buffer, TransformListener
 
     rclpy.init()
@@ -136,6 +234,8 @@ def main() -> None:
             # (fiducial_localizer.py: arena -> map); 'map' sends them as they are.
             ('frame', 'arena'),
             ('fix_timeout', 15.0),
+            # False: wait in READY for /mission/start (the competition run).
+            ('autostart', True),
         )
     }
     tf = Buffer()
@@ -147,18 +247,73 @@ def main() -> None:
         reliability=ReliabilityPolicy.RELIABLE,
     )
     state_pub = node.create_publisher(String, STATE_TOPIC, latched)
+    mode_pub = node.create_publisher(String, MODE_TOPIC, latched)
+    started_pub = node.create_publisher(Bool, STARTED_TOPIC, latched)
+    control = Control(p['autostart'])
+    shown = {'mode': None}
+
+    def publish_mode() -> None:
+        mode = control.mode()
+        if mode != shown['mode']:
+            shown['mode'] = mode
+            mode_pub.publish(String(data=mode))
+
+    def command(name):
+        def serve(_request, response):
+            response.success, response.message = getattr(control, name)()
+            log.info(f'/mission/{name}: {response.message}')
+            publish_mode()
+            return response
+
+        return serve
+
+    for name in COMMANDS:
+        node.create_service(Trigger, f'/mission/{name}', command(name))
+    # Default QoS, as twist_mux's lock subscribes: the same /e_stop message
+    # stops the wheels there and pauses the mission here.
+    node.create_subscription(
+        Bool, E_STOP_TOPIC, lambda m: (control.set_e_stop(m.data), publish_mode()), 10
+    )
 
     def say(state: str) -> None:
         log.info(f'mission: {state}')
         state_pub.publish(String(data=state))
 
-    def sleep(seconds: float) -> None:
-        # Sim time: a stop of N seconds is N seconds on /clock.
-        end = node.get_clock().now().nanoseconds + int(seconds * 1e9)
-        while rclpy.ok() and node.get_clock().now().nanoseconds < end:
-            rclpy.spin_once(node, timeout_sec=0.05)
+    def spin(seconds: float = 0.05) -> None:
+        rclpy.spin_once(node, timeout_sec=seconds)
+        publish_mode()
 
-    def drive(pose) -> bool:
+    def hold(state: str) -> None:
+        """Wait out a pause or an e-stop, saying so; raise Aborted on abort."""
+        held = None
+        while rclpy.ok() and control.paused and not control.final:
+            label = f'{"E-STOP" if control.e_stop else "PAUSED"}: {state}'
+            if label != held:
+                say(label)
+                held = label
+            spin()
+        if control.aborted:
+            raise Aborted(state)
+        if held:
+            say(state)
+
+    def work(state: str, seconds: float) -> None:
+        # Sim time: a stop of N seconds is N seconds on /clock. Paused time
+        # does not count.
+        left = seconds * 1e9
+        while left > 0:
+            hold(state)
+            last = node.get_clock().now().nanoseconds
+            while rclpy.ok() and left > 0 and not control.paused and not control.final:
+                spin()
+                now = node.get_clock().now().nanoseconds
+                left -= now - last
+                last = now
+            if not rclpy.ok():
+                return
+
+    def drive(pose) -> str:
+        """Drive to pose: 'done', 'failed', or 'held' (paused or aborted on the way)."""
         yaw = pose[2] if len(pose) == 3 else None
         if yaw is None:
             try:
@@ -178,14 +333,21 @@ def main() -> None:
         handle = sent.result()
         if handle is None or not handle.accepted:
             log.error('goal rejected')
-            return False
+            return 'failed'
         result = handle.get_result_async()
-        rclpy.spin_until_future_complete(node, result, timeout_sec=p['leg_timeout'])
-        if not result.done():
-            log.error('leg timed out')
-            handle.cancel_goal_async()
-            return False
-        return result.result().status == 4  # GoalStatus.STATUS_SUCCEEDED
+        # Wall clock, as before: a leg that hangs because /clock stopped
+        # should still time out.
+        deadline = time.monotonic() + p['leg_timeout']
+        while not result.done():
+            if control.paused or control.final:
+                rclpy.spin_until_future_complete(node, handle.cancel_goal_async(), timeout_sec=5.0)
+                return 'held'
+            if time.monotonic() > deadline:
+                log.error('leg timed out')
+                handle.cancel_goal_async()
+                return 'failed'
+            spin()
+        return 'done' if result.result().status == 4 else 'failed'  # STATUS_SUCCEEDED
 
     def wait_for_fix(frame):
         from rclpy.time import Time
@@ -195,72 +357,99 @@ def main() -> None:
             try:
                 t = tf.lookup_transform(frame, 'map', Time())
             except Exception:  # noqa: BLE001
-                rclpy.spin_once(node, timeout_sec=0.1)
+                spin(0.1)
                 continue
             q = t.transform.rotation
             yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
             return (t.transform.translation.x, t.transform.translation.y, yaw)
         return None
 
+    def finish(final: str, state: str) -> None:
+        control.final = final
+        say(state)
+        publish_mode()
+        rclpy.spin(node)  # keep the latched state up and answer the services
+
     try:
-        say('WAITING FOR NAVIGATION')
-        nav = ActionClient(node, NavigateToPose, 'navigate_to_pose')
-        nav.wait_for_server()
-        if p['wait_for_survey']:
-            survey = {'done': None}
-            node.create_subscription(
-                Bool, SURVEY_TOPIC, lambda m: survey.__setitem__('done', m.data), latched
+        try:
+            publish_mode()
+            say('WAITING FOR NAVIGATION')
+            nav = ActionClient(node, NavigateToPose, 'navigate_to_pose')
+            while rclpy.ok() and not nav.wait_for_server(timeout_sec=0.5):
+                spin()
+            if not control.started:
+                say('READY: WAITING FOR START')
+                while rclpy.ok() and not control.started and not control.final:
+                    spin(0.1)
+                if control.aborted:
+                    raise Aborted('READY')
+            started_pub.publish(Bool(data=True))
+            if p['wait_for_survey']:
+                survey = {'done': None}
+                node.create_subscription(
+                    Bool, SURVEY_TOPIC, lambda m: survey.__setitem__('done', m.data), latched
+                )
+                say('SURVEYING START AREA')
+                while rclpy.ok() and survey['done'] is None and not control.final:
+                    spin(0.2)
+                if control.aborted:
+                    raise Aborted('SURVEYING START AREA')
+                if not survey['done']:
+                    log.warning('the start survey failed; carrying on without it')
+
+            fix = (0.0, 0.0, 0.0)
+            if p['frame'] != 'map':
+                say('LOCALISING ON APRILTAGS')
+                fix = wait_for_fix(p['frame'])
+                if fix is None:
+                    fix = (0.0, 0.0, 0.0)
+                    log.error(
+                        f'no {p["frame"]} -> map after {p["fix_timeout"]:.0f} s: ASSUMING THE '
+                        f'ROVER STARTED AT THE {p["frame"].upper()} ORIGIN. Right only for the '
+                        'default sim spawn.'
+                    )
+                else:
+                    log.info(
+                        f'start fix: map origin at {p["frame"]} x {fix[0]:.2f} y {fix[1]:.2f} '
+                        f'yaw {math.degrees(fix[2]):.0f} deg'
+                    )
+
+            steps = plan(
+                p['cycles'],
+                to_map(p['dig_pose'], fix),
+                [
+                    to_map(park_pose(t, p['dump_reach']), fix)
+                    for t in dump_targets(p['dump_targets'])
+                ],
+                to_map(p['home_pose'], fix),
+                p['dig_seconds'],
+                p['dump_seconds'],
             )
-            say('SURVEYING START AREA')
-            while rclpy.ok() and survey['done'] is None:
-                rclpy.spin_once(node, timeout_sec=0.2)
-            if not survey['done']:
-                log.warning('the start survey failed; carrying on without it')
-
-        fix = (0.0, 0.0, 0.0)
-        if p['frame'] != 'map':
-            say('LOCALISING ON APRILTAGS')
-            fix = wait_for_fix(p['frame'])
-            if fix is None:
-                fix = (0.0, 0.0, 0.0)
-                log.error(
-                    f'no {p["frame"]} -> map after {p["fix_timeout"]:.0f} s: ASSUMING THE '
-                    f'ROVER STARTED AT THE {p["frame"].upper()} ORIGIN. Right only for the '
-                    'default sim spawn.'
-                )
-            else:
-                log.info(
-                    f'start fix: map origin at {p["frame"]} x {fix[0]:.2f} y {fix[1]:.2f} '
-                    f'yaw {math.degrees(fix[2]):.0f} deg'
-                )
-
-        steps = plan(
-            p['cycles'],
-            to_map(p['dig_pose'], fix),
-            [to_map(park_pose(t, p['dump_reach']), fix) for t in dump_targets(p['dump_targets'])],
-            to_map(p['home_pose'], fix),
-            p['dig_seconds'],
-            p['dump_seconds'],
-        )
-        log.info(f'mission: {p["cycles"]} dig-and-dump cycle(s), poses in {p["frame"]}')
-        start = node.get_clock().now()
-        for step in steps:
-            say(step.state)
-            if step.pose is None:
-                sleep(step.seconds)
-                continue
-            for attempt in range(int(p['retries']) + 1):
-                if drive(step.pose):
-                    break
-                if attempt < p['retries']:
+            log.info(f'mission: {p["cycles"]} dig-and-dump cycle(s), poses in {p["frame"]}')
+            start = node.get_clock().now()
+            for step in steps:
+                hold(step.state)
+                say(step.state)
+                if step.pose is None:
+                    work(step.state, step.seconds)
+                    continue
+                failures = 0
+                while True:
+                    hold(step.state)
+                    outcome = drive(step.pose)
+                    if outcome == 'done':
+                        break
+                    if outcome == 'held':  # an operator stop is not a failure
+                        continue
+                    failures += 1
+                    if failures > p['retries']:
+                        finish('FAILED', f'FAILED: {step.state}')
+                        return
                     say(f'{step.state} - RETRYING')
-            else:
-                say(f'FAILED: {step.state}')
-                rclpy.spin(node)  # keep the latched state up
-                return
-        elapsed = (node.get_clock().now() - start).nanoseconds / 1e9
-        say(f'MISSION COMPLETE in {elapsed:.0f} s')
-        rclpy.spin(node)
+            elapsed = (node.get_clock().now() - start).nanoseconds / 1e9
+            finish('COMPLETE', f'MISSION COMPLETE in {elapsed:.0f} s')
+        except Aborted as stopped:
+            finish('ABORTED', f'ABORTED: {stopped}')
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:

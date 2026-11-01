@@ -40,6 +40,7 @@
   <exec_depend>rosgraph_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
   <exec_depend>tf2_msgs</exec_depend>
 
   <!-- Monitoring. diagnostic_msgs is what robot_health.py publishes;
@@ -61,6 +62,9 @@
        and off by default, so a machine without it loses foxglove.launch.py and
        nothing else. -->
   <exec_depend>foxglove_bridge</exec_depend>
+  <!-- record:=true (launch/record.launch.py) -->
+  <exec_depend>rosbag2_transport</exec_depend>
+  <exec_depend>rosbag2_storage_mcap</exec_depend>
 
   <!-- Teleop and velocity arbitration -->
   <exec_depend>joy</exec_depend>

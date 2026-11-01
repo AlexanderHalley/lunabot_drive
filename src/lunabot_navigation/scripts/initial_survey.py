@@ -34,12 +34,14 @@ from __future__ import annotations
 import math
 
 DONE_TOPIC = '/navigation/survey_done'
+STARTED_TOPIC = '/mission/started'
 
 
 def main() -> None:
     import rclpy
     from nav2_msgs.action import Spin
     from rclpy.action import ActionClient
+    from rclpy.executors import ExternalShutdownException
     from rclpy.node import Node
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from std_msgs.msg import Bool
@@ -49,6 +51,9 @@ def main() -> None:
     node = Node('initial_survey')
     turn = node.declare_parameter('turn', 2.0 * math.pi).value
     allowance = node.declare_parameter('time_allowance', 60.0).value
+    # True: no turning until the operator starts the mission (mission.py,
+    # autostart false), which latches True on /mission/started.
+    wait_for_start = node.declare_parameter('wait_for_start', False).value
     latched = QoSProfile(
         depth=1,
         durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -74,6 +79,15 @@ def main() -> None:
             log.info('waiting for Nav2 to become active', throttle_duration_sec=10.0)
             rclpy.spin_once(node, timeout_sec=1.0)
 
+        if wait_for_start:
+            started = {'yes': False}
+            node.create_subscription(
+                Bool, STARTED_TOPIC, lambda m: started.__setitem__('yes', m.data), latched
+            )
+            log.info(f'waiting for {STARTED_TOPIC} before surveying')
+            while rclpy.ok() and not started['yes']:
+                rclpy.spin_once(node, timeout_sec=0.2)
+
         spin = ActionClient(node, Spin, 'spin')
         spin.wait_for_server()
         goal = Spin.Goal()
@@ -95,7 +109,7 @@ def main() -> None:
         else:
             log.error(f'survey spin failed (error {result.result().result.error_code})')
         finish(ok)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()

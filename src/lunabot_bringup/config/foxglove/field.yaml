@@ -1,0 +1,38 @@
+# foxglove_bridge over the competition WiFi: only what mission_control.json
+# draws, and only mission control's own commands back (profile:=field).
+#
+# Every topic here is small or slow. The two biggest: /global_costmap/costmap
+# (320 x 320 cells at 1 Hz, ~100 kB before the bridge's compression, which
+# takes an occupancy grid down several-fold) and the operator camera (~30 kB/s).
+# NOT here: raw images, /oak_d/points, the local costmap -- each alone is more
+# than the link. test_config_files.py checks the layout needs nothing missing.
+/**:
+  ros__parameters:
+    topic_whitelist:
+      - '^/tf$'
+      - '^/tf_static$'
+      - '^/robot_description$'
+      - '^/global_costmap/costmap$'
+      - '^/plan$'
+      - '^/odom$'
+      - '^/cmd_vel$'
+      - '^/joint_states$'
+      - '^/drive/status$'
+      - '^/mission/(state|mode|started)$'
+      - '^/e_stop$'
+      - '^/navigation/survey_done$'
+      - '^/localization/arena_fix$'
+      - '^/perception/debug/markers$'
+      - '^/diagnostics$'
+      - '^/operator/camera/compressed$'
+      - '^/rosout$'
+    # The buttons: start, pause, resume, abort, and the e-stop -- all
+    # services. Nothing else can be called, and no parameter set: a misclick in
+    # a settings panel should not be able to retune Nav2 mid-run.
+    service_whitelist: ['^/mission/(start|pause|resume|abort)$', '^/e_stop/set$']
+    # NO clientPublish: the laptop publishes nothing. Bridge 3.x ignores
+    # client_topic_whitelist (3.6.3 reads it and never applies it), so with
+    # clientPublish on, any client could publish /cmd_vel_joy -- which outranks
+    # Nav2. Dropping the capability is enforced; the e-stop is a service
+    # (scripts/operator_e_stop.py) for this reason.
+    capabilities: [services, connectionGraph, assets]

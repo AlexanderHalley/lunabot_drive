@@ -16,6 +16,8 @@ install(
     scripts/check_stack.py
     scripts/robot_health.py
     scripts/demo_recorder.py
+    scripts/operator_camera.py
+    scripts/operator_e_stop.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -47,6 +49,10 @@ if(BUILD_TESTING)
 
   # demo_recorder.py's captions cover every phase mission.py announces.
   ament_add_pytest_test(test_demo_recorder test/test_demo_recorder.py)
+
+  # The mission control layout, the bridge's field profile, mission.py's
+  # services, the e-stop lock and the recording preset name the same topics.
+  ament_add_pytest_test(test_mission_control test/test_mission_control.py)
 
   # Brings the whole stack up on mock hardware and drives it. No hardware, no
   # GPU, no network. This is the highest-value test in the workspace: if

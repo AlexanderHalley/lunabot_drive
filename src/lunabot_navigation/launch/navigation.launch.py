@@ -165,6 +165,14 @@ ARGUMENTS = [
         ),
     ),
     DeclareLaunchArgument(
+        'wait_for_start',
+        default_value='false',
+        description=(
+            'Hold the survey until the operator starts the mission (mission.py with '
+            'autostart:=false latches /mission/started), so nothing moves before start.'
+        ),
+    ),
+    DeclareLaunchArgument(
         'fiducials_file',
         default_value=PathJoinSubstitution(
             [FindPackageShare('lunabot_navigation'), 'config', 'fiducials_ucf.yaml']
@@ -254,7 +262,12 @@ def generate_launch_description():
         executable=INITIAL_SURVEY['executable'],
         name=INITIAL_SURVEY['name'],
         output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
+        parameters=[
+            {
+                'use_sim_time': use_sim_time,
+                'wait_for_start': LaunchConfiguration('wait_for_start'),
+            }
+        ],
         condition=IfCondition(LaunchConfiguration('survey')),
     )
 
