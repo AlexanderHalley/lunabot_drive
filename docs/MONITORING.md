@@ -82,7 +82,12 @@ a settings panel cannot retune Nav2 mid-run), no raw images, no point clouds, no
 and that every button is a service the mission serves.
 
 **Lichtblick** (the open-source Foxglove fork) loads the same layout and connects too: bridge 3.x
-speaks only the `foxglove.sdk.v1` WebSocket subprotocol, which both offer.
+speaks only the `foxglove.sdk.v1` WebSocket subprotocol, which both offer. Lichtblick's Call
+Service panel always shows its request and response boxes (Foxglove hides them with
+`editingMode: false`, which the layout sets), so the button panels are sized for that: the layout
+fits a 1366×768 laptop screen with every button, the mode, the e-stop state and the camera visible.
+It shows a "schema 'visualization_msgs/Marker' has changed" alert; harmless (Lichtblick's
+built-in definition against Jazzy's; the markers draw).
 
 **The operator camera** (`scripts/operator_camera.py`, started with `foxglove:=true`,
 `operator_camera:=false` to skip it) subscribes to the camera only while something subscribes
@@ -90,6 +95,9 @@ to it, so it costs nothing until a panel or a recording watches it.
 
 Verified in Isaac through the bridge, as the laptop would: `~/lunabotics/tools/mission_control/
 live_check.sh` (desktop only) runs the stack as above and checks each button against `/odom`.
+And in a real UI (2026-11-01): Lichtblick, headless, against the rover image and Isaac, the layout
+imported from this file, a run driven entirely by its buttons (start, e-stop, release, resume,
+pause, abort) and screenshotted at 1600×1000 and 1366×768 (`tools/mission_control/ui/`).
 
 ### Recording a run
 

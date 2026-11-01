@@ -114,7 +114,7 @@
       ],
       "showLegend": true,
       "legendDisplay": "floating",
-      "showPlotValuesInLegend": true,
+      "showPlotValuesInLegend": false,
       "showXAxisLabels": true,
       "showYAxisLabels": true,
       "isSynced": true,
@@ -204,47 +204,51 @@
       "diffTopicPath": "",
       "diffEnabled": false,
       "showFullMessageForDiff": false,
-      "fontSize": 18
+      "fontSize": 14
     },
     "CallService!start": {
       "foxglovePanelTitle": "Start",
       "lichtblickPanelTitle": "Start",
       "serviceName": "/mission/start",
       "requestPayload": "{}",
-      "layout": "vertical",
+      "layout": "horizontal",
       "buttonText": "Start",
       "buttonColor": "#16a34a",
-      "buttonTooltip": "Start the mission (mission.py with autostart:=false waits for this)."
+      "buttonTooltip": "Start the mission (mission.py with autostart:=false waits for this).",
+      "editingMode": false
     },
     "CallService!pause": {
       "foxglovePanelTitle": "Pause",
       "lichtblickPanelTitle": "Pause",
       "serviceName": "/mission/pause",
       "requestPayload": "{}",
-      "layout": "vertical",
+      "layout": "horizontal",
       "buttonText": "Pause",
       "buttonColor": "#d97706",
-      "buttonTooltip": "Cancel the current leg and hold; dig/dump timers stop."
+      "buttonTooltip": "Cancel the current leg and hold; dig/dump timers stop.",
+      "editingMode": false
     },
     "CallService!resume": {
       "foxglovePanelTitle": "Resume",
       "lichtblickPanelTitle": "Resume",
       "serviceName": "/mission/resume",
       "requestPayload": "{}",
-      "layout": "vertical",
+      "layout": "horizontal",
       "buttonText": "Resume",
       "buttonColor": "#2563eb",
-      "buttonTooltip": "Carry on: the interrupted leg is planned again from here."
+      "buttonTooltip": "Carry on: the interrupted leg is planned again from here.",
+      "editingMode": false
     },
     "CallService!abort": {
       "foxglovePanelTitle": "Abort",
       "lichtblickPanelTitle": "Abort",
       "serviceName": "/mission/abort",
       "requestPayload": "{}",
-      "layout": "vertical",
+      "layout": "horizontal",
       "buttonText": "Abort",
       "buttonColor": "#dc2626",
-      "buttonTooltip": "End the mission. Final: restart mission.py to run again."
+      "buttonTooltip": "End the mission. Final: restart mission.py to run again.",
+      "editingMode": false
     },
     "Image!camera": {
       "foxglovePanelTitle": "Onboard camera (2 fps, 424 px)",
@@ -268,20 +272,22 @@
       "lichtblickPanelTitle": "E-STOP",
       "serviceName": "/e_stop/set",
       "requestPayload": "{\"data\": true}",
-      "layout": "vertical",
+      "layout": "horizontal",
       "buttonText": "E-STOP",
       "buttonColor": "#dc2626",
-      "buttonTooltip": "Cut every velocity source (twist_mux lock) and pause the mission."
+      "buttonTooltip": "Cut every velocity source (twist_mux lock) and pause the mission.",
+      "editingMode": false
     },
     "CallService!release": {
       "foxglovePanelTitle": "Release e-stop",
       "lichtblickPanelTitle": "Release e-stop",
       "serviceName": "/e_stop/set",
       "requestPayload": "{\"data\": false}",
-      "layout": "vertical",
+      "layout": "horizontal",
       "buttonText": "Release e-stop",
       "buttonColor": "#6b7280",
-      "buttonTooltip": "Unlock twist_mux. The mission stays paused until Resume."
+      "buttonTooltip": "Unlock twist_mux. The mission stays paused until Resume.",
+      "editingMode": false
     }
   },
   "globalVariables": {},
@@ -299,55 +305,55 @@
     "second": {
       "first": {
         "first": {
-          "first": {
-            "first": "Indicator!mode",
-            "second": "Indicator!estop",
-            "direction": "row",
-            "splitPercentage": 65
-          },
+          "first": "Indicator!mode",
           "second": "RawMessages!state",
           "direction": "column",
-          "splitPercentage": 55
+          "splitPercentage": 50
         },
         "second": {
           "first": {
+            "first": "CallService!start",
+            "second": "CallService!pause",
+            "direction": "row",
+            "splitPercentage": 50
+          },
+          "second": {
             "first": {
-              "first": "CallService!start",
-              "second": "CallService!pause",
-              "direction": "row",
-              "splitPercentage": 50
-            },
-            "second": {
               "first": "CallService!resume",
               "second": "CallService!abort",
               "direction": "row",
               "splitPercentage": 50
             },
-            "direction": "row",
+            "second": {
+              "first": "CallService!estop",
+              "second": "CallService!release",
+              "direction": "row",
+              "splitPercentage": 50
+            },
+            "direction": "column",
             "splitPercentage": 50
           },
-          "second": {
-            "first": "CallService!estop",
-            "second": "CallService!release",
-            "direction": "row",
-            "splitPercentage": 50
-          },
-          "direction": "row",
-          "splitPercentage": 66
+          "direction": "column",
+          "splitPercentage": 33
         },
         "direction": "column",
-        "splitPercentage": 60
+        "splitPercentage": 30
       },
       "second": {
-        "first": "Image!camera",
-        "second": "DiagnosticSummary!health",
+        "first": "Indicator!estop",
+        "second": {
+          "first": "Image!camera",
+          "second": "DiagnosticSummary!health",
+          "direction": "column",
+          "splitPercentage": 45
+        },
         "direction": "column",
-        "splitPercentage": 50
+        "splitPercentage": 12
       },
-      "direction": "column",
-      "splitPercentage": 30
+      "direction": "row",
+      "splitPercentage": 50
     },
     "direction": "row",
-    "splitPercentage": 60
+    "splitPercentage": 52
   }
 }
