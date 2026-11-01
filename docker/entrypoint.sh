@@ -18,18 +18,16 @@ fi
 
 # Large image topics need a bigger receive buffer than the CycloneDDS
 # default, or frames drop under load in a way that looks like a camera
-# problem. Same configuration as the robot and the offboard machine.
+# problem. Same configuration as the robot image (docker/cyclonedds.xml, which
+# says why it is max= and not min=).
 if [[ ! -f "${HOME}/.ros/cyclonedds.xml" ]]; then
   mkdir -p "${HOME}/.ros"
   cat > "${HOME}/.ros/cyclonedds.xml" <<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <CycloneDDS>
   <Domain>
-    <General>
-      <NetworkInterfaceAddress>auto</NetworkInterfaceAddress>
-    </General>
     <Internal>
-      <SocketReceiveBufferSize min="10MB"/>
+      <SocketReceiveBufferSize min="default" max="10MB"/>
     </Internal>
   </Domain>
 </CycloneDDS>

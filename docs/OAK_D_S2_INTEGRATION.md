@@ -158,18 +158,19 @@ export CYCLONEDDS_URI=file://$HOME/.ros/cyclonedds.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <CycloneDDS>
   <Domain>
-    <General>
-      <NetworkInterfaceAddress>auto</NetworkInterfaceAddress>
-    </General>
     <Internal>
-      <SocketReceiveBufferSize min="10MB"/>
+      <SocketReceiveBufferSize min="default" max="10MB"/>
     </Internal>
   </Domain>
 </CycloneDDS>
 ```
 
 The 10 MB receive buffer is not optional for image topics — the default drops frames under load in
-a way that looks like a camera problem.
+a way that looks like a camera problem. The kernel caps it at `net.core.rmem_max`, so raise that
+too: `sudo sysctl -w net.core.rmem_max=10485760` (persist it in `/etc/sysctl.d/`, see
+DEPLOYMENT.md). `max=`, not `min=`: with `min="10MB"` and a lower kernel cap, every node fails to
+start with "failed to create domain" (checked on the desktop, whose cap is 4 MB). The deprecated
+`NetworkInterfaceAddress` element is gone; `auto` is the default.
 
 If the link is still saturated: `sudo apt install ros-jazzy-image-transport-plugins` for compressed
 transport, then drop to `profile:=pointcloud` if RGB is not needed.

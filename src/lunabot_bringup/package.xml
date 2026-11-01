@@ -35,6 +35,8 @@
        the same thing continuously onto /diagnostics. -->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>controller_manager_msgs</exec_depend>
+  <!-- check_stack.py reads the TF gate parameters (GetParameters) -->
+  <exec_depend>rcl_interfaces</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>rosgraph_msgs</exec_depend>

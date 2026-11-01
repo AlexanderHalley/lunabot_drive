@@ -17,11 +17,15 @@ repositories:
   # ship SparkFlex.cpp/.hpp, and to export the `sparkcan::sparkcan` target that
   # lunabot_hardware/CMakeLists.txt links against.
   #
-  # Note the branch is `master`, not `main`.
+  # Pinned to a commit, as is topic_based_ros2_control below: a branch here
+  # means the robot image and CI build whatever upstream pushed last, so a
+  # rebuild of an unchanged tree can differ from the one that was tested.
+  # Bump deliberately: change the SHA, let CI build it. (2026-10-31: these
+  # were the branch heads, and the heads CI had been building.)
   sparkcan:
     type: git
     url: https://github.com/grayson-arendt/sparkcan.git
-    version: master
+    version: 11d2d13787fc32e508690926efc3c9749e58770e  # master, 2026-07-14
 
   # Hardware interface that bridges ros2_control to a simulator over topics.
   #
@@ -36,7 +40,7 @@ repositories:
   topic_based_ros2_control:
     type: git
     url: https://github.com/PickNikRobotics/topic_based_ros2_control.git
-    version: main
+    version: aa9f9ef9525a60f8becea322537dd1d6d1bf9123  # main, 2026-09-10
 
 # NOT listed here on purpose:
 #

@@ -54,6 +54,10 @@ if(BUILD_TESTING)
   # services, the e-stop lock and the recording preset name the same topics.
   ament_add_pytest_test(test_mission_control test/test_mission_control.py)
 
+  # The rover image (docker/) against the workspace: launch arguments that
+  # exist, every manifest copied, CI's skip-keys, pinned third-party commits.
+  ament_add_pytest_test(test_deployment test/test_deployment.py)
+
   # Brings the whole stack up on mock hardware and drives it. No hardware, no
   # GPU, no network. This is the highest-value test in the workspace: if
   # /odom moves, the URDF parsed, the plugin loaded, the interfaces were

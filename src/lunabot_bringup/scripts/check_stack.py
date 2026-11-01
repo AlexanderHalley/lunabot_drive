@@ -50,6 +50,8 @@ import rclpy
 from controller_manager_msgs.srv import ListControllers
 from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
+from rcl_interfaces.msg import ParameterType
+from rcl_interfaces.srv import GetParameters
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
@@ -131,6 +133,15 @@ TF_OWNERS = {
     'ekf': {'robot_state_publisher', 'ekf_node'},
 }
 SLAM_TF_OWNERS = {'rtabmap': {'rtabmap'}, 'cuvslam': {'visual_slam_node'}, 'none': set()}
+
+# Nodes that ADVERTISE /tf whatever they are configured to do, and publish on it
+# only when a parameter says so. diff_drive_controller creates its /tf publisher
+# even with enable_odom_tf false (odom_source:=ekf), and rtabmap's rgbd_odometry
+# does with publish_tf false (it feeds the EKF instead). Counting advertisers
+# alone failed every ekf + rtabmap stack (first run 2026-10-31, from the rover
+# image), so for these the gate parameter is read from the running node: false
+# means advertises only, and anything else -- true, or no answer -- still fails.
+TF_GATES = {'diff_drive_controller': 'enable_odom_tf', 'rgbd_odometry': 'publish_tf'}
 
 
 def _stamp_seconds(message) -> float:
@@ -370,11 +381,39 @@ class StackChecker(Node):
         )
         return results
 
+    def _gate(self, node, namespace, parameter):
+        """Return a node's boolean parameter, or None if it does not answer."""
+        prefix = namespace.rstrip('/')
+        client = self.create_client(GetParameters, f'{prefix}/{node}/get_parameters')
+        try:
+            if not self.wait_for(client.service_is_ready, 5.0):
+                return None
+            future = client.call_async(GetParameters.Request(names=[parameter]))
+            rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
+            response = future.result()
+        finally:
+            self.destroy_client(client)
+        if not response or not response.values:
+            return None
+        if response.values[0].type != ParameterType.PARAMETER_BOOL:
+            return None
+        return response.values[0].bool_value
+
     def check_tf_publishers(self):
         expected = TF_OWNERS[self._args.odom_source] | SLAM_TF_OWNERS[self._args.slam]
-        actual = {info.node_name for info in self.get_publishers_info_by_topic('/tf')}
+        infos = self.get_publishers_info_by_topic('/tf')
+        actual = {info.node_name for info in infos}
 
-        unexpected = actual - expected
+        gated_off = set()
+        for info in infos:
+            gate = TF_GATES.get(info.node_name)
+            if info.node_name not in expected and gate:
+                if self._gate(info.node_name, info.node_namespace, gate) is False:
+                    gated_off.add(info.node_name)
+        unexpected = actual - expected - gated_off
+        detail = f'publishers: {sorted(actual - gated_off)}'
+        if gated_off:
+            detail += f'; advertising only (gate off): {sorted(gated_off)}'
         return [
             Result(
                 'only the expected nodes advertise /tf',
@@ -383,7 +422,7 @@ class StackChecker(Node):
                 'Two publishers on one transform gives a tree that looks correct in '
                 'view_frames and behaves nondeterministically.'
                 if unexpected
-                else f'publishers: {sorted(actual)}',
+                else detail,
             )
         ]
 

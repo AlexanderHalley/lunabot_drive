@@ -38,6 +38,12 @@
   <exec_depend>nav2_behaviors</exec_depend>
   <exec_depend>nav2_velocity_smoother</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <!-- The plugins nav2_params.yaml loads. Undeclared, they used to arrive
+       through nav2_bringup; once that went, the rover image had no Smac
+       planner and the stack died at start (test_nav2_params.py checks every
+       plugin's package is declared here). -->
+  <exec_depend>nav2_smac_planner</exec_depend>
+  <exec_depend>nav2_regulated_pure_pursuit_controller</exec_depend>
 
   <!-- RewrittenYaml, which navigation.launch.py uses to push use_sim_time
        into the costmaps' own parameter blocks. -->
@@ -49,9 +55,12 @@
        "failed to load panel" and keeps every display when it is absent. -->
   <exec_depend>nav2_rviz_plugins</exec_depend>
 
-  <!-- Not launched from here. Kept for map_saver_cli, which maps/README.md
-       tells you to run. -->
-  <exec_depend>nav2_bringup</exec_depend>
+  <!-- map_saver_cli, which maps/README.md tells you to run. NOT
+       nav2_bringup, which this used to name for it: map_saver_cli lives in
+       nav2_map_server, and nav2_bringup drags in Gazebo and the TurtleBot
+       simulations (ros_gz_sim, nav2_minimal_tb3/tb4_sim): hundreds of MB
+       in the rover image for nothing. -->
+  <exec_depend>nav2_map_server</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

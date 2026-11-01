@@ -1,0 +1,11 @@
+# Build context for docker/Dockerfile.*: only what the images COPY matters.
+# Anything a host-side build left behind must not leak into an image.
+.git
+**/build
+**/install
+**/log
+**/__pycache__
+**/.pytest_cache
+.ruff_cache
+.cache
+docs

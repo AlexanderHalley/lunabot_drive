@@ -1,0 +1,71 @@
+# The rover, as deployed: the stack and the mission, from one image tag.
+#
+#   docker compose -f docker/compose.robot.yml --env-file docker/robot.env pull
+#   docker compose -f docker/compose.robot.yml --env-file docker/robot.env up -d
+#   docker compose -f docker/compose.robot.yml --env-file docker/robot.env logs -f
+#
+# On the desktop, the SAME image against native Isaac (start Isaac first):
+#   docker compose -f docker/compose.robot.yml --env-file docker/sim.env up
+#
+# docs/DEPLOYMENT.md has the host setup (Docker, sysctl, CAN, data directory)
+# and how to update and roll back.
+
+x-lunabot: &lunabot
+  image: ${LUNABOT_IMAGE:?set LUNABOT_IMAGE (robot.env / sim.env)}
+  # DDS: multicast discovery needs the host network, and CycloneDDS's
+  # shared memory between processes on one host needs the host IPC
+  # namespace -- without it containers discover each other and then
+  # exchange nothing (docker-compose.yml says the same).
+  network_mode: host
+  ipc: host
+  # tini as PID 1: forwards the stop signal to ros2 launch and reaps the
+  # processes launch leaves behind if a node dies hard.
+  init: true
+  environment:
+    ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+  # ros2 launch shuts its nodes down cleanly on SIGINT (the bag gets its
+  # metadata); SIGTERM then SIGKILL after the grace period otherwise.
+  stop_signal: SIGINT
+  stop_grace_period: 30s
+  logging:
+    driver: json-file
+    options: {max-size: 20m, max-file: '5'}
+
+services:
+  stack:
+    <<: *lunabot
+    # SocketCAN, the OAK-D (USB) and the joystick. /dev bind-mounted as well
+    # as privileged: privileged alone snapshots /dev at start, so a camera
+    # that re-enumerates mid-run would vanish from the container.
+    privileged: true
+    volumes:
+      - /dev:/dev
+      - ${LUNABOT_DATA:?set LUNABOT_DATA}/bags:/data/bags
+      - ${LUNABOT_DATA}/logs/ros:/root/.ros/log
+      # Host time zone: bag and log names in local time, not UTC.
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      LUNABOT_LAUNCH: ${LUNABOT_LAUNCH:?set LUNABOT_LAUNCH}
+    # Come back after a crash or a power cycle, but not after `docker compose
+    # stop`.
+    restart: unless-stopped
+
+  mission:
+    <<: *lunabot
+    depends_on: [stack]
+    volumes:
+      - ${LUNABOT_DATA}/logs/ros:/root/.ros/log
+      - /etc/localtime:/etc/localtime:ro
+    # autostart false: it waits in READY for Start from mission control, so a
+    # restarted container never drives off on its own.
+    # The params file FIRST: whichever comes later wins, and mission_ucf.yaml
+    # sets cycles too (measured: -p before the file was overridden by it).
+    # The script itself, not `ros2 run`: ros2 run does not pass SIGINT on to
+    # its child (it counts on a terminal signalling the whole process group),
+    # so `docker compose stop` hit the grace period and SIGKILLed it (137).
+    command: >-
+      /opt/lunabot/lib/lunabot_navigation/mission.py --ros-args
+      --params-file /opt/lunabot/share/lunabot_navigation/config/mission_ucf.yaml
+      -p use_sim_time:=${LUNABOT_SIM_TIME:-false} -p autostart:=false -p cycles:=${LUNABOT_CYCLES:-3}
+    restart: unless-stopped

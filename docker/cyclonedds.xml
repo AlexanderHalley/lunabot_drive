@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The rover image's CycloneDDS config (CYCLONEDDS_URI). Large image topics
+  need a bigger receive buffer than the default, or frames drop under load in a
+  way that looks like a camera problem (docs/OAK_D_S2_INTEGRATION.md).
+
+  max, not min: REQUEST 10 MB, take what the kernel allows. min="10MB" makes
+  every node fail to start ("failed to create domain") on a kernel whose
+  net.core.rmem_max is lower; the desktop's is 4 MB, a stock Jetson's is
+  smaller. The host gets the full 10 MB from the sysctl in docs/DEPLOYMENT.md.
+-->
+<CycloneDDS>
+  <Domain>
+    <Internal>
+      <SocketReceiveBufferSize min="default" max="10MB"/>
+    </Internal>
+  </Domain>
+</CycloneDDS>

@@ -582,3 +582,16 @@ def test_the_planner_treats_unseen_space_behind_rocks_as_rock():
     assert index < plugins.index('inflation_layer')
     assert costmap['track_unknown_space'] is True
     assert costmap[shadow[0]]['shadow_depth'] >= 0.40
+
+
+def test_every_plugin_package_is_declared():
+    """Each `plugin: "pkg::Class"` here needs pkg in package.xml, or a clean install lacks it.
+
+    nav2_smac_planner and nav2_regulated_pure_pursuit_controller were not declared
+    and arrived only through nav2_bringup; the rover image (no nav2_bringup) died
+    at start with "package 'nav2_smac_planner' not found" (2026-10-31).
+    """
+    used = set(re.findall(r'plugin:\s*"(\w+)::', PARAMS.read_text())) - {'lunabot_navigation'}
+    manifest = (PKG / 'package.xml').read_text()
+    declared = set(re.findall(r'<(?:exec_)?depend>(\w+)</(?:exec_)?depend>', manifest))
+    assert used <= declared, f'declare in package.xml: {sorted(used - declared)}'

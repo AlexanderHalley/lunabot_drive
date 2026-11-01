@@ -238,3 +238,98 @@ jobs:
         # values nav2_params.yaml restates from other packages -- footprint,
         # velocity limits, observation ranges, stamped commands.
         run: python -m pytest test/test_nav2_params.py -v
+
+  # ---------------------------------------------------------------------------
+  # The deployable image (docker/Dockerfile.robot), built natively for both
+  # architectures: arm64 is the Jetson Orin, amd64 is the desktop that runs the
+  # same image against Isaac. ubuntu-24.04-arm is a free GitHub-hosted runner
+  # for public repositories -- no QEMU, so the arm64 build is not emulated.
+  #
+  # The smoke test runs the MOCK stack from inside the image and drives it with
+  # check_stack.py --drive: it proves the install tree stands alone (no source,
+  # no symlinks) and that every runtime dependency made it in. The colcon job
+  # above tests the code; this tests the packaging.
+  #
+  # Pushes to develop-2027 publish ghcr.io/<owner>/lunabot_drive/robot:
+  #   :<sha>-<arch>, :develop-2027-<arch>, and (robot-image-manifest) the
+  #   multi-arch :<sha> and :develop-2027 the rover pulls. docs/DEPLOYMENT.md.
+  # ---------------------------------------------------------------------------
+  robot-image:
+    name: robot image (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/alexanderhalley/lunabot_drive/robot
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.robot
+          target: runtime
+          load: true
+          tags: lunabot/robot:ci
+          build-args: GIT_SHA=${{ github.sha }}
+          # Per-architecture cache: the apt + rosdep layer is most of the
+          # build and only changes when a package.xml or lunabot.repos does.
+          cache-from: type=gha,scope=robot-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=robot-${{ matrix.arch }}
+
+      - name: Smoke test -- mock stack from the image, driven
+        run: |
+          # set -m: without job control bash starts background jobs with
+          # SIGINT IGNORED, Python keeps that, and the launch never stops.
+          docker run --rm lunabot/robot:ci bash -c '
+            set -m
+            ros2 launch lunabot_bringup robot.launch.py hw:=mock > /tmp/launch.log 2>&1 &
+            sleep 25
+            ros2 run lunabot_bringup check_stack.py --profile mock --drive
+            rc=$?
+            if [ $rc -ne 0 ]; then echo "--- launch log ---"; tail -80 /tmp/launch.log; fi
+            kill -INT %1; wait
+            exit $rc'
+
+      - name: Image size
+        run: docker image ls lunabot/robot:ci
+
+      - name: Push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop-2027'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          for tag in "${{ github.sha }}-${{ matrix.arch }}" "develop-2027-${{ matrix.arch }}"; do
+            docker tag lunabot/robot:ci "$IMAGE:$tag"
+            docker push "$IMAGE:$tag"
+          done
+
+  robot-image-manifest:
+    name: robot image (multi-arch tags)
+    needs: robot-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop-2027'
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    env:
+      IMAGE: ghcr.io/alexanderhalley/lunabot_drive/robot
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - name: One tag, both architectures
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker buildx imagetools create \
+            -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:develop-2027" \
+            "$IMAGE:${{ github.sha }}-amd64" "$IMAGE:${{ github.sha }}-arm64"
+          docker buildx imagetools inspect "$IMAGE:${{ github.sha }}"
