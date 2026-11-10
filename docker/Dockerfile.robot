@@ -49,6 +49,7 @@ COPY src/lunabot_bringup/package.xml src/lunabotics/src/lunabot_bringup/package.
 COPY src/lunabot_perception/package.xml src/lunabotics/src/lunabot_perception/package.xml
 COPY src/lunabot_slam/package.xml src/lunabotics/src/lunabot_slam/package.xml
 COPY src/lunabot_navigation/package.xml src/lunabotics/src/lunabot_navigation/package.xml
+COPY src/lunabot_excavation/package.xml src/lunabotics/src/lunabot_excavation/package.xml
 COPY src/lunabot_sim/package.xml src/lunabotics/src/lunabot_sim/package.xml
 
 # No apt "Recommends" for anything rosdep installs: they were most of the

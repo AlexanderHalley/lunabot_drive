@@ -164,6 +164,15 @@ ARGUMENTS = [
         ),
     ),
     DeclareLaunchArgument(
+        'excavation',
+        default_value='true',
+        description=(
+            'Start the excavation server (lunabot_excavation): the dig and dump actions '
+            'mission.py calls. Its backend is a model that drives nothing until the drum '
+            'and hopper have drivers.'
+        ),
+    ),
+    DeclareLaunchArgument(
         'record',
         default_value='false',
         description=(
@@ -294,6 +303,14 @@ def generate_launch_description():
                 'navigation.launch.py',
                 condition=IfCondition(LaunchConfiguration('nav')),
                 wait_for_start=LaunchConfiguration('wait_for_start'),
+            ),
+            # The excavator's actions. Model backend everywhere for now: the
+            # mission digs and dumps for its time limits through the interface
+            # a driver will serve (lunabot_excavation/README.md).
+            include(
+                FindPackageShare('lunabot_excavation'),
+                'excavation.launch.py',
+                condition=IfCondition(LaunchConfiguration('excavation')),
             ),
             # Monitoring last, and deliberately after the things it watches:
             # robot_health reports "never received" until a publisher appears,

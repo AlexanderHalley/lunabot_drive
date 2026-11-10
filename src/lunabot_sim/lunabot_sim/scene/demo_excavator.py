@@ -8,13 +8,15 @@
 
     run_isaac_sim.sh --demo-excavator
 
-There is no excavation model or driver yet (drum on a four-bar, lift and
-hopper actuators in the 2027 design), so the mission's dig and dump are timed
-stops. This makes them visible: the drum lowers behind the rover and spins
-while /mission/state says EXCAVATING, the hopper fills, and it tips back and
-empties while DEPOSITING -- onto a regolith pile that grows on the ground
-behind the rover and stays there, so a second dump in the same place makes
-it bigger.
+It draws what the excavation server (lunabot_excavation) says the excavator
+is doing: /excavation/joint_states (arm and hopper as 0..1 strokes, the drum's
+angle) and /excavation/fill. Plain types, because Isaac's bundled ROS cannot
+load lunabot_msgs. There is no excavator driver yet (drum on a four-bar, lift
+and hopper actuators in the 2027 design), so the server runs its model
+backend and this is the only place the excavator is seen: the drum lowers
+behind the rover and spins, the hopper fills, tips back and empties -- onto a
+regolith pile that grows on the ground behind the rover and stays there, so a
+second dump in the same place makes it bigger.
 
 VISUAL ONLY. No colliders and no mass, so the physics, the footprint and every
 sensor are exactly as without it: it all sits behind the forward camera, and
@@ -32,7 +34,8 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-STATE_TOPIC = '/mission/state'
+JOINTS_TOPIC = '/excavation/joint_states'
+FILL_TOPIC = '/excavation/fill'
 
 # base_link frame, metres. base_link is at axle height, 0.15 m above ground.
 ARM_PIVOT = (-0.40, 0.0, 0.10)  # rear top of the chassis
@@ -42,18 +45,12 @@ DRUM_WIDTH = 0.50
 HOPPER_PIVOT = (-0.30, 0.0, 0.10)  # the hopper's rear bottom edge
 HOPPER_SIZE = (0.55, 0.40, 0.20)  # x forward from the pivot, y, z
 
-# Angles in degrees about base_link's +Y. Arm: the drum sits at
-# pivot + L * (-cos a, 0, sin a); 80 is folded up over the rear wheels,
-# -26 puts the drum on the ground behind the rover. Hopper: negative tips
-# its front up, so it empties backwards.
+# Angles in degrees about base_link's +Y, at the ends of the server's 0..1
+# strokes. Arm: the drum sits at pivot + L * (-cos a, 0, sin a); 80 is
+# folded up over the rear wheels, -26 puts the drum on the ground behind the
+# rover. Hopper: negative tips its front up, so it empties backwards.
 ARM_STOWED, ARM_DIGGING = 80.0, -26.0
 HOPPER_FLAT, HOPPER_DUMPING = 0.0, -50.0
-ARM_RATE = 45.0  # deg/s
-HOPPER_RATE = 35.0
-DRUM_SPIN = 240.0  # deg/s while digging
-FILL_RATE = 0.12  # hopper fraction per second while the drum is down
-EMPTY_RATE = 0.5  # per second once the hopper is tipped past EMPTY_FROM
-EMPTY_FROM = -35.0
 # Regolith per full hopper (m^3): 80% of the hopper's inside.
 LOAD_VOLUME = 0.8 * HOPPER_SIZE[0] * HOPPER_SIZE[1] * HOPPER_SIZE[2]
 # m behind base_link, where the tipped hopper pours. mission_ucf.yaml's
@@ -63,33 +60,30 @@ PILE_ASPECT = 1.0  # height / radius: a hemisphere, the narrowest mound per load
 PILE_MERGE = 0.15  # m: a dump this close to an existing pile adds to it
 
 
-def _towards(value: float, target: float, step: float) -> float:
-    if abs(target - value) <= step:
-        return target
-    return value + step if target > value else value - step
+def _stroke(value: float) -> float:
+    return 0.0 if value is None or math.isnan(value) else min(max(value, 0.0), 1.0)
 
 
 @dataclass
 class Animation:
-    """What the stand-in is doing, stepped by the mission state."""
+    """The stand-in's pose, from the excavation server's joint states and fill."""
 
     arm: float = ARM_STOWED
     drum: float = 0.0
     hopper: float = HOPPER_FLAT
     load: float = 0.0  # 0 empty .. 1 full
 
-    def step(self, mission_state: str, dt: float) -> Animation:
-        digging = mission_state.startswith('EXCAVATING')
-        dumping = mission_state.startswith('DEPOSITING')
-        self.arm = _towards(self.arm, ARM_DIGGING if digging else ARM_STOWED, ARM_RATE * dt)
-        self.hopper = _towards(
-            self.hopper, HOPPER_DUMPING if dumping else HOPPER_FLAT, HOPPER_RATE * dt
-        )
-        if digging and self.arm == ARM_DIGGING:
-            self.drum = (self.drum + DRUM_SPIN * dt) % 360.0
-            self.load = min(1.0, self.load + FILL_RATE * dt)
-        if self.hopper <= EMPTY_FROM:
-            self.load = max(0.0, self.load - EMPTY_RATE * dt)
+    def apply(self, joints: dict, fill: float) -> Animation:
+        """joints: name -> position, from /excavation/joint_states (missing = unchanged)."""
+        if 'excavator_arm' in joints:
+            self.arm = ARM_STOWED + (ARM_DIGGING - ARM_STOWED) * _stroke(joints['excavator_arm'])
+        if 'excavator_hopper' in joints:
+            t = _stroke(joints['excavator_hopper'])
+            self.hopper = HOPPER_FLAT + (HOPPER_DUMPING - HOPPER_FLAT) * t
+        drum = joints.get('excavator_drum')
+        if drum is not None and not math.isnan(drum):
+            self.drum = math.degrees(drum) % 360.0
+        self.load = _stroke(fill)
         return self
 
 
@@ -105,12 +99,12 @@ class DemoExcavator:
     def __init__(self, base_link_path: str, domain_id: int):
         import rclpy
         from rclpy.node import Node
-        from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-        from std_msgs.msg import String
+        from sensor_msgs.msg import JointState
+        from std_msgs.msg import Float32
 
         self._anim = Animation()
-        self._state = ''
-        self._last = None
+        self._joints = {}
+        self._fill = 0.0
         self._ops = _build(f'{base_link_path}/DemoExcavator')
         self._articulation_path = base_link_path
         self._view = None
@@ -119,29 +113,26 @@ class DemoExcavator:
         if not rclpy.ok():
             rclpy.init(domain_id=domain_id)
         self._node = Node('sim_demo_excavator')
-        latched = QoSProfile(
-            depth=1,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
-            reliability=ReliabilityPolicy.RELIABLE,
-        )
+        self._node.create_subscription(JointState, JOINTS_TOPIC, self._on_joints, 10)
         self._node.create_subscription(
-            String, STATE_TOPIC, lambda m: setattr(self, '_state', m.data), latched
+            Float32, FILL_TOPIC, lambda m: setattr(self, '_fill', m.data), 10
         )
-        logger.info('demo excavator stand-in under %s, following %s', base_link_path, STATE_TOPIC)
+        logger.info('demo excavator stand-in under %s, following %s', base_link_path, JOINTS_TOPIC)
 
-    def step(self, sim_time: float) -> None:
+    def _on_joints(self, msg) -> None:
+        self._joints.update(zip(msg.name, msg.position, strict=False))
+
+    def step(self, sim_time: float) -> None:  # noqa: ARG002 -- run_sim passes it
         import rclpy
 
         if rclpy.ok():
             rclpy.spin_once(self._node, timeout_sec=0.0)
-        dt = 0.0 if self._last is None else max(0.0, sim_time - self._last)
-        self._last = sim_time
         before = self._anim.load
-        a = self._anim.step(self._state, dt)
-        if a.load < before:
+        a = self._anim.apply(self._joints, self._fill)
+        if a.load < before and a.hopper < HOPPER_FLAT - 1.0:  # tipped and emptying
             self._pour(before - a.load)
-        elif self._pile is not None and not self._state.startswith('DEPOSITING'):
-            self._pile = None
+        elif self._pile is not None and a.hopper >= HOPPER_FLAT - 1.0:
+            self._pile = None  # back flat: the next dump starts a new pour
         arm, drum, hopper, load = self._ops
         arm.Set(a.arm)
         drum.Set(a.drum)

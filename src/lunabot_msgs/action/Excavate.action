@@ -1,0 +1,26 @@
+# Dig a load: lower the drum, dig until the hopper reaches target_fill or the
+# drum has dug for max_seconds, raise the drum. Served on /excavation/excavate.
+#
+# A cancelled goal HOLDS where it is (it does not stow): send it again with
+# the time left to carry on, or call /excavation/stow.
+
+# 0..1. Used only when the fill is measured (ExcavatorStatus.fill_measured);
+# otherwise the dig ends on max_seconds.
+float32 target_fill
+# Seconds of digging (drum down and turning), NOT counting lowering and raising.
+float32 max_seconds
+---
+uint8 FULL = 0
+uint8 TIME_LIMIT = 1
+uint8 CANCELED = 2
+uint8 E_STOP = 3
+uint8 FAULT = 4
+uint8 outcome
+float32 fill
+# Seconds of digging this goal did.
+float32 seconds
+string message
+---
+string phase
+float32 fill
+float32 seconds

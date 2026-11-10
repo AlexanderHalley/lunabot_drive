@@ -27,13 +27,14 @@ with the same YAML and the same kinematic constants as the robot.
 
 | Package | Purpose |
 |---|---|
-| `lunabot_msgs` | SparkFlex telemetry messages. Nothing that exists upstream |
+| `lunabot_msgs` | SparkFlex telemetry, the excavation actions. Nothing that exists upstream |
 | `lunabot_description` | URDF/xacro, `ros2_control` macros, RViz configs |
 | `lunabot_hardware` | `SparkFlexSystem` — SocketCAN hardware interface |
 | `lunabot_bringup` | All launch orchestration + controller/camera/teleop/EKF config |
 | `lunabot_perception` | Boulder detector (craters later) |
 | `lunabot_slam` | Swappable rtabmap / cuVSLAM backends |
-| `lunabot_navigation` | Nav2 params |
+| `lunabot_navigation` | Nav2 params, start survey and fix, the mission sequencer |
+| `lunabot_excavation` | Dig and dump actions over a backend (a model until there are drivers) |
 | `lunabot_sim` | Isaac Sim scene builder and ROS 2 bridge graphs |
 
 ## Quick start

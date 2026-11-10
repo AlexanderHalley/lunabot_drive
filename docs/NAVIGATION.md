@@ -200,8 +200,13 @@ ros2 run lunabot_navigation mission.py --ros-args -p use_sim_time:=true \
   --params-file $(ros2 pkg prefix lunabot_navigation)/share/lunabot_navigation/config/mission_ucf.yaml
 ```
 
-- **Digging and dumping are placeholders**: a timed stop. There is no excavation package; when
-  there is, `mission.py` calls its actions there.
+- **Digging and dumping are goals to the excavation server** (`lunabot_excavation`, started by
+  `robot.launch.py`): `/excavation/excavate` for up to `dig_seconds` of digging (or until
+  `target_fill`, where the fill is measured), `/excavation/deposit` for up to `dump_seconds`
+  tipped. Both end stowed. A pause cancels the goal (the excavator holds where it is) and the
+  resume sends the time that was left; an excavator FAULT is retried like a failed leg. The
+  server's only backend is a model that drives nothing, so until the drum and hopper have
+  drivers the stops are as long as the old timed ones — see `lunabot_excavation/README.md`.
 - The poses are in the **arena** frame (`frame: arena`). The map frame starts wherever the rover
   starts, so the mission converts them through the AprilTag start fix (next section). With no
   fix after `fix_timeout` it logs an error and assumes map = arena, which is right only for the

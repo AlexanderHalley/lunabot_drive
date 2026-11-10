@@ -1,0 +1,26 @@
+# The excavation server (scripts/excavator.py). Strokes are normalised: arm
+# 0 stowed .. 1 drum at digging depth; hopper 0 flat .. 1 tipped.
+excavator:
+  ros__parameters:
+    # "model" is the only backend: a kinematic stand-in that drives nothing.
+    # It runs in Isaac and, until the drum and hopper have drivers, on the
+    # rover -- so the mission digs and dumps for its time limits as before.
+    backend: model
+    rate: 20.0
+    # Drum speed while digging, rad/s. PLACEHOLDER (240 deg/s, the stand-in's).
+    dig_speed: 4.2
+    # One stroke taking longer than this is a FAULT (stalled or jammed).
+    move_timeout: 10.0
+    model:
+      # PLACEHOLDERS, from the visual stand-in (lunabot_sim demo_excavator.py),
+      # not from the 2027 design's actuators: full stroke times, the fill
+      # per second while digging, the emptying per second once tipped past
+      # pour_from.
+      arm_seconds: 2.4
+      hopper_seconds: 1.4
+      fill_rate: 0.12
+      empty_rate: 0.5
+      pour_from: 0.7
+      # False: the fill is an estimate, so goals end on their time limits --
+      # as they will on a rover without load sensing.
+      fill_measured: false

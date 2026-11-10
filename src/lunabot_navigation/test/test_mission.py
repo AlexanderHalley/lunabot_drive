@@ -53,9 +53,10 @@ def test_each_cycle_digs_then_dumps_and_the_mission_ends_at_home(cycles):
     for i in range(cycles):
         drive_dig, dig, drive_dump, dump = steps[4 * i : 4 * i + 4]
         assert drive_dig.pose == tuple(PARAMS['dig_pose'])
-        assert dig.pose is None and dig.seconds > 0
+        assert dig.pose is None and dig.work == 'excavate' and dig.seconds > 0
         assert drive_dump.pose == PARKS[i % len(PARKS)]  # spots in turn
-        assert dump.pose is None and dump.seconds > 0
+        assert dump.pose is None and dump.work == 'deposit' and dump.seconds > 0
+    assert not any(s.work for s in steps if s.pose is not None)
 
 
 def test_ucf_poses_are_in_their_zones():
@@ -228,3 +229,22 @@ def test_nothing_is_accepted_once_the_mission_is_over(final):
 def test_every_command_is_a_control_method():
     for name in mission.COMMANDS:
         assert callable(getattr(mission.Control(autostart=True), name))
+
+
+def test_excavator_outcomes_map_onto_the_mission():
+    for name in ('FULL', 'EMPTY', 'TIME_LIMIT'):
+        assert mission.work_outcome(name) == 'done'
+    assert mission.work_outcome('CANCELED') == 'held'  # our own pause
+    assert mission.work_outcome('E_STOP') == 'e_stop'
+    assert mission.work_outcome('FAULT') == 'failed'  # retried, then FAILED
+    assert mission.work_outcome('something new') == 'failed'
+
+
+def test_every_excavator_outcome_is_mapped():
+    msgs = PKG.parent / 'lunabot_msgs' / 'action'
+    for action in ('Excavate', 'Deposit'):
+        text = (msgs / f'{action}.action').read_text()
+        names = [line.split()[1] for line in text.splitlines() if line.startswith('uint8 ')]
+        names = [n for n in names if n.isupper()]
+        assert names and all(mission.work_outcome(n) for n in names)
+        assert {n for n in names if mission.work_outcome(n) == 'failed'} == {'FAULT'}

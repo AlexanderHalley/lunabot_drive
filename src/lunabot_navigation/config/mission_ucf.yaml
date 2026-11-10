@@ -8,9 +8,9 @@
 # arena -> map, and mission.py converts these through it. Without a fix it
 # falls back to arena = map, which is right only for the default spawn.
 #
-# `dig` and `dump` are PLACEHOLDERS: there is no excavation package yet, so the
-# mission stops for `seconds` and says so on /mission/state. Swap in the real
-# actions when the drum and hopper have drivers.
+# Digging and dumping are goals to the excavation server (lunabot_excavation,
+# started by robot.launch.py). Its backend is a model that drives nothing until
+# the drum and hopper have drivers, so the stops are as long as these limits.
 mission:
   ros__parameters:
     frame: arena
@@ -37,5 +37,10 @@ mission:
     # was never seen (the shadow layer extends the wall into unseen floor),
     # and the return leg failed ("Start occupied").
     home_pose: [0.4, 0.0]
+    # Working-time limits: the drum digging, the hopper tipped. Lowering,
+    # raising and tipping come on top (~5 s and ~3 s with the model).
     dig_seconds: 8.0
     dump_seconds: 6.0
+    # Dig until this fill instead -- only where the excavator measures it.
+    target_fill: 1.0
+    work_timeout: 90.0

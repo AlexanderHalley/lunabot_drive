@@ -247,11 +247,12 @@ The recorder opens with a title card (`title`, `subtitle` with `|` between lines
 mission phase in plain words (`CAPTIONS` in the script; a test checks every phase `mission.py`
 announces has one), and closes with an end card: the final state, the clock and the start fix.
 
-`run_isaac_sim.sh --demo-excavator` adds a **visual-only stand-in** for the excavator, since there
-is no excavation model or driver yet: a drum on two arms that folds over the rear wheels, lowers
-and spins while `/mission/state` says EXCAVATING, and a hopper that fills, then tips back and
-empties while DEPOSITING onto a regolith mound that grows on the ground behind the rover
-(`scene/demo_excavator.py`). No colliders and no mass, so physics and sensors are unchanged —
+`run_isaac_sim.sh --demo-excavator` adds a **visual-only stand-in** for the excavator: a drum on
+two arms that folds over the rear wheels, and a hopper, drawn from what the excavation server
+reports on `/excavation/joint_states` and `/excavation/fill` (plain types: Isaac's bundled ROS
+cannot load `lunabot_msgs`). With the server's model backend the drum lowers and spins while the
+mission digs, the hopper fills, then tips back and empties onto a regolith mound that grows on
+the ground behind the rover (`scene/demo_excavator.py`). No colliders and no mass, so physics and sensors are unchanged —
 except the mound, which sits in the world and which the camera sees as an obstacle, as a berm
 would be. The geometry is a guess at the 2027 layout, not its dimensions.
 

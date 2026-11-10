@@ -5,7 +5,7 @@
   <version>0.1.0</version>
   <description>
     Interfaces for the Lunabot rover that have no upstream equivalent.
-    Currently only SparkFlex motor telemetry. See README.md before adding anything.
+    SparkFlex motor telemetry and the excavation actions. See README.md before adding anything.
   </description>
   <maintainer email="alexhalley@outlook.fr">Alexander Halley</maintainer>
   <license>MIT</license>
@@ -16,6 +16,8 @@
   <depend>std_msgs</depend>
 
   <exec_depend>rosidl_default_runtime</exec_depend>
+  <!-- Actions: their generated types use action_msgs (goal status). -->
+  <depend>action_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

@@ -38,6 +38,7 @@ def test_every_phase_the_mission_can_announce_has_a_caption(cycles):
     states = [step.state for step in mission.plan(cycles, pose, [pose], pose, 1.0, 1.0)]
     states += [
         'WAITING FOR NAVIGATION',
+        'WAITING FOR EXCAVATOR',
         'SURVEYING START AREA',
         'LOCALISING ON APRILTAGS',
         'MISSION COMPLETE in 81 s',

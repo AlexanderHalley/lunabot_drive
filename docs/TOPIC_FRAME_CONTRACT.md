@@ -224,6 +224,19 @@ speculatively now.)
 | `/e_stop` | `std_msgs/Bool` | `operator_e_stop` (service `/e_stop/set`, std_srvs/SetBool, from Foxglove): twist_mux's `e_stop` lock, priority 255; `mission` pauses on true |
 | `/operator/camera/compressed` | `sensor_msgs/CompressedImage` | `operator_camera`: 424 px JPEG at 2 fps, only while watched |
 
+### Excavation
+
+| Topic | Type | Publisher |
+|---|---|---|
+| `/excavation/excavate` | `lunabot_msgs/action/Excavate` (action) | `excavator`: lower, dig until full or `max_seconds`, raise; `mission` calls it |
+| `/excavation/deposit` | `lunabot_msgs/action/Deposit` (action) | `excavator`: tip, pour until empty or `max_seconds`, return; `mission` calls it |
+| `/excavation/stow` | `std_srvs/Trigger` (service) | `excavator`: stop the job and stow (operator) |
+| `/excavation/status` | `lunabot_msgs/ExcavatorStatus` | `excavator`, 10 Hz: state, phase, strokes, fill, e-stop, backend, fault |
+| `/excavation/joint_states` | `sensor_msgs/JointState` | `excavator`: `excavator_arm`, `excavator_drum`, `excavator_hopper` — arm and hopper as 0..1 strokes, NOT radians; the drum in rad |
+| `/excavation/fill` | `std_msgs/Float32` | `excavator`: hopper fill 0..1 (an estimate unless `status.fill_measured`) |
+
+The excavator also listens to `/e_stop`: engaged, it holds where it is and refuses goals.
+
 ### Monitoring
 
 | Topic | Type | Publisher | Consumer |

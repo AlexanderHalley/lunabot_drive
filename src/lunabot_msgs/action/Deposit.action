@@ -1,0 +1,22 @@
+# Dump the load: tip the hopper, pour until it is empty or it has been tipped
+# for max_seconds, bring it back flat. Served on /excavation/deposit.
+#
+# The load lands behind the rover (lunabot_navigation's dump_reach); parking
+# for it is the mission's job, not this action's. Cancelled, it holds.
+
+# Seconds tipped, NOT counting tipping and returning.
+float32 max_seconds
+---
+uint8 EMPTY = 0
+uint8 TIME_LIMIT = 1
+uint8 CANCELED = 2
+uint8 E_STOP = 3
+uint8 FAULT = 4
+uint8 outcome
+float32 fill
+float32 seconds
+string message
+---
+string phase
+float32 fill
+float32 seconds

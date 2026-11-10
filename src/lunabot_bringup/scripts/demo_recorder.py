@@ -58,6 +58,7 @@ FOOTPRINT = (0.92, 0.644)  # nav2_params.yaml footprint; for drawing only
 # matched on the phase's start: '(1/2)' tags and suffixes do not matter.
 CAPTIONS = (
     ('WAITING FOR NAVIGATION', 'Starting up: SLAM, localisation and Nav2 come online.'),
+    ('WAITING FOR EXCAVATOR', 'Starting up: waiting for the excavation server.'),
     (
         'SURVEYING START AREA',
         'One full turn on the spot: the camera maps the start area and looks for the '
@@ -75,13 +76,13 @@ CAPTIONS = (
     ),
     (
         'EXCAVATING',
-        'Digging. The drum is a stand-in: there is no excavation model or driver yet.',
+        'Digging. The excavator is a model for now: no drum or hopper driver yet.',
     ),
     (
         'DRIVING TO CONSTRUCTION ZONE',
         'Carrying the load to the berm. The plan is redone every 2 s as new rocks come into view.',
     ),
-    ('DEPOSITING', 'Dumping into the berm area. The hopper is a stand-in, like the drum.'),
+    ('DEPOSITING', 'Dumping into the berm area. The hopper is a model too.'),
     ('RETURNING TO START', 'Heading home through the rock field.'),
     ('READY', 'Waiting for the operator to press Start in mission control.'),
     ('PAUSED', 'Paused from mission control: the leg is cancelled and picks up on resume.'),

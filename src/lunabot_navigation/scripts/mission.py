@@ -16,12 +16,18 @@ drives to the dig pose, digs, drives to the dump pose, dumps; then drives
 home. Every phase change is latched on /mission/state as one line of text,
 for operators, logs and the demo recorder.
 
-Digging and dumping are PLACEHOLDERS -- a timed stop. There is no excavation
-package yet; when there is, `_work()` calls its actions instead.
+Digging and dumping are goals to the excavation server (lunabot_excavation:
+/excavation/excavate and /excavation/deposit, lunabot_msgs actions): dig for
+up to `dig_seconds` or until `target_fill` where the fill is measured, dump
+for up to `dump_seconds`. Each ends with the excavator stowed, so the next
+leg may drive. Until the drum and hopper have drivers the server's backend is
+a model that drives nothing -- the stops last as long as before, through the
+interface the driver will serve.
 
-A failed leg is retried `retries` times (Nav2 replans from wherever the rover
-ended up); a leg that still fails ends the mission as FAILED rather than
-skipping ahead, because the next leg starts from the wrong place.
+A failed leg or a faulted dig/dump is retried `retries` times (Nav2 replans
+from wherever the rover ended up); one that still fails ends the mission as
+FAILED rather than skipping ahead, because the next step starts from the
+wrong place.
 
 Operator control (docs/MONITORING.md "Mission control"): std_srvs/Trigger
 services /mission/start, /mission/pause, /mission/resume, /mission/abort, and
@@ -44,6 +50,8 @@ MODE_TOPIC = '/mission/mode'
 STARTED_TOPIC = '/mission/started'
 SURVEY_TOPIC = '/navigation/survey_done'
 E_STOP_TOPIC = '/e_stop'
+EXCAVATE_ACTION = '/excavation/excavate'
+DEPOSIT_ACTION = '/excavation/deposit'
 # std_srvs/Trigger services, /mission/<name>, each calling Control.<name>().
 COMMANDS = ('start', 'pause', 'resume', 'abort')
 
@@ -130,11 +138,28 @@ class Aborted(Exception):
 
 @dataclass(frozen=True)
 class Step:
-    """One thing the mission does: drive to a pose, or work for some seconds."""
+    """One thing the mission does: drive to a pose, or dig or dump for up to some seconds."""
 
     state: str
     pose: tuple[float, float, float] | None = None
+    work: str = ''  # 'excavate' or 'deposit'
     seconds: float = 0.0
+
+
+def work_outcome(name: str) -> str:
+    """Map an Excavate/Deposit outcome (its constant's name) onto what the mission does.
+
+    'done': carry on. 'held': stopped for the operator -- wait, then send the
+    rest. 'e_stop': the excavator saw the e-stop first; the mission pauses as
+    if it had. 'failed': counts against `retries`.
+    """
+    return {
+        'FULL': 'done',
+        'EMPTY': 'done',
+        'TIME_LIMIT': 'done',
+        'CANCELED': 'held',
+        'E_STOP': 'e_stop',
+    }.get(name, 'failed')
 
 
 def plan(cycles, dig_pose, dump_poses, home_pose, dig_seconds, dump_seconds) -> list[Step]:
@@ -148,12 +173,12 @@ def plan(cycles, dig_pose, dump_poses, home_pose, dig_seconds, dump_seconds) -> 
         tag = f' ({i}/{cycles})' if cycles > 1 else ''
         steps += [
             Step('DRIVING TO EXCAVATION ZONE' + tag, pose=tuple(dig_pose)),
-            Step('EXCAVATING' + tag, seconds=dig_seconds),
+            Step('EXCAVATING' + tag, work='excavate', seconds=dig_seconds),
             Step(
                 'DRIVING TO CONSTRUCTION ZONE' + tag,
                 pose=tuple(dump_poses[(i - 1) % len(dump_poses)]),
             ),
-            Step('DEPOSITING' + tag, seconds=dump_seconds),
+            Step('DEPOSITING' + tag, work='deposit', seconds=dump_seconds),
         ]
     steps.append(Step('RETURNING TO START', pose=tuple(home_pose)))
     return steps
@@ -215,6 +240,8 @@ def main() -> None:
     from std_srvs.srv import Trigger
     from tf2_ros import Buffer, TransformListener
 
+    from lunabot_msgs.action import Deposit, Excavate
+
     rclpy.init()
     node = Node('mission')
     p = {
@@ -227,8 +254,14 @@ def main() -> None:
             ('dump_targets', [5.95, 2.57, -math.pi / 2, 6.23, 2.57, -math.pi / 2]),
             ('dump_reach', 0.97),
             ('home_pose', [0.4, 0.0]),
+            # Limits on the excavator's working time: drum digging, hopper
+            # tipped (lowering, raising and tipping come on top).
             ('dig_seconds', 8.0),
             ('dump_seconds', 6.0),
+            # Dig until this fill instead, where the excavator measures it.
+            ('target_fill', 1.0),
+            # Wall-clock limit on one dig or dump goal, as leg_timeout.
+            ('work_timeout', 90.0),
             ('wait_for_survey', True),
             # The poses above are in this frame. 'arena' needs the start fix
             # (fiducial_localizer.py: arena -> map); 'map' sends them as they are.
@@ -297,20 +330,44 @@ def main() -> None:
         if held:
             say(state)
 
-    def work(state: str, seconds: float) -> None:
-        # Sim time: a stop of N seconds is N seconds on /clock. Paused time
-        # does not count.
-        left = seconds * 1e9
-        while left > 0:
-            hold(state)
-            last = node.get_clock().now().nanoseconds
-            while rclpy.ok() and left > 0 and not control.paused and not control.final:
-                spin()
-                now = node.get_clock().now().nanoseconds
-                left -= now - last
-                last = now
-            if not rclpy.ok():
-                return
+    def work(step, left: float):
+        """Dig or dump for up to `left` s: ('done' | 'failed' | 'held', seconds still left)."""
+        client, kind = excavator[step.work]
+        goal = kind.Goal(max_seconds=float(max(left, 0.0)))
+        if step.work == 'excavate':
+            goal.target_fill = float(p['target_fill'])
+        sent = client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(node, sent)
+        handle = sent.result()
+        if handle is None or not handle.accepted:
+            log.error(f'{step.work} goal refused by the excavator')
+            return 'failed', left
+        result = handle.get_result_async()
+        deadline = time.monotonic() + p['work_timeout']
+        while not result.done():
+            if control.paused or control.final:
+                handle.cancel_goal_async()
+                rclpy.spin_until_future_complete(node, result, timeout_sec=5.0)
+                break
+            if time.monotonic() > deadline:
+                log.error(f'{step.work} timed out')
+                handle.cancel_goal_async()
+                rclpy.spin_until_future_complete(node, result, timeout_sec=5.0)
+                return 'failed', left
+            spin()
+        if not result.done():
+            return 'held', left
+        r = result.result().result
+        names = ('FULL', 'EMPTY', 'TIME_LIMIT', 'CANCELED', 'E_STOP', 'FAULT')
+        name = next((n for n in names if getattr(type(r), n, None) == r.outcome), str(r.outcome))
+        left -= r.seconds
+        log.info(f'{step.work}: {name} after {r.seconds:.1f} s ({r.message})')
+        outcome = work_outcome(name)
+        if outcome == 'e_stop':
+            control.set_e_stop(True)  # /e_stop's release clears it, as for the mission's own
+            publish_mode()
+            outcome = 'held'
+        return outcome, left
 
     def drive(pose) -> str:
         """Drive to pose: 'done', 'failed', or 'held' (paused or aborted on the way)."""
@@ -377,6 +434,14 @@ def main() -> None:
             nav = ActionClient(node, NavigateToPose, 'navigate_to_pose')
             while rclpy.ok() and not nav.wait_for_server(timeout_sec=0.5):
                 spin()
+            say('WAITING FOR EXCAVATOR')
+            excavator = {
+                'excavate': (ActionClient(node, Excavate, EXCAVATE_ACTION), Excavate),
+                'deposit': (ActionClient(node, Deposit, DEPOSIT_ACTION), Deposit),
+            }
+            for client, _ in excavator.values():
+                while rclpy.ok() and not client.wait_for_server(timeout_sec=0.5):
+                    spin()
             if not control.started:
                 say('READY: WAITING FOR START')
                 while rclpy.ok() and not control.started and not control.final:
@@ -430,13 +495,14 @@ def main() -> None:
             for step in steps:
                 hold(step.state)
                 say(step.state)
-                if step.pose is None:
-                    work(step.state, step.seconds)
-                    continue
                 failures = 0
+                left = step.seconds  # a dig's or dump's time, kept across pauses
                 while True:
                     hold(step.state)
-                    outcome = drive(step.pose)
+                    if step.work:
+                        outcome, left = work(step, left)
+                    else:
+                        outcome = drive(step.pose)
                     if outcome == 'done':
                         break
                     if outcome == 'held':  # an operator stop is not a failure

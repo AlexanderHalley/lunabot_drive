@@ -12,32 +12,20 @@ import pytest
 from lunabot_sim.scene import demo_excavator as ex
 
 
-def run(anim, state, seconds, dt=0.05):
-    for _ in range(int(seconds / dt)):
-        anim.step(state, dt)
-    return anim
+def test_the_server_strokes_map_onto_the_stand_in_ends():
+    anim = ex.Animation().apply({'excavator_arm': 0.0, 'excavator_hopper': 0.0}, 0.0)
+    assert (anim.arm, anim.hopper, anim.load) == (ex.ARM_STOWED, ex.HOPPER_FLAT, 0.0)
+    anim.apply({'excavator_arm': 1.0, 'excavator_drum': math.pi, 'excavator_hopper': 1.0}, 0.7)
+    assert anim.arm == ex.ARM_DIGGING and anim.hopper == ex.HOPPER_DUMPING
+    assert anim.drum == pytest.approx(180.0) and anim.load == 0.7
 
 
-def test_driving_keeps_everything_stowed_and_still():
-    anim = run(ex.Animation(), 'DRIVING TO EXCAVATION ZONE', 5.0)
-    assert (anim.arm, anim.drum, anim.hopper, anim.load) == (ex.ARM_STOWED, 0.0, 0.0, 0.0)
-
-
-def test_an_8_s_dig_lowers_the_drum_spins_it_and_fills_the_hopper():
-    anim = run(ex.Animation(), 'EXCAVATING (1/2)', 8.0)
-    assert anim.arm == ex.ARM_DIGGING
-    assert anim.drum != 0.0
-    assert 0.5 < anim.load <= 1.0
-    run(anim, 'DRIVING TO CONSTRUCTION ZONE (1/2)', 4.0)
-    assert anim.arm == ex.ARM_STOWED and anim.load > 0.5  # carried, not spilled
-
-
-def test_a_6_s_dump_tips_the_hopper_and_empties_it_then_it_comes_back():
-    anim = ex.Animation(load=1.0)
-    run(anim, 'DEPOSITING', 6.0)
-    assert anim.hopper == ex.HOPPER_DUMPING and anim.load == 0.0
-    run(anim, 'RETURNING TO START', 3.0)
-    assert anim.hopper == ex.HOPPER_FLAT
+def test_unknown_or_missing_values_do_not_throw_the_drawing_around():
+    anim = ex.Animation().apply({'excavator_arm': 0.5}, math.nan)
+    arm = anim.arm
+    assert ex.ARM_DIGGING < arm < ex.ARM_STOWED and anim.load == 0.0
+    anim.apply({'excavator_hopper': math.nan, 'excavator_drum': math.nan}, 2.0)
+    assert anim.arm == arm and anim.hopper == ex.HOPPER_FLAT and anim.load == 1.0
 
 
 def test_stowed_drum_stays_inside_the_chassis_outline_and_clear_of_the_tipped_hopper():

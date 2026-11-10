@@ -22,6 +22,9 @@ topics:
   - /e_stop
   - /navigation/survey_done
   - /localization/arena_fix
+  # the excavator (lunabot_excavation)
+  - /excavation/status
+  - /excavation/joint_states
   # what navigation knew
   - /odom
   - /map

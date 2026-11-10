@@ -150,6 +150,7 @@ jobs:
             lunabot_perception
             lunabot_slam
             lunabot_navigation
+            lunabot_excavation
             lunabot_sim
           vcs-repo-file-url: ${{ github.workspace }}/lunabot.repos
           skip-tests: false
