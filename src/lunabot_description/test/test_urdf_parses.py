@@ -30,8 +30,6 @@ EXPECTED_LINKS = {
     'base_footprint',
     'front_left_wheel_link',
     'front_right_wheel_link',
-    'middle_left_wheel_link',
-    'middle_right_wheel_link',
     'rear_left_wheel_link',
     'rear_right_wheel_link',
     'oak_d_link',
@@ -48,8 +46,6 @@ EXPECTED_LINKS = {
 WHEEL_JOINTS = {
     'front_left_wheel_joint',
     'front_right_wheel_joint',
-    'middle_left_wheel_joint',
-    'middle_right_wheel_joint',
     'rear_left_wheel_joint',
     'rear_right_wheel_joint',
 }
@@ -195,7 +191,7 @@ def test_can_ids_are_unique_and_match_the_2026_wiring(hardware):
         assert can_id is not None, f'{joint.get("name")} has no can_id'
         ids[joint.get('name')] = int(can_id.text)
 
-    assert len(set(ids.values())) == len(ids) == 6, f'duplicate or missing CAN IDs: {ids}'
+    assert len(set(ids.values())) == len(ids) == 4, f'duplicate or missing CAN IDs: {ids}'
     assert ids['front_left_wheel_joint'] == 2
     assert ids['front_right_wheel_joint'] == 1
 
@@ -310,8 +306,6 @@ def test_all_links_have_inertia_except_pure_frames(hardware):
         'base_link',
         'front_left_wheel_link',
         'front_right_wheel_link',
-        'middle_left_wheel_link',
-        'middle_right_wheel_link',
         'rear_left_wheel_link',
         'rear_right_wheel_link',
         'oak_d_link',

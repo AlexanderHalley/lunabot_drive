@@ -208,7 +208,11 @@ def _run(args, simulation_app) -> int:
     (Path(args.urdf).parent / 'start_pose.json').write_text(
         json.dumps({'x': start[0], 'y': start[1], 'yaw_deg': start[2]})
     )
-    articulation.configure(articulation_path, robot_path=robot_path)
+    # The drive's torque cap is the URDF's: it was hard-coded to 40 N m here,
+    # so editing max_wheel_effort changed nothing in Isaac.
+    max_effort = traction.wheel_effort_limit(Path(args.urdf))
+    logger.info('wheel drive torque limit %.1f N m (URDF)', max_effort)
+    articulation.configure(articulation_path, max_effort=max_effort, robot_path=robot_path)
     articulation.set_solver_iterations(articulation_path)
     wheel_paths = traction.make_wheels_frictionless(robot_path) if args.sand else None
 
@@ -243,7 +247,11 @@ def _run(args, simulation_app) -> int:
     if wheel_paths is not None:
         # After reset: the tensor views need a running physics scene.
         traction.SandTraction(
-            world, articulation_path, wheel_paths, traction.wheel_radius(Path(args.urdf))
+            world,
+            articulation_path,
+            wheel_paths,
+            traction.wheel_radius(Path(args.urdf)),
+            domain_id=args.domain_id,
         )
     logger.info('running. /clock is live -- start the ROS bringup now.')
 

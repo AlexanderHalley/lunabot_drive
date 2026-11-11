@@ -65,10 +65,24 @@
   <!-- Fore-aft distance between the front and rear axles. Does not enter
        the differential kinematics; it sets where the wheels are drawn and
        how the robot behaves in sim contact. -->
-  <!-- design: axles 0.62 m apart -->
-  <xacro:property name="wheel_base" value="0.62"/>
+  <!-- FOUR-WHEEL branch: the design's 0.62 m with the front axle moved 8 cm
+       back (the rear stays), so the empty rover's centre of mass is close
+       enough to the front axle to pivot in sand (tools/turning_study,
+       2026-10-31: a <= ~0.185 m in Isaac). -->
+  <xacro:property name="wheel_base" value="0.54"/>
+
+  <!-- FOUR-WHEEL branch: centre of mass of the EMPTY rover, metres behind
+       the front axle. The design's dry CoM is 0.24 m behind its front axle;
+       0.16 with the axle moved. The chassis inertial is shifted so the whole
+       rover (chassis + 4 wheels) has it there. -->
+  <xacro:property name="com_behind_front_axle" value="0.16"/>
+  <xacro:property name="chassis_com_x"
+                  value="${(wheel_base / 2.0 - com_behind_front_axle) * (chassis_mass + 4 * wheel_mass) / chassis_mass}"/>
 
   <!--
+    FOUR-WHEEL branch: there is no middle axle, so wheel_drop is unused. It
+    stays defined for the six-wheel history below.
+
     SIX wheels, drop-centre: a middle axle at x = 0, wheel_drop LOWER than
     the front and rear ones. Chosen 2026-10-22 so the rover can turn on the
     spot in sand, which the 2026 four-wheeler could not do (and the 2027

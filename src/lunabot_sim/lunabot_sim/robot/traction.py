@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 WHEEL_LINKS = tuple(j.replace('_joint', '_link') for j in WHEEL_JOINTS)
 CALLBACK = 'lunabot_sand_traction'
+TORQUE_TOPIC = '/sim/wheel_torque'
+TORQUE_RATE = 30.0  # Hz: each message is the mean over the physics steps since the last
 LOAD_SMOOTHING = 0.5
 """Weight of the newest contact reading. Contact forces jitter step to step;
 the sand model's stability caps scale with load, so jitter becomes buzz."""
@@ -52,6 +54,17 @@ def wheel_radius(urdf_path: Path) -> float:
             if cylinder is not None:
                 return float(cylinder.get('radius'))
     raise RuntimeError(f'no collision cylinder on {WHEEL_LINKS[0]} in {urdf_path}')
+
+
+def wheel_effort_limit(urdf_path: Path) -> float:
+    """Read the wheel joints' torque limit (properties.xacro max_wheel_effort), N m."""
+    root = ET.parse(urdf_path).getroot()
+    for joint in root.iter('joint'):
+        if joint.get('name') == WHEEL_JOINTS[0]:
+            limit = joint.find('limit')
+            if limit is not None and limit.get('effort'):
+                return float(limit.get('effort'))
+    raise RuntimeError(f'no effort limit on {WHEEL_JOINTS[0]} in {urdf_path}')
 
 
 def make_wheels_frictionless(robot_path: str, config: SoilConfig | None = None) -> list[str]:
@@ -104,8 +117,13 @@ class SandTraction:
         wheel_paths: list[str],
         radius: float,
         config: SoilConfig | None = None,
+        domain_id: int | None = None,
     ):
         self._config = config or SoilConfig()
+        self._torque = TorqueWindow(1.0 / TORQUE_RATE)
+        self._publisher = None
+        if domain_id is not None:
+            self._publisher = _TorquePublisher(domain_id)
         self._radius = radius
         self._articulation_path = articulation_path
         self._wheel_paths = list(wheel_paths)
@@ -176,6 +194,9 @@ class SandTraction:
         self._wheels.apply_forces_and_torques_at_position(
             self._out(force), None, self._out(point), self._indices, True
         )
+        mean = self._torque.add(drive_torques(force, point, pose[:, :3], axis), dt)
+        if mean is not None and self._publisher is not None:
+            self._publisher.publish(mean)
 
     def _read_loads(self, dt: float):
         """Each wheel's normal force on the ground, N, smoothed; None if unknown."""
@@ -266,3 +287,60 @@ def _rotate(quats, vectors):
     quats = np.asarray(quats, dtype=float)
     vectors = np.broadcast_to(vectors, (len(quats), 3))
     return np.einsum('nij,nj->ni', np.array([_matrix(q) for q in quats]), vectors)
+
+
+def drive_torques(force, point, centre, axis):
+    """Return each wheel's drive torque, N m: what its motor must apply at the wheel.
+
+    The sand's force acts at the contact point; its moment about the axle is
+    what the drive has to answer (at steady spin -- the wheel's own inertia
+    is small and ignored). Positive pushes the rover FORWARD (+x) at that
+    wheel, for every wheel: axis is each wheel body's +y, the same way on
+    both sides.
+    """
+    arm = np.asarray(point, dtype=float) - np.asarray(centre, dtype=float)
+    moment = np.einsum('ni,ni->n', np.cross(arm, np.asarray(force, dtype=float)), axis)
+    return -moment
+
+
+class TorqueWindow:
+    """Average per-wheel torques over windows of `period` seconds of physics."""
+
+    def __init__(self, period: float):
+        self.period = period
+        self._sum = None
+        self._time = 0.0
+
+    def add(self, torques, dt: float):
+        """Add one step; return the window's mean once a window is full, else None."""
+        torques = np.asarray(torques, dtype=float)
+        self._sum = torques * dt if self._sum is None else self._sum + torques * dt
+        self._time += dt
+        if self._time < self.period:
+            return None
+        mean = self._sum / self._time
+        self._sum, self._time = None, 0.0
+        return mean
+
+
+class _TorquePublisher:
+    """sensor_msgs/JointState on TORQUE_TOPIC: effort = each wheel's drive torque."""
+
+    def __init__(self, domain_id: int):
+        import rclpy
+        from rclpy.node import Node
+        from sensor_msgs.msg import JointState
+
+        if not rclpy.ok():
+            rclpy.init(domain_id=domain_id)
+        self._node = Node('sim_wheel_torque')
+        self._msg_type = JointState
+        self._pub = self._node.create_publisher(JointState, TORQUE_TOPIC, 10)
+        logger.info('wheel drive torques on %s at %.0f Hz', TORQUE_TOPIC, TORQUE_RATE)
+
+    def publish(self, torques) -> None:
+        msg = self._msg_type()
+        msg.header.stamp = self._node.get_clock().now().to_msg()
+        msg.name = list(WHEEL_JOINTS)
+        msg.effort = [float(t) for t in torques]
+        self._pub.publish(msg)

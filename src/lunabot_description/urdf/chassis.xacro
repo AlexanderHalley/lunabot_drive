@@ -31,7 +31,7 @@
 
       <xacro:box_inertia mass="${chassis_mass}"
                          x="${chassis_length}" y="${chassis_width}" z="${chassis_height}">
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="${chassis_com_x} 0 0" rpy="0 0 0"/>
       </xacro:box_inertia>
     </link>
 

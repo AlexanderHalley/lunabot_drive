@@ -31,8 +31,8 @@ diff_drive_controller:
     #
     # These strings must match the joint names in
     # lunabot_description/urdf/lunabot.urdf.xacro exactly.
-    left_wheel_names: [front_left_wheel_joint, middle_left_wheel_joint, rear_left_wheel_joint]
-    right_wheel_names: [front_right_wheel_joint, middle_right_wheel_joint, rear_right_wheel_joint]
+    left_wheel_names: [front_left_wheel_joint, rear_left_wheel_joint]
+    right_wheel_names: [front_right_wheel_joint, rear_right_wheel_joint]
 
     # ======================= MEASURE THESE =======================
     # PLACEHOLDERS. Both are duplicated in

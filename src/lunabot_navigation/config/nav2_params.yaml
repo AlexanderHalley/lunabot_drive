@@ -185,7 +185,7 @@ local_costmap:
       #
       # The 2027 design's drum reaches further forward still -- grow this
       # when the description models it.
-      footprint: "[[0.46, 0.322], [0.46, -0.322], [-0.46, -0.322], [-0.46, 0.322]]"
+      footprint: "[[0.42, 0.322], [0.42, -0.322], [-0.42, -0.322], [-0.42, 0.322]]"
       footprint_padding: 0.03
 
       plugins: ["voxel_layer", "inflation_layer"]
@@ -261,7 +261,7 @@ global_costmap:
       height: 16
 
       # Same footprint as local_costmap: see there.
-      footprint: "[[0.46, 0.322], [0.46, -0.322], [-0.46, -0.322], [-0.46, 0.322]]"
+      footprint: "[[0.42, 0.322], [0.42, -0.322], [-0.42, -0.322], [-0.42, 0.322]]"
       footprint_padding: 0.03
 
       plugins: ["static_layer", "obstacle_layer", "unseen_shadow_layer", "inflation_layer"]
